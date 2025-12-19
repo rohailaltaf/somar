@@ -625,14 +625,24 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
                 </CardHeader>
                 <CardContent>
                   <div className="flex flex-wrap gap-2">
-                    {item.accounts.map((account) => (
-                      <Badge key={account.id} variant="secondary">
-                        {account.name}
-                        <span className="ml-1 text-muted-foreground">
-                          ({account.type === "credit_card" ? "CC" : account.type})
-                        </span>
-                      </Badge>
-                    ))}
+                    {item.accounts.map((account) => {
+                      // Find the full account object to enable editing
+                      const fullAccount = connectedAccounts.find(a => a.id === account.id);
+                      return (
+                        <button
+                          key={account.id}
+                          onClick={() => fullAccount && handleEdit(fullAccount)}
+                          className="inline-flex items-center gap-1 rounded-md border px-2.5 py-0.5 text-xs font-semibold bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors cursor-pointer group"
+                          title="Click to rename"
+                        >
+                          {account.name}
+                          <span className="text-muted-foreground">
+                            ({account.type === "credit_card" ? "CC" : account.type})
+                          </span>
+                          <Pencil className="w-3 h-3 ml-1 opacity-0 group-hover:opacity-60 transition-opacity" />
+                        </button>
+                      );
+                    })}
                   </div>
                 </CardContent>
               </Card>

@@ -76,6 +76,11 @@ model Transaction {
   isConfirmed        Boolean  @default(false) @map("is_confirmed")
   createdAt          String   @map("created_at")
   plaidTransactionId String?  @unique @map("plaid_transaction_id")
+  
+  // Plaid raw fields - stored for flexibility, only populated for Plaid transactions
+  plaidOriginalDescription String? @map("plaid_original_description")
+  plaidName                String? @map("plaid_name")
+  plaidMerchantName        String? @map("plaid_merchant_name")
 
   account     Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
   category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)

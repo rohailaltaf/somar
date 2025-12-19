@@ -170,11 +170,12 @@ export async function exchangePublicToken(
     // Create accounts linked to the PlaidItem
     for (const plaidAccount of plaidAccounts) {
       const accountType = mapPlaidAccountType(plaidAccount.type, plaidAccount.subtype);
+      const accountName = formatPlaidAccountName(institutionName, plaidAccount.name, plaidAccount.mask);
       
       await db.account.create({
         data: {
           id: uuidv4(),
-          name: `${institutionName} - ${plaidAccount.name}`,
+          name: accountName,
           type: accountType,
           plaidItemId: plaidItemId,
           plaidAccountId: plaidAccount.account_id,
@@ -235,11 +236,12 @@ export async function updatePlaidItemAccounts(
     for (const plaidAccount of plaidAccounts) {
       if (!existingPlaidAccountIds.has(plaidAccount.account_id)) {
         const accountType = mapPlaidAccountType(plaidAccount.type, plaidAccount.subtype);
+        const accountName = formatPlaidAccountName(plaidItem.institutionName, plaidAccount.name, plaidAccount.mask);
 
         await db.account.create({
           data: {
             id: uuidv4(),
-            name: `${plaidItem.institutionName} - ${plaidAccount.name}`,
+            name: accountName,
             type: accountType,
             plaidItemId: plaidItemId,
             plaidAccountId: plaidAccount.account_id,
@@ -345,6 +347,9 @@ async function initialHistoricalSync(
       for (const transaction of firstResponse.data.transactions) {
         const accountId = accountMap.get(transaction.account_id);
         if (!accountId) continue;
+        
+        // Skip pending transactions - they'll be synced when posted
+        if (transaction.pending) continue;
 
         const existing = await db.transaction.findFirst({
           where: { plaidTransactionId: transaction.transaction_id },
@@ -352,8 +357,9 @@ async function initialHistoricalSync(
 
         if (existing) continue;
 
+        // Use merchant_name for categorization (cleanest for matching rules)
         const categoryResult = categorizeWithRules(
-          transaction.name || transaction.merchant_name || "",
+          transaction.merchant_name || transaction.name || "",
           categorizationRules
         );
 
@@ -369,18 +375,24 @@ async function initialHistoricalSync(
         }
 
         const amount = -transaction.amount;
+        
+        // Use original_description for display (closest to CSV), fallback to name, then merchant_name
+        const description = transaction.original_description || transaction.name || transaction.merchant_name || "Unknown";
 
         await db.transaction.create({
           data: {
             id: uuidv4(),
             accountId,
             categoryId: categoryResult.categoryId,
-            description: transaction.name || transaction.merchant_name || "Unknown",
+            description,
             amount,
-            date: transaction.date,
+            date: transaction.authorized_date || transaction.date,
             excluded,
             isConfirmed: false,
             plaidTransactionId: transaction.transaction_id,
+            plaidOriginalDescription: transaction.original_description || null,
+            plaidName: transaction.name || null,
+            plaidMerchantName: transaction.merchant_name || null,
             createdAt: new Date().toISOString(),
           },
         });
@@ -423,6 +435,9 @@ async function initialHistoricalSync(
     for (const transaction of response.data.transactions) {
       const accountId = accountMap.get(transaction.account_id);
       if (!accountId) continue;
+      
+      // Skip pending transactions - they'll be synced when posted
+      if (transaction.pending) continue;
 
       // Check if transaction already exists (by plaid_transaction_id) - deduplication
       const existing = await db.transaction.findFirst({
@@ -431,9 +446,9 @@ async function initialHistoricalSync(
 
       if (existing) continue;
 
-      // Auto-categorize
+      // Use merchant_name for categorization (cleanest for matching rules)
       const categoryResult = categorizeWithRules(
-        transaction.name || transaction.merchant_name || "",
+        transaction.merchant_name || transaction.name || "",
         categorizationRules
       );
 
@@ -450,18 +465,24 @@ async function initialHistoricalSync(
 
       // Plaid uses positive for money out, we use negative for expenses (flip sign)
       const amount = -transaction.amount;
+      
+      // Use original_description for display (closest to CSV), fallback to name, then merchant_name
+      const description = transaction.original_description || transaction.name || transaction.merchant_name || "Unknown";
 
       await db.transaction.create({
         data: {
           id: uuidv4(),
           accountId,
           categoryId: categoryResult.categoryId,
-          description: transaction.name || transaction.merchant_name || "Unknown",
+          description,
           amount,
-          date: transaction.date,
+          date: transaction.authorized_date || transaction.date,
           excluded,
           isConfirmed: false,
           plaidTransactionId: transaction.transaction_id,
+          plaidOriginalDescription: transaction.original_description || null,
+          plaidName: transaction.name || null,
+          plaidMerchantName: transaction.merchant_name || null,
           createdAt: new Date().toISOString(),
         },
       });
@@ -531,6 +552,9 @@ async function incrementalSync(
     for (const transaction of data.added) {
       const accountId = accountMap.get(transaction.account_id);
       if (!accountId) continue;
+      
+      // Skip pending transactions - they'll be synced when posted
+      if (transaction.pending) continue;
 
       // Check if transaction already exists (by plaid_transaction_id) - deduplication
       const existing = await db.transaction.findFirst({
@@ -539,9 +563,9 @@ async function incrementalSync(
 
       if (existing) continue;
 
-      // Auto-categorize
+      // Use merchant_name for categorization (cleanest for matching rules)
       const categoryResult = categorizeWithRules(
-        transaction.name || transaction.merchant_name || "",
+        transaction.merchant_name || transaction.name || "",
         categorizationRules
       );
 
@@ -558,18 +582,24 @@ async function incrementalSync(
 
       // Plaid uses positive for money out, we use negative for expenses (flip sign)
       const amount = -transaction.amount;
+      
+      // Use original_description for display (closest to CSV), fallback to name, then merchant_name
+      const description = transaction.original_description || transaction.name || transaction.merchant_name || "Unknown";
 
       await db.transaction.create({
         data: {
           id: uuidv4(),
           accountId,
           categoryId: categoryResult.categoryId,
-          description: transaction.name || transaction.merchant_name || "Unknown",
+          description,
           amount,
-          date: transaction.date,
+          date: transaction.authorized_date || transaction.date,
           excluded,
           isConfirmed: false,
           plaidTransactionId: transaction.transaction_id,
+          plaidOriginalDescription: transaction.original_description || null,
+          plaidName: transaction.name || null,
+          plaidMerchantName: transaction.merchant_name || null,
           createdAt: new Date().toISOString(),
         },
       });
@@ -585,13 +615,17 @@ async function incrementalSync(
 
       if (existing) {
         const amount = -transaction.amount;
+        const description = transaction.original_description || transaction.name || transaction.merchant_name || existing.description;
 
         await db.transaction.update({
           where: { id: existing.id },
           data: {
-            description: transaction.name || transaction.merchant_name || existing.description,
+            description,
             amount,
-            date: transaction.date,
+            date: transaction.authorized_date || transaction.date,
+            plaidOriginalDescription: transaction.original_description || null,
+            plaidName: transaction.name || null,
+            plaidMerchantName: transaction.merchant_name || null,
           },
         });
 
@@ -836,6 +870,19 @@ function mapPlaidAccountType(
   }
   // Default to checking for unknown types
   return "checking";
+}
+
+// Helper function to format account name with last 4 digits for easy identification
+function formatPlaidAccountName(
+  institutionName: string,
+  accountName: string,
+  mask: string | null | undefined
+): string {
+  // Include last 4 digits if available to distinguish between similar accounts
+  if (mask) {
+    return `${institutionName} - ${accountName} (...${mask})`;
+  }
+  return `${institutionName} - ${accountName}`;
 }
 
 
