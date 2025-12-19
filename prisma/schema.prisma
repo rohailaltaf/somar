@@ -1,0 +1,104 @@
+// Prisma schema for personal finance tracker
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model PlaidItem {
+  id              String   @id
+  accessToken     String   @map("access_token")
+  institutionId   String   @map("institution_id")
+  institutionName String   @map("institution_name")
+  cursor          String?  // For incremental transaction sync
+  lastSyncedAt    String?  @map("last_synced_at")
+  createdAt       String   @map("created_at")
+
+  accounts        Account[]
+
+  @@map("plaid_items")
+}
+
+model Account {
+  id             String   @id
+  name           String
+  type           String   // "checking" or "credit_card"
+  createdAt      String   @map("created_at")
+  plaidItemId    String?  @map("plaid_item_id")
+  plaidAccountId String?  @map("plaid_account_id") // Plaid's account ID
+
+  plaidItem    PlaidItem?    @relation(fields: [plaidItemId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@index([plaidItemId], name: "accounts_plaid_item_idx")
+  @@map("accounts")
+}
+
+model Category {
+  id        String   @id
+  name      String   @unique
+  type      String   @default("spending") // "spending", "income", or "transfer"
+  color     String   @default("#6366f1")
+  createdAt String   @map("created_at")
+
+  budgets              CategoryBudget[]
+  transactions         Transaction[]
+  categorizationRules  CategorizationRule[]
+
+  @@map("categories")
+}
+
+model CategoryBudget {
+  id         String   @id
+  categoryId String   @map("category_id")
+  amount     Float
+  startMonth String   @map("start_month") // Format: YYYY-MM
+  createdAt  String   @map("created_at")
+
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@index([categoryId, startMonth], name: "category_budgets_category_start_month_idx")
+  @@map("category_budgets")
+}
+
+model Transaction {
+  id                 String   @id
+  accountId          String   @map("account_id")
+  categoryId         String?  @map("category_id")
+  description        String
+  amount             Float    // Positive = expense, Negative = income/credit
+  date               String   // Format: YYYY-MM-DD
+  excluded           Boolean  @default(false)
+  isConfirmed        Boolean  @default(false) @map("is_confirmed")
+  createdAt          String   @map("created_at")
+  plaidTransactionId String?  @unique @map("plaid_transaction_id")
+
+  account     Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([date], name: "transactions_date_idx")
+  @@index([accountId], name: "transactions_account_idx")
+  @@index([categoryId], name: "transactions_category_idx")
+  @@index([date, excluded], name: "transactions_date_excluded_idx")
+  @@index([isConfirmed], name: "transactions_is_confirmed_idx")
+  @@map("transactions")
+}
+
+model CategorizationRule {
+  id         String   @id
+  pattern    String   // Merchant keyword pattern
+  categoryId String   @map("category_id")
+  isPreset   Boolean  @default(false) @map("is_preset")
+  createdAt  String   @map("created_at")
+
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@index([categoryId], name: "categorization_rules_category_idx")
+  @@index([isPreset], name: "categorization_rules_is_preset_idx")
+  @@map("categorization_rules")
+}
+
