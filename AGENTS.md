@@ -52,6 +52,12 @@ src/
     ├── db/
     │   ├── index.ts       # Prisma client connection
     │   └── seed.ts        # Seed categories + preset rules
+    ├── dedup/             # Transaction deduplication (see docs/deduplication.md)
+    │   ├── index.ts       # Main 3-tier orchestrator
+    │   ├── merchant-extractor.ts  # Merchant name extraction
+    │   ├── jaro-winkler.ts        # String similarity algorithms
+    │   ├── embedding-matcher.ts   # OpenAI embeddings
+    │   └── llm-verifier.ts        # GPT-4o-mini verification
     ├── plaid.ts           # Plaid client configuration
     ├── categorizer.ts     # Auto-categorization logic
     ├── csv-parser.ts      # CSV parsing + column inference
@@ -163,7 +169,9 @@ return { updatedTransactions: updates };
   - Different banks use different conventions for expense signs
   - App convention: **negative = expense (money out), positive = income (money in)**
   - User can toggle "Flip all amount signs" checkbox if their bank uses opposite convention
-- Duplicate detection against existing transactions (same date + description + absolute amount)
+- **AI-powered duplicate detection** - See [docs/deduplication.md](docs/deduplication.md) for full documentation
+  - 3-tier system: Deterministic → Embeddings → LLM verification
+  - Catches duplicates even when descriptions differ (e.g., "AplPay CHIPOTLE 1249" vs "Chipotle Mexican Grill")
 - Final amounts: negative = expense, positive = income
 
 ### 4. Plaid Integration (`src/app/accounts/`, `src/actions/plaid.ts`)
@@ -575,4 +583,12 @@ With 10,000+ transactions, performance remains the same due to server-side pagin
 12. **Pattern extraction too specific**: If auto-tagging isn't working, check if the extracted pattern is too specific. Transaction descriptions from same merchant often have different suffixes (PAYROLL vs DIR DEP vs ACH). The pattern should extract just the merchant identifier, not the full description.
 13. **Always use `confirmTransaction()` for category changes**: The transactions page dropdown and tagger both use `confirmTransaction()` which learns patterns and auto-tags. Don't use `updateTransaction()` directly for category changes or patterns won't be learned.
 14. **Plaid orphan items = wasted money**: If you reset the database without calling `itemRemove()` on Plaid, those items remain active and you'll be billed! Always use `npm run db:safe-reset` instead of `npm run db:reset` when you have Plaid connections. To find orphans, check dashboard.plaid.com or call `GET /api/plaid/status`.
+
+## Additional Documentation
+
+Detailed documentation for specific subsystems is available in the `docs/` folder:
+
+| File | Description |
+|------|-------------|
+| [docs/deduplication.md](docs/deduplication.md) | AI-powered transaction deduplication system (3-tier matching, embeddings, LLM verification) |
 

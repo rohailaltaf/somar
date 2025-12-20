@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Account } from "@prisma/client";
 import { createManyTransactions } from "@/actions/transactions";
-import { getTransactions } from "@/actions/transactions";
+import { analyzeForDuplicates, DedupAnalysisResult } from "@/actions/dedup";
 import {
   parseCSV,
   transformToTransactions,
@@ -58,6 +58,9 @@ interface FlaggedTransaction {
   reason: "already-exists";
   selected: boolean;
   originalIndex: number;
+  confidence?: number;
+  matchTier?: "deterministic" | "embedding" | "llm";
+  matchedDescription?: string;
 }
 
 interface UploadInterfaceProps {
@@ -81,9 +84,11 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
   const [uniqueTransactions, setUniqueTransactions] = useState<ParsedTransaction[]>([]);
   const [flaggedTransactions, setFlaggedTransactions] = useState<FlaggedTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("");
   const [importedCount, setImportedCount] = useState(0);
   const [flipAmountSign, setFlipAmountSign] = useState(false);
   const [previewTransactions, setPreviewTransactions] = useState<ParsedTransaction[]>([]);
+  const [dedupStats, setDedupStats] = useState<DedupAnalysisResult["stats"] | null>(null);
 
   const handleFileUpload = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -115,35 +120,6 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
     }));
   };
 
-  // Normalize description for fuzzy matching
-  const normalizeDescription = (desc: string): string => {
-    return desc
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, '') // Remove all non-alphanumeric characters
-      .trim();
-  };
-
-  // Check if two descriptions are similar (fuzzy match)
-  const descriptionsMatch = (desc1: string, desc2: string): boolean => {
-    const norm1 = normalizeDescription(desc1);
-    const norm2 = normalizeDescription(desc2);
-    
-    // Exact match after normalization
-    if (norm1 === norm2) return true;
-    
-    // One contains the other (for Plaid simplified names)
-    if (norm1.includes(norm2) || norm2.includes(norm1)) return true;
-    
-    // Check if the shorter one's significant words are in the longer one
-    const shorter = norm1.length < norm2.length ? norm1 : norm2;
-    const longer = norm1.length < norm2.length ? norm2 : norm1;
-    
-    // If shorter description is at least 4 chars and is contained in longer, it's a match
-    if (shorter.length >= 4 && longer.includes(shorter)) return true;
-    
-    return false;
-  };
-
   const handleProceedToSignConfirmation = useCallback(() => {
     const transformed = transformToTransactions(rows, mapping);
     setPreviewTransactions(transformed);
@@ -152,6 +128,7 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
 
   const handleAnalyzeDuplicates = useCallback(async () => {
     setIsLoading(true);
+    setLoadingMessage("Analyzing transactions for duplicates...");
     
     let transformed = transformToTransactions(rows, mapping);
     
@@ -163,54 +140,54 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
       }));
     }
 
-    // Get existing transactions for this account
-    const existingTransactions = await getTransactions({
-      accountId: selectedAccountId,
-    });
-
-    // Group existing transactions by date + absolute amount for fuzzy matching
-    const existingByDateAmount = new Map<string, { description: string; amount: number }[]>();
-    for (const t of existingTransactions) {
-      const key = `${t.date}|${Math.abs(t.amount).toFixed(2)}`;
-      if (!existingByDateAmount.has(key)) {
-        existingByDateAmount.set(key, []);
-      }
-      existingByDateAmount.get(key)!.push({ description: t.description, amount: t.amount });
-    }
-
-    const unique: ParsedTransaction[] = [];
-    const flagged: FlaggedTransaction[] = [];
-
-    transformed.forEach((t, index) => {
-      const key = `${t.date}|${Math.abs(t.amount).toFixed(2)}`;
-      const candidates = existingByDateAmount.get(key) || [];
-      
-      // Check if any candidate has a matching description (fuzzy)
-      const isDuplicate = candidates.some(candidate => 
-        descriptionsMatch(t.description, candidate.description)
+    try {
+      // Use the new AI-powered deduplication system
+      const result = await analyzeForDuplicates(
+        transformed.map(t => ({
+          description: t.description,
+          amount: t.amount,
+          date: t.date,
+        })),
+        selectedAccountId,
+        true // Use AI matching
       );
-      
-      if (isDuplicate) {
-        // Already exists in database
-        flagged.push({
-          transaction: t,
-          reason: "already-exists",
-          selected: false, // Default to NOT import
-          originalIndex: index,
-        });
+
+      // Convert results to component format
+      const unique: ParsedTransaction[] = result.unique.map(t => ({
+        description: t.description,
+        amount: t.amount,
+        date: t.date,
+      }));
+
+      const flagged: FlaggedTransaction[] = result.duplicates.map((d, index) => ({
+        transaction: {
+          description: d.transaction.description,
+          amount: d.transaction.amount,
+          date: d.transaction.date,
+        },
+        reason: "already-exists" as const,
+        selected: false,
+        originalIndex: index,
+        confidence: d.confidence,
+        matchTier: d.matchTier,
+        matchedDescription: d.matchedWith.description,
+      }));
+
+      setUniqueTransactions(unique);
+      setFlaggedTransactions(flagged);
+      setDedupStats(result.stats);
+
+      if (flagged.length > 0) {
+        setStep("review-duplicates");
       } else {
-        unique.push(t);
+        setStep("preview");
       }
-    });
-
-    setUniqueTransactions(unique);
-    setFlaggedTransactions(flagged);
-    setIsLoading(false);
-
-    if (flagged.length > 0) {
-      setStep("review-duplicates");
-    } else {
-      setStep("preview");
+    } catch (error) {
+      console.error("Deduplication error:", error);
+      toast.error("Error analyzing duplicates. Please try again.");
+    } finally {
+      setIsLoading(false);
+      setLoadingMessage("");
     }
   }, [rows, mapping, selectedAccountId, flipAmountSign]);
 
@@ -654,7 +631,7 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
                 {isLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Analyzing...
+                    {loadingMessage || "Analyzing..."}
                   </>
                 ) : (
                   <>
@@ -674,15 +651,29 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
           <CardHeader>
             <CardTitle>Review Potential Duplicates</CardTitle>
             <CardDescription>
-              {flaggedTransactions.length} transaction{flaggedTransactions.length !== 1 ? "s" : ""} may be duplicates. 
+              {flaggedTransactions.length} transaction{flaggedTransactions.length !== 1 ? "s" : ""} detected as duplicates using AI-powered matching.
               They won&apos;t be imported unless you check them.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {dedupStats && (
+              <div className="flex gap-4 text-sm text-muted-foreground">
+                <span>Analysis: {dedupStats.processingTimeMs}ms</span>
+                {dedupStats.tier1Matches > 0 && (
+                  <Badge variant="outline">Tier 1: {dedupStats.tier1Matches}</Badge>
+                )}
+                {dedupStats.tier2Matches > 0 && (
+                  <Badge variant="outline">Tier 2 (AI): {dedupStats.tier2Matches}</Badge>
+                )}
+                {dedupStats.tier3Matches > 0 && (
+                  <Badge variant="outline">Tier 3 (LLM): {dedupStats.tier3Matches}</Badge>
+                )}
+              </div>
+            )}
             <Alert>
               <AlertCircle className="w-4 h-4" />
               <AlertDescription>
-                These transactions already exist in your account (same date, description, and amount).
+                These transactions match existing records. The AI detected them as duplicates even with different description formats.
                 Check any that you want to import anyway.
               </AlertDescription>
             </Alert>
@@ -707,8 +698,10 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
                   <TableRow>
                     <TableHead className="w-[50px]">Import</TableHead>
                     <TableHead>Date</TableHead>
-                    <TableHead>Description</TableHead>
+                    <TableHead>New Description</TableHead>
+                    <TableHead>Matched With</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
+                    <TableHead className="text-center">Confidence</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -726,7 +719,12 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
                       <TableCell className="whitespace-nowrap">
                         {item.transaction.date}
                       </TableCell>
-                      <TableCell>{item.transaction.description}</TableCell>
+                      <TableCell className="max-w-[200px] truncate" title={item.transaction.description}>
+                        {item.transaction.description}
+                      </TableCell>
+                      <TableCell className="max-w-[200px] truncate text-muted-foreground" title={item.matchedDescription}>
+                        {item.matchedDescription || "—"}
+                      </TableCell>
                       <TableCell className="text-right whitespace-nowrap">
                         <span
                           className={cn(
@@ -737,6 +735,24 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
                           {item.transaction.amount < 0 ? "-" : "+"}
                           {formatCurrency(item.transaction.amount)}
                         </span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex flex-col items-center gap-1">
+                          <Badge 
+                            variant={
+                              (item.confidence ?? 0) >= 0.9 ? "default" : 
+                              (item.confidence ?? 0) >= 0.8 ? "secondary" : "outline"
+                            }
+                          >
+                            {item.confidence ? `${Math.round(item.confidence * 100)}%` : "—"}
+                          </Badge>
+                          {item.matchTier && (
+                            <span className="text-xs text-muted-foreground">
+                              {item.matchTier === "deterministic" ? "T1" : 
+                               item.matchTier === "embedding" ? "T2" : "T3"}
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
