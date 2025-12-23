@@ -12,7 +12,7 @@
  *   - Threshold: 0.82
  *
  * Tier 3: LLM Verification (accurate, slightly more expensive)
- *   - GPT-4o-mini for uncertain cases (0.65-0.82 embedding similarity)
+ *   - GPT-5-mini for uncertain cases (0.65-0.82 embedding similarity)
  *   - Batch processing for efficiency
  */
 

@@ -57,7 +57,7 @@ src/
     │   ├── merchant-extractor.ts  # Merchant name extraction
     │   ├── jaro-winkler.ts        # String similarity algorithms
     │   ├── embedding-matcher.ts   # OpenAI embeddings
-    │   └── llm-verifier.ts        # GPT-4o-mini verification
+    │   └── llm-verifier.ts        # GPT-5-mini verification
     ├── plaid.ts           # Plaid client configuration
     ├── categorizer.ts     # Auto-categorization logic
     ├── csv-parser.ts      # CSV parsing + column inference

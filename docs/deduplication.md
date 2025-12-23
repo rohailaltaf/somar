@@ -55,7 +55,7 @@ Simple substring matching fails because neither string contains the other. Our s
 ┌─────────────────────────────────────────────────────────────┐
 │     TIER 3: LLM Verification (~$0.0003/20 comparisons)      │
 │  ┌─────────────────────────────────────────────────────┐    │
-│  │  GPT-4o-mini with function calling                   │    │
+│  │  GPT-5-mini with function calling                   │    │
 │  │  Structured output via report_transaction_matches    │    │
 │  │  Batch processing for efficiency                     │    │
 │  └─────────────────────────────────────────────────────┘    │
@@ -74,7 +74,7 @@ src/lib/dedup/
 ├── merchant-extractor.ts # Extracts merchant names (50+ patterns)
 ├── jaro-winkler.ts       # String similarity algorithms
 ├── embedding-matcher.ts  # OpenAI embeddings + caching
-└── llm-verifier.ts       # GPT-4o-mini function calling
+└── llm-verifier.ts       # GPT-5-mini function calling
 
 src/actions/
 └── dedup.ts              # Server action for CSV upload integration
@@ -154,7 +154,7 @@ const score = cosineSimilarity(emb1, emb2);
 
 ## Tier 3: LLM Verification
 
-Uses GPT-4o-mini with function calling for human-like judgment on uncertain cases.
+Uses GPT-5-mini with function calling for human-like judgment on uncertain cases.
 
 ```typescript
 import { verifyMatchesBatch } from '@/lib/dedup/llm-verifier';
