@@ -3,6 +3,10 @@
  *
  * Extracts the core merchant name from messy transaction descriptions.
  * Handles various formats from different banks, payment processors, and Plaid.
+ *
+ * Note: We intentionally do NOT normalize acronyms (e.g., AWS -> Amazon Web Services)
+ * because the LLM in Tier 3 handles this correctly. Maintaining an acronym list is
+ * not scalable and the LLM has common sense about brand names and abbreviations.
  */
 
 // Common prefixes added by payment processors and banks

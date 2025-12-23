@@ -85,8 +85,7 @@ export interface BatchDedupeResult {
 
 // Thresholds for each tier
 const TIER1_THRESHOLD = 0.88; // Jaro-Winkler threshold
-const TIER2_THRESHOLD = 0.82; // Embedding cosine similarity
-const TIER2_UNCERTAIN_THRESHOLD = 0.65; // Below this, definitely not a match
+const TIER2_THRESHOLD = 0.82; // Embedding cosine similarity - auto-match if above this
 
 /**
  * Tier 1: Deterministic matching using merchant extraction and string similarity.
@@ -200,7 +199,8 @@ export async function findDuplicate(
   try {
     const newEmbedding = await getEmbedding(newTx.description);
 
-    const uncertainPairs: Array<{
+    // Track all candidates with their embedding scores
+    const candidatesWithScores: Array<{
       candidate: TransactionForDedup;
       score: number;
     }> = [];
@@ -218,15 +218,22 @@ export async function findDuplicate(
         };
       }
 
-      // Collect uncertain matches for tier 3
-      if (similarity >= TIER2_UNCERTAIN_THRESHOLD) {
-        uncertainPairs.push({ candidate, score: similarity });
-      }
+      // Track ALL candidates for potential LLM verification
+      // Having a date+amount match is strong evidence, so we should ask the LLM
+      // even if embedding similarity is low (handles acronyms like AWS vs Amazon Web Services)
+      candidatesWithScores.push({ candidate, score: similarity });
     }
 
-    // Tier 3: LLM verification for uncertain cases
-    if (uncertainPairs.length > 0) {
-      const pairs = uncertainPairs.map((p) => ({
+    // Tier 3: LLM verification
+    // Send candidates to LLM - prioritize higher embedding scores but include all
+    // because embeddings fail on acronyms (e.g., "AWS" vs "Amazon Web Services" = 0.39)
+    if (candidatesWithScores.length > 0) {
+      // Sort by embedding score descending and take top candidates
+      const sortedCandidates = candidatesWithScores
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5); // Limit to top 5 to control LLM costs
+
+      const pairs = sortedCandidates.map((p) => ({
         newDescription: newTx.description,
         existingDescription: p.candidate.description,
         amount: newTx.amount,
@@ -240,7 +247,7 @@ export async function findDuplicate(
         if (result.isSameMerchant && result.confidence !== "low") {
           return {
             isUnique: false,
-            matchedTransaction: uncertainPairs[i].candidate,
+            matchedTransaction: sortedCandidates[i].candidate,
             confidence:
               result.confidence === "high"
                 ? 0.95

@@ -309,6 +309,16 @@ function delay(ms: number): Promise<void> {
 }
 
 /**
+ * Get a date offset by N days (positive = future, negative = past)
+ */
+function getOffsetDate(dateStr: string, offsetDays: number): string {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  date.setDate(date.getDate() + offsetDays);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+/**
  * Check if a Plaid transaction duplicates an existing CSV transaction.
  * Uses the full 3-tier dedup system (deterministic + embeddings + LLM).
  * Returns the matched CSV transaction ID if found, null otherwise.
@@ -323,15 +333,28 @@ async function findDuplicateCsvTransaction(
   merchantName: string | null
 ): Promise<string | null> {
   // Get existing CSV transactions for this account with matching amount and potential dates
-  const potentialDates = [date];
-  if (authorizedDate && authorizedDate !== date) potentialDates.push(authorizedDate);
-  if (postedDate !== date && postedDate !== authorizedDate) potentialDates.push(postedDate);
+  // Use ±2 day window to handle bank-specific date offsets
+  // - Amex: CSV matches authorized_date (0 offset)
+  // - Chase: CSV is 1-2 days before posted_date (authorized_date often null)
+  const potentialDates = new Set<string>();
+  
+  // Add ±2 days around each Plaid date
+  const plaidDates = [date];
+  if (authorizedDate) plaidDates.push(authorizedDate);
+  if (postedDate && postedDate !== date) plaidDates.push(postedDate);
+  
+  for (const plaidDate of plaidDates) {
+    for (let offset = -2; offset <= 2; offset++) {
+      const checkDate = offset === 0 ? plaidDate : getOffsetDate(plaidDate, offset);
+      potentialDates.add(checkDate);
+    }
+  }
 
   const csvTransactions = await db.transaction.findMany({
     where: {
       accountId,
       plaidTransactionId: null, // Only CSV transactions
-      date: { in: potentialDates },
+      date: { in: Array.from(potentialDates) },
     },
     select: {
       id: true,
