@@ -92,7 +92,7 @@ src/
 
 **transactions**
 - `id`, `account_id` (FK), `category_id` (FK, nullable), `description`, `amount` (real), `date` (YYYY-MM-DD), `excluded` (boolean), `is_confirmed` (boolean), `created_at`, `plaid_transaction_id` (unique, nullable)
-- `amount`: negative = expense (money out), positive = income/credit (money in)
+- `amount`: **positive = expense (money out), negative = income/credit (money in)**
 - `excluded`: if true, not counted in spending calculations
 - `is_confirmed`: false until user confirms category in tagger
 - `plaid_transaction_id`: Plaid's transaction ID for deduplication (null for CSV imports)
@@ -167,12 +167,12 @@ return { updatedTransactions: updates };
 - Auto-infers column mappings (date, description, amount, debit/credit)
 - **Sign convention confirmation**: Shows preview of transactions and allows user to flip signs if needed
   - Different banks use different conventions for expense signs
-  - App convention: **negative = expense (money out), positive = income (money in)**
+  - App convention: **positive = expense (money out), negative = income (money in)**
   - User can toggle "Flip all amount signs" checkbox if their bank uses opposite convention
 - **AI-powered duplicate detection** - See [docs/deduplication.md](docs/deduplication.md) for full documentation
   - 3-tier system: Deterministic → Embeddings → LLM verification
   - Catches duplicates even when descriptions differ (e.g., "AplPay CHIPOTLE 1249" vs "Chipotle Mexican Grill")
-- Final amounts: negative = expense, positive = income
+- Final amounts: positive = expense, negative = income
 
 ### 4. Plaid Integration (`src/app/accounts/`, `src/actions/plaid.ts`)
 
@@ -248,7 +248,7 @@ PLAID_ENV=sandbox  # or production
 - Categories page shows tabs for Spending, Income, and Transfers
 - `getCategories(type?: "spending" | "income" | "transfer")` filters by type
 - `getCategoriesWithBudgets()` only returns spending categories
-- Transactions with negative amounts are expenses, positive amounts are income
+- Transactions with **positive amounts are expenses, negative amounts are income**
 
 ### 7. Reports & Analytics (`src/app/reports/`)
 
@@ -298,9 +298,9 @@ const date = new Date(year, month - 1, day);
 ```
 
 ### Amount Convention
-- Negative = expense/debit (money out)
-- Positive = income/credit (money in)
-- Display: negative shows red (expense), positive shows green (income)
+- **Positive = expense/debit (money out)** - displayed in red
+- **Negative = income/credit (money in)** - displayed in green
+- This matches the schema.prisma comment and is enforced throughout the UI
 
 ### Server Actions
 - All mutations use Next.js Server Actions in `src/actions/`
@@ -320,6 +320,7 @@ The project supports separate development and production environments with diffe
 
 - `.env.development` - Development configuration (uses `finance-dev.db`)
 - `.env.production` - Production configuration (uses `finance-prod.db`)
+- `.env.demo` - Demo configuration (uses `finance-demo.db`) - for testing with realistic data
 - `.env.example` - Template for environment configuration (committed to git)
 
 ### Running in Different Environments
@@ -327,6 +328,9 @@ The project supports separate development and production environments with diffe
 ```bash
 # Development (uses .env.development)
 npm run dev              # Start dev server with finance-dev.db
+
+# Demo (uses .env.demo)
+npm run demo             # Reset demo DB + start dev server with finance-demo.db
 
 # Production (uses .env.production)
 npm run build            # Build for production
@@ -344,12 +348,87 @@ npm run db:seed          # Seed dev DB
 npm run db:reset         # Reset dev DB (delete + recreate + seed)
 npm run db:studio        # Open Prisma Studio with dev DB
 
+# Demo database (with realistic sample data)
+npm run demo             # Reset demo DB + start dev server
+npm run db:reset:demo    # Reset demo DB only (no server start)
+npm run db:push:demo     # Push schema changes to demo DB
+npm run db:seed:demo     # Seed demo DB with realistic data
+
 # Production database (explicit :prod suffix)
 npm run db:push:prod     # Push schema changes to prod DB
 npm run db:seed:prod     # Seed prod DB
 npm run db:reset:prod    # Reset prod DB (delete + recreate + seed)
 npm run db:studio:prod   # Open Prisma Studio with prod DB
 ```
+
+## Demo Mode
+
+Demo mode provides a separate database with realistic sample data for testing and demonstrations without affecting development or production data.
+
+### Running Demo Mode
+
+```bash
+npm run demo
+```
+
+This command:
+1. Deletes any existing demo database
+2. Creates fresh schema
+3. Seeds with realistic sample data (see below)
+4. Starts the Next.js dev server with demo database
+
+### Demo Data Generated
+
+The demo seed script (`src/lib/db/seed-demo.ts`) creates:
+
+**Accounts (6 total):**
+- 2x Checking accounts (one Plaid-connected: Chase, one manual)
+- 2x Credit cards (one Plaid-connected: Amex, one manual)
+- 1x Investment account (Plaid-connected: Fidelity)
+- 1x Savings account (manual)
+
+**Mock Plaid Items (3 total):**
+- Chase (checking account)
+- American Express (credit card)
+- Fidelity Investments (401k)
+- *Note: These use fake tokens and won't actually sync from Plaid APIs*
+
+**Transactions (680+ over 12 months):**
+- **Income**: Bi-monthly paychecks ($4,250 each on 7th and 22nd) + occasional freelance income
+- **Recurring expenses**: 
+  - Rent ($2,400/month on 1st)
+  - Subscriptions (Netflix, Spotify, Adobe, etc. - 12 total)
+  - Utilities (PG&E, Comcast)
+- **Variable expenses**:
+  - Groceries: 8-12 transactions/month ($25-250 each)
+  - Restaurants: 10-15 transactions/month ($8-75 each)
+  - Shopping: 3-8 transactions/month ($15-350 each)
+  - Car/Gas: 4-6 transactions/month ($35-85 each)
+  - Entertainment: 2-4 transactions/month ($12-65 each)
+  - Travel: Occasional ($15-450 each)
+- **Credit card payments**: Monthly payments on 25th ($1,500-3,500)
+- **Mix**: ~80% confirmed, ~20% unconfirmed (for testing tagger)
+- **Realistic descriptions**: Match real bank formats (e.g., "POS CHIPOTLE #1249 SAN FRANCISCO CA")
+
+**Budgets:**
+- Set for all spending categories (restaurant: $500, grocery: $600, house: $2,000, etc.)
+- Start date: 12 months ago for historical tracking
+
+### Demo Database Location
+
+- File: `finance-demo.db` (in project root)
+- Config: `.env.demo`
+- Completely separate from `finance-dev.db` and `finance-prod.db`
+
+### Use Cases
+
+- Testing features without polluting development data
+- Demonstrating the app to others
+- Verifying reports with realistic data patterns
+- Testing tagger with unconfirmed transactions
+- Benchmarking performance with substantial data
+
+**See [DEMO.md](DEMO.md) for complete demo mode documentation.**
 
 ## Common Tasks
 
@@ -443,6 +522,12 @@ npm run db:seed       # Seed dev DB
 npm run db:reset      # Reset dev DB (WARNING: doesn't disconnect Plaid!)
 npm run db:safe-reset # Disconnect Plaid items, then reset dev DB (RECOMMENDED)
 
+# Demo (uses .env.demo - realistic sample data)
+npm run demo          # Reset demo DB + start dev server
+npm run db:reset:demo # Reset demo DB only (no server start)
+npm run db:push:demo  # Push schema to demo DB
+npm run db:seed:demo  # Seed demo DB with realistic data
+
 # Production (uses .env.production)
 npm run build         # Build for production
 npm run start         # Start production server
@@ -464,6 +549,7 @@ npm run lint          # Run ESLint
 ## Files to Ignore
 
 - `finance-dev.db`, `finance-dev.db-wal`, `finance-dev.db-shm` - Development SQLite database
+- `finance-demo.db`, `finance-demo.db-wal`, `finance-demo.db-shm` - Demo SQLite database
 - `finance-prod.db`, `finance-prod.db-wal`, `finance-prod.db-shm` - Production SQLite database
 - `.next/` - Next.js build cache
 - `node_modules/@prisma/` - Generated Prisma Client
@@ -571,7 +657,7 @@ With 10,000+ transactions, performance remains the same due to server-side pagin
 
 1. **Timezone issues**: Always use local date construction, never `new Date(dateString).toISOString()`
 2. **SQLite connection caching**: Dev server may hold DB connection; restart after `db:reset`
-3. **Amount signs**: Different banks use different sign conventions. The upload wizard includes a sign confirmation step where users can flip signs if needed. App convention: negative = expense (money out), positive = income (money in).
+3. **Amount signs**: Different banks use different sign conventions. The upload wizard includes a sign confirmation step where users can flip signs if needed. App convention: **positive = expense (money out), negative = income (money in)**.
 4. **Category budgets**: Query must filter by `start_month <= targetMonth` and take most recent. **Only spending categories have budgets** - income and transfer categories don't need budgets.
 5. **Duplicate detection**: Only checks against existing DB records, not within CSV itself (intentional - allows legitimate duplicate transactions like buying pizza twice)
 6. **Missing indexes = disaster**: Always add indexes to frequently queried columns (date, category_id, account_id, etc.)
@@ -586,9 +672,10 @@ With 10,000+ transactions, performance remains the same due to server-side pagin
 
 ## Additional Documentation
 
-Detailed documentation for specific subsystems is available in the `docs/` folder:
+Detailed documentation for specific subsystems:
 
 | File | Description |
 |------|-------------|
+| [DEMO.md](DEMO.md) | Demo mode guide - running the app with realistic sample data |
 | [docs/deduplication.md](docs/deduplication.md) | AI-powered transaction deduplication system (3-tier matching, embeddings, LLM verification) |
 

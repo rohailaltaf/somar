@@ -41,7 +41,11 @@
     "plaid:status:prod": "dotenv -e .env.production -- npx tsx scripts/list-plaid-items.ts",
     "db:safe-reset": "npm run db:disconnect-plaid && npm run db:reset",
     "db:safe-reset:prod": "npm run db:disconnect-plaid:prod && npm run db:reset:prod",
-    "db:generate": "prisma generate"
+    "db:generate": "prisma generate",
+    "db:push:demo": "dotenv -e .env.demo -- prisma db push",
+    "db:seed:demo": "dotenv -e .env.demo -- npx tsx src/lib/db/seed-demo.ts",
+    "db:reset:demo": "rm -f finance-demo.db finance-demo.db-wal finance-demo.db-shm && npm run db:push:demo && npm run db:seed:demo",
+    "demo": "npm run db:reset:demo && dotenv -e .env.demo -- next dev"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",

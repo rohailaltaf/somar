@@ -108,6 +108,26 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) to see the app.
 
+### Demo Mode (Quick Preview)
+
+Want to see the app with realistic data right away? Use demo mode:
+
+```bash
+# Run demo mode (resets demo DB and starts dev server)
+npm run demo
+```
+
+This creates a separate `finance-demo.db` with:
+- 6 accounts (checking, credit cards, savings, investment)
+- 3 mock Plaid connections (Chase, Amex, Fidelity)
+- 680+ transactions over 12 months
+- Realistic spending patterns and merchant names
+- Pre-set budgets for all categories
+
+Perfect for testing features without connecting your real data!
+
+**See [DEMO.md](DEMO.md) for more details.**
+
 ### Plaid Setup (Optional)
 
 To enable bank connections, create a [Plaid](https://plaid.com) account and add your credentials:
@@ -176,6 +196,10 @@ npm run db:seed       # Seed default categories
 npm run db:reset      # Reset database (WARNING: deletes all data)
 npm run db:studio     # Open Prisma Studio GUI
 
+# Demo (separate database with realistic data)
+npm run demo          # Reset demo DB + start dev server
+npm run db:reset:demo # Reset demo database only
+
 # Production
 npm run db:push:prod
 npm run db:seed:prod
@@ -185,12 +209,13 @@ npm run db:studio:prod
 
 ## Environment Configuration
 
-The app supports separate development and production databases:
+The app supports separate development, demo, and production databases:
 
-| Environment | Database File | Config File |
-|-------------|---------------|-------------|
-| Development | `finance-dev.db` | `.env.development` |
-| Production | `finance-prod.db` | `.env.production` |
+| Environment | Database File | Config File | Purpose |
+|-------------|---------------|-------------|---------|
+| Development | `finance-dev.db` | `.env.development` | Your personal development data |
+| Demo | `finance-demo.db` | `.env.demo` | Realistic sample data for testing |
+| Production | `finance-prod.db` | `.env.production` | Production data |
 
 ## Contributing
 
