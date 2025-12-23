@@ -22,8 +22,10 @@ Simple substring matching fails because neither string contains the other. Our s
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│              Pre-Filter: Date + |Amount| Match               │
+│              Pre-Filter: Date (±2 days) + |Amount| Match     │
 │     (Indexes both authorized_date and posted_date for Plaid) │
+│     (±2 day window handles bank-specific date offsets)       │
+│     (Amex: 0 offset, Chase: up to -2 days from posted_date)  │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼

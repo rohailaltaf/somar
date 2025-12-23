@@ -122,9 +122,17 @@ export function combinedSimilarity(s1: string, s2: string): number {
   let containmentScore = 0;
   if (norm1.length >= 4 && norm2.length >= 4) {
     if (norm1.includes(norm2) || norm2.includes(norm1)) {
-      // Score based on length ratio
-      const ratio = Math.min(norm1.length, norm2.length) / Math.max(norm1.length, norm2.length);
-      containmentScore = 0.7 + ratio * 0.3; // 0.7 to 1.0
+      // If the shorter string (>= 5 chars) is fully contained, it's a strong match
+      // regardless of how much extra prefix/suffix the longer string has
+      // e.g., "mcdonalds" in "doordashmcdonalds" should be a strong match
+      const shorterLen = Math.min(norm1.length, norm2.length);
+      if (shorterLen >= 5) {
+        containmentScore = 0.92; // Strong match - contained significant word
+      } else {
+        // For shorter contained strings, use ratio-based scoring
+        const ratio = shorterLen / Math.max(norm1.length, norm2.length);
+        containmentScore = 0.7 + ratio * 0.3;
+      }
     }
   }
 

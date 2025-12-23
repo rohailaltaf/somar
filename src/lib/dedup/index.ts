@@ -318,11 +318,40 @@ export async function findDuplicatesBatch(
   }
 
   /**
+   * Get a date offset by N days (positive = future, negative = past)
+   */
+  function getOffsetDate(dateStr: string, offsetDays: number): string {
+    const [year, month, day] = dateStr.split("-").map(Number);
+    const date = new Date(year, month - 1, day);
+    date.setDate(date.getDate() + offsetDays);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  }
+
+  /**
    * Get candidates that match the CSV transaction's date against any Plaid date
+   * Uses a ±2 day window to handle bank-specific date offsets
+   * - Amex: CSV matches Plaid authorized_date (0 offset)
+   * - Chase: CSV is 1-2 days before Plaid posted_date (authorized_date often null)
    */
   function getCandidates(tx: TransactionForDedup): TransactionForDedup[] {
-    const key = `${tx.date}|${Math.abs(tx.amount).toFixed(2)}`;
-    return existingByDateAmount.get(key) || [];
+    const amount = Math.abs(tx.amount).toFixed(2);
+    const candidates: TransactionForDedup[] = [];
+    const seen = new Set<TransactionForDedup>();
+
+    // Check exact date and ±2 day window
+    for (let offset = -2; offset <= 2; offset++) {
+      const checkDate = offset === 0 ? tx.date : getOffsetDate(tx.date, offset);
+      const key = `${checkDate}|${amount}`;
+      const matches = existingByDateAmount.get(key) || [];
+      for (const match of matches) {
+        if (!seen.has(match)) {
+          seen.add(match);
+          candidates.push(match);
+        }
+      }
+    }
+
+    return candidates;
   }
 
   // Pre-fetch embeddings for all new transactions if using tier 2/3
@@ -459,10 +488,42 @@ export function findDuplicatesDeterministic(
     }
   }
 
+  /**
+   * Get a date offset by N days (positive = future, negative = past)
+   */
+  function getOffsetDate(dateStr: string, offsetDays: number): string {
+    const [year, month, day] = dateStr.split("-").map(Number);
+    const date = new Date(year, month - 1, day);
+    date.setDate(date.getDate() + offsetDays);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  }
+
+  /**
+   * Get candidates using ±2 day window
+   */
+  function getCandidates(tx: TransactionForDedup): TransactionForDedup[] {
+    const amount = Math.abs(tx.amount).toFixed(2);
+    const candidates: TransactionForDedup[] = [];
+    const seen = new Set<TransactionForDedup>();
+
+    for (let offset = -2; offset <= 2; offset++) {
+      const checkDate = offset === 0 ? tx.date : getOffsetDate(tx.date, offset);
+      const key = `${checkDate}|${amount}`;
+      const matches = existingByDateAmount.get(key) || [];
+      for (const match of matches) {
+        if (!seen.has(match)) {
+          seen.add(match);
+          candidates.push(match);
+        }
+      }
+    }
+
+    return candidates;
+  }
+
   // Process each new transaction
   for (const tx of newTransactions) {
-    const key = `${tx.date}|${Math.abs(tx.amount).toFixed(2)}`;
-    const candidates = existingByDateAmount.get(key) || [];
+    const candidates = getCandidates(tx);
 
     let matched = false;
     for (const candidate of candidates) {
