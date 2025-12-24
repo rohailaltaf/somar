@@ -53,11 +53,10 @@ src/
     │   ├── index.ts       # Prisma client connection
     │   └── seed.ts        # Seed categories + preset rules
     ├── dedup/             # Transaction deduplication (see docs/deduplication.md)
-    │   ├── index.ts       # Main 3-tier orchestrator
+    │   ├── index.ts       # Main 2-tier orchestrator
     │   ├── merchant-extractor.ts  # Merchant name extraction
     │   ├── jaro-winkler.ts        # String similarity algorithms
-    │   ├── embedding-matcher.ts   # OpenAI embeddings
-    │   └── llm-verifier.ts        # GPT-5-mini verification
+    │   └── llm-verifier.ts        # LLM verification for uncertain cases
     ├── plaid.ts           # Plaid client configuration
     ├── categorizer.ts     # Auto-categorization logic
     ├── csv-parser.ts      # CSV parsing + column inference
@@ -170,7 +169,7 @@ return { updatedTransactions: updates };
   - App convention: **negative = expense (money out), positive = income (money in)**
   - User can toggle "Flip all amount signs" checkbox if their bank uses opposite convention
 - **AI-powered duplicate detection** - See [docs/deduplication.md](docs/deduplication.md) for full documentation
-  - 3-tier system: Deterministic → Embeddings → LLM verification
+  - 2-tier system: Deterministic → LLM verification (for uncertain cases)
   - Catches duplicates even when descriptions differ (e.g., "AplPay CHIPOTLE 1249" vs "Chipotle Mexican Grill")
 - Final amounts: negative = expense, positive = income
 
@@ -590,5 +589,5 @@ Detailed documentation for specific subsystems is available in the `docs/` folde
 
 | File | Description |
 |------|-------------|
-| [docs/deduplication.md](docs/deduplication.md) | AI-powered transaction deduplication system (3-tier matching, embeddings, LLM verification) |
+| [docs/deduplication.md](docs/deduplication.md) | AI-powered transaction deduplication system (2-tier: deterministic + LLM) |
 
