@@ -61,15 +61,14 @@ export interface BatchDedupeResult {
     transaction: TransactionForDedup;
     matchedWith: TransactionForDedup;
     confidence: number;
-    matchTier: "deterministic" | "embedding" | "llm"; // Keep "embedding" for backwards compat
+    matchTier: "deterministic" | "llm";
   }>;
   stats: {
     total: number;
     unique: number;
     duplicates: number;
-    tier1Matches: number;
-    tier2Matches: number; // Now always 0 (embeddings removed)
-    tier3Matches: number; // LLM matches
+    tier1Matches: number; // Deterministic matches
+    tier2Matches: number; // LLM matches
     processingTimeMs: number;
   };
 }
@@ -251,19 +250,18 @@ export async function findDuplicatesBatch(
   newTransactions: TransactionForDedup[],
   existingTransactions: TransactionForDedup[],
   options: {
-    skipEmbeddings?: boolean; // Deprecated, kept for backwards compat - now controls LLM
+    skipLLM?: boolean; // If true, only use deterministic matching (no API calls)
     onProgress?: (processed: number, total: number) => void;
   } = {}
 ): Promise<BatchDedupeResult> {
   const startTime = Date.now();
-  // skipEmbeddings now means "skip LLM" since embeddings are removed
-  const { skipEmbeddings = false, onProgress } = options;
-  const useLLM = !skipEmbeddings;
+  const { skipLLM = false, onProgress } = options;
+  const useLLM = !skipLLM;
 
   const unique: TransactionForDedup[] = [];
   const duplicates: BatchDedupeResult["duplicates"] = [];
-  let tier1Matches = 0;
-  let tier3Matches = 0; // LLM matches
+  let tier1Matches = 0; // Deterministic
+  let tier2Matches = 0; // LLM
 
   // Group existing transactions by date+amount for faster lookup
   // For Plaid transactions, index by BOTH authorized_date and posted_date
@@ -351,7 +349,7 @@ export async function findDuplicatesBatch(
         transaction: tx,
         matchedWith: result.matchedTransaction!,
         confidence: result.confidence,
-        matchTier: result.matchTier as "deterministic" | "embedding" | "llm",
+        matchTier: result.matchTier as "deterministic" | "llm",
       });
 
       // Track tier stats
@@ -360,7 +358,7 @@ export async function findDuplicatesBatch(
           tier1Matches++;
           break;
         case "llm":
-          tier3Matches++;
+          tier2Matches++;
           break;
       }
     }
@@ -379,8 +377,7 @@ export async function findDuplicatesBatch(
       unique: unique.length,
       duplicates: duplicates.length,
       tier1Matches,
-      tier2Matches: 0, // Embeddings removed
-      tier3Matches,
+      tier2Matches,
       processingTimeMs: Date.now() - startTime,
     },
   };
@@ -488,7 +485,6 @@ export function findDuplicatesDeterministic(
       duplicates: duplicates.length,
       tier1Matches: duplicates.length,
       tier2Matches: 0,
-      tier3Matches: 0,
       processingTimeMs: Date.now() - startTime,
     },
   };

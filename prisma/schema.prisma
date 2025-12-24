@@ -89,7 +89,6 @@ model Transaction {
 
   account     Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
   category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  embedding   TransactionEmbedding?
 
   @@index([date], name: "transactions_date_idx")
   @@index([accountId], name: "transactions_account_idx")
@@ -111,18 +110,5 @@ model CategorizationRule {
   @@index([categoryId], name: "categorization_rules_category_idx")
   @@index([isPreset], name: "categorization_rules_is_preset_idx")
   @@map("categorization_rules")
-}
-
-// Stores embeddings for transactions to speed up future deduplication
-// Embeddings are computed once and cached for reuse
-model TransactionEmbedding {
-  id            String   @id @default(uuid())
-  transactionId String   @unique @map("transaction_id")
-  embedding     Bytes    // Binary storage for efficiency (1536 floats = 6144 bytes)
-  createdAt     String   @map("created_at")
-
-  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
-
-  @@map("transaction_embeddings")
 }
 

@@ -2,7 +2,7 @@
  * LLM-based Transaction Verification
  *
  * Uses OpenAI function calling for reliable, structured responses.
- * Only called for transactions where embedding similarity is in the "uncertain zone" (0.65-0.82).
+ * Called for transactions where deterministic matching fails but candidates exist.
  *
  * Cost: ~$0.15/1M input tokens, $0.60/1M output tokens
  * Typical batch of 20 comparisons: ~$0.0003

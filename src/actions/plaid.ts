@@ -320,7 +320,7 @@ function getOffsetDate(dateStr: string, offsetDays: number): string {
 
 /**
  * Check if a Plaid transaction duplicates an existing CSV transaction.
- * Uses the full 3-tier dedup system (deterministic + embeddings + LLM).
+ * Uses the 2-tier dedup system (deterministic + LLM).
  * Returns the matched CSV transaction ID if found, null otherwise.
  */
 async function findDuplicateCsvTransaction(
@@ -374,7 +374,7 @@ async function findDuplicateCsvTransaction(
 
   if (candidates.length === 0) return null;
 
-  // Use full 3-tier dedup system (deterministic + embeddings + LLM)
+  // Use 2-tier dedup system (deterministic + LLM)
   const plaidTx: TransactionForDedup = {
     description,
     amount,
@@ -389,10 +389,8 @@ async function findDuplicateCsvTransaction(
     date: tx.date,
   }));
 
-  // Use full AI-powered dedup (Tier 1 + 2 + 3)
-  const result = await findDuplicatesBatch([plaidTx], existingTxs, {
-    skipEmbeddings: false, // Use embeddings and LLM
-  });
+  // Use 2-tier dedup (deterministic + LLM)
+  const result = await findDuplicatesBatch([plaidTx], existingTxs);
 
   if (result.duplicates.length > 0) {
     return result.duplicates[0].matchedWith.id || null;

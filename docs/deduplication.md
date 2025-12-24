@@ -180,7 +180,7 @@ This enables bi-directional data enrichment:
 ```typescript
 // src/actions/plaid.ts - findDuplicateCsvTransaction()
 const result = await findDuplicatesBatch([plaidTx], existingTxs, {
-  skipEmbeddings: false, // Enables LLM tier
+  // LLM tier is enabled by default
 });
 
 if (result.duplicates.length > 0) {
@@ -208,7 +208,7 @@ const result = await findDuplicatesBatch(
   newTransactions,
   existingTransactions,
   {
-    skipEmbeddings: false, // Set true to disable LLM tier
+    skipLLM: false, // Set true to disable LLM tier
     onProgress: (processed, total) => {
       console.log(`${processed}/${total}`);
     }
@@ -218,7 +218,7 @@ const result = await findDuplicatesBatch(
 console.log(`Unique: ${result.stats.unique}`);
 console.log(`Duplicates: ${result.stats.duplicates}`);
 console.log(`Tier 1 matches: ${result.stats.tier1Matches}`);
-console.log(`Tier 2 matches (LLM): ${result.stats.tier3Matches}`);
+console.log(`Tier 2 matches (LLM): ${result.stats.tier2Matches}`);
 ```
 
 ### Deterministic-Only Mode

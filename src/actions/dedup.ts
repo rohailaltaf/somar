@@ -25,7 +25,7 @@ export interface DedupAnalysisResult {
       date: string;
     };
     confidence: number;
-    matchTier: "deterministic" | "embedding" | "llm";
+    matchTier: "deterministic" | "llm";
   }>;
   stats: BatchDedupeResult["stats"];
 }
@@ -73,9 +73,7 @@ export async function analyzeForDuplicates(
 
   if (useAI && process.env.OPENAI_API_KEY) {
     // Use 2-tier system: Deterministic + LLM
-    result = await findDuplicatesBatch(newTxs, existingTxs, {
-      skipEmbeddings: false, // Enables LLM tier
-    });
+    result = await findDuplicatesBatch(newTxs, existingTxs);
   } else {
     // Fall back to deterministic-only
     result = findDuplicatesDeterministic(newTxs, existingTxs);

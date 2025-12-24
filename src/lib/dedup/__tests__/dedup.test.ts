@@ -231,7 +231,7 @@ describe("Full Deduplication Pipeline (with LLM)", () => {
       );
       console.log(`LLM available: ${isLLMAvailable()}`);
       console.log(
-        `Tier 1: ${result.stats.tier1Matches}, Tier 2 (LLM): ${result.stats.tier3Matches}`
+        `Tier 1: ${result.stats.tier1Matches}, Tier 2 (LLM): ${result.stats.tier2Matches}`
       );
 
       // We expect at least 90% match rate with full pipeline
@@ -285,7 +285,7 @@ describe("Full Deduplication Pipeline (with LLM)", () => {
       );
       console.log(`LLM available: ${isLLMAvailable()}`);
       console.log(
-        `Tier 1: ${result.stats.tier1Matches}, Tier 2 (LLM): ${result.stats.tier3Matches}`
+        `Tier 1: ${result.stats.tier1Matches}, Tier 2 (LLM): ${result.stats.tier2Matches}`
       );
 
       // We expect at least 90% match rate with full pipeline
@@ -402,19 +402,15 @@ describe("Statistics and Reporting", () => {
 
     // Stats should be present
     expect(result.stats).toBeDefined();
-    expect(result.stats.tier1Matches).toBeGreaterThanOrEqual(0);
-    expect(result.stats.tier2Matches).toBeGreaterThanOrEqual(0); // Always 0 (embeddings removed)
-    expect(result.stats.tier3Matches).toBeGreaterThanOrEqual(0); // LLM matches
+    expect(result.stats.tier1Matches).toBeGreaterThanOrEqual(0); // Deterministic
+    expect(result.stats.tier2Matches).toBeGreaterThanOrEqual(0); // LLM
 
     // Total should equal duplicates found
-    const totalTiered =
-      result.stats.tier1Matches +
-      result.stats.tier2Matches +
-      result.stats.tier3Matches;
+    const totalTiered = result.stats.tier1Matches + result.stats.tier2Matches;
     expect(totalTiered).toBe(result.duplicates.length);
 
     console.log(
-      `Stats: Tier1=${result.stats.tier1Matches}, LLM=${result.stats.tier3Matches}, Total=${result.duplicates.length}`
+      `Stats: Tier1=${result.stats.tier1Matches}, LLM=${result.stats.tier2Matches}, Total=${result.duplicates.length}`
     );
   });
 });
@@ -434,7 +430,7 @@ describe("Performance", () => {
       `Processed ${incoming.length} transactions in ${elapsed}ms (LLM available: ${isLLMAvailable()})`
     );
     console.log(
-      `Matches: ${result.duplicates.length} (Tier1: ${result.stats.tier1Matches}, LLM: ${result.stats.tier3Matches})`
+      `Matches: ${result.duplicates.length} (Tier1: ${result.stats.tier1Matches}, LLM: ${result.stats.tier2Matches})`
     );
 
     // Allow 30 seconds for LLM calls
@@ -443,12 +439,12 @@ describe("Performance", () => {
 });
 
 describe("Deterministic-only Mode", () => {
-  it("should work without LLM when skipEmbeddings is true", async () => {
+  it("should work without LLM when skipLLM is true", async () => {
     const existing = plaidTransactions.map(plaidToDedup);
     const incoming = csvTransactions.map(csvToDedup);
 
     const result = await findDuplicatesBatch(incoming, existing, {
-      skipEmbeddings: true, // Disable LLM
+      skipLLM: true, // Disable LLM
     });
 
     // Should still get good match rate with deterministic only
@@ -458,8 +454,8 @@ describe("Deterministic-only Mode", () => {
     );
 
     expect(matchRate).toBeGreaterThan(0.8);
-    // All matches should be tier 1
-    expect(result.stats.tier3Matches).toBe(0);
+    // All matches should be tier 1 (no LLM matches)
+    expect(result.stats.tier2Matches).toBe(0);
   });
 });
 
@@ -489,14 +485,14 @@ describe("LLM Tier Verification", () => {
     const result = await findDuplicatesBatch(incoming, existing);
 
     console.log(
-      `AWS vs Amazon: duplicates=${result.duplicates.length}, tier1=${result.stats.tier1Matches}, llm=${result.stats.tier3Matches}`
+      `AWS vs Amazon: duplicates=${result.duplicates.length}, tier1=${result.stats.tier1Matches}, llm=${result.stats.tier2Matches}`
     );
 
     // LLM should recognize AWS = Amazon Web Services
     if (isLLMAvailable()) {
       expect(result.duplicates.length).toBe(1);
       // This should be caught by LLM since deterministic won't match
-      expect(result.stats.tier3Matches).toBeGreaterThanOrEqual(0);
+      expect(result.stats.tier2Matches).toBeGreaterThanOrEqual(0);
     }
   });
 
@@ -524,7 +520,7 @@ describe("LLM Tier Verification", () => {
     const result = await findDuplicatesBatch(incoming, existing);
 
     console.log(
-      `DoorDash McDonald's: duplicates=${result.duplicates.length}, tier1=${result.stats.tier1Matches}, llm=${result.stats.tier3Matches}`
+      `DoorDash McDonald's: duplicates=${result.duplicates.length}, tier1=${result.stats.tier1Matches}, llm=${result.stats.tier2Matches}`
     );
 
     // Should match - same merchant, same amount, same date
