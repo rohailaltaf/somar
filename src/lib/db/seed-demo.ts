@@ -402,7 +402,7 @@ export async function seedDemoDatabase() {
       addTransaction(
         checkingAccount,
         `${incomeSource.name} ${incomeSource.type} ${incomeSource.suffix}`,
-        -4250.00, // Negative = income
+        4250.00, // Positive = income (money in)
         dateStr,
         "job income",
         true,
@@ -415,7 +415,7 @@ export async function seedDemoDatabase() {
       addTransaction(
         checkingAccount,
         "FREELANCE CLIENT LLC ACH PAYMENT",
-        -1500.00,
+        1500.00, // Positive = income
         generateRandomDate(monthsAgo),
         "job income",
         true,
@@ -430,7 +430,7 @@ export async function seedDemoDatabase() {
       addTransaction(
         creditAccount,
         formatDescription(merchant, "", "PURCHASE"),
-        amount, // Positive = expense
+        -amount, // Negative = expense
         dateStr,
         "subscriptions",
         true,
@@ -443,7 +443,7 @@ export async function seedDemoDatabase() {
     addTransaction(
       checkingAccount,
       "PROPERTY MGMT RENT PAYMENT",
-      2400.00, // Positive = expense
+      -2400.00, // Negative = expense
       `${monthStr}-01`,
       "house",
       true,
@@ -451,8 +451,8 @@ export async function seedDemoDatabase() {
     );
     
     // Utilities
-    addTransaction(creditAccount, "PG&E WEB ONLINE", generateAmount("house"), `${monthStr}-15`, "house", true, true);
-    addTransaction(creditAccount, "COMCAST INTERNET", 89.99, `${monthStr}-10`, "house", true, true);
+    addTransaction(creditAccount, "PG&E WEB ONLINE", -generateAmount("house"), `${monthStr}-15`, "house", true, true);
+    addTransaction(creditAccount, "COMCAST INTERNET", -89.99, `${monthStr}-10`, "house", true, true);
     
     // ===== GROCERIES (8-12 per month) =====
     const groceryCount = Math.floor(Math.random() * 5) + 8;
@@ -462,7 +462,7 @@ export async function seedDemoDatabase() {
       addTransaction(
         Math.random() < 0.5 ? checkingAccount : creditAccount,
         formatDescription(merchantData.name, location),
-        generateAmount("grocery"), // Positive = expense
+        -generateAmount("grocery"), // Negative = expense
         generateRandomDate(monthsAgo),
         "grocery",
         shouldBeConfirmed(),
@@ -478,7 +478,7 @@ export async function seedDemoDatabase() {
       addTransaction(
         Math.random() < 0.3 ? checkingAccount : creditAccount,
         formatDescription(merchantData.name, location),
-        generateAmount("restaurant"), // Positive = expense
+        -generateAmount("restaurant"), // Negative = expense
         generateRandomDate(monthsAgo),
         "restaurant",
         shouldBeConfirmed(),
@@ -494,7 +494,7 @@ export async function seedDemoDatabase() {
       addTransaction(
         creditAccount,
         formatDescription(merchantData.name, location, Math.random() < 0.8 ? "POS" : "ONLINE"),
-        generateAmount("shopping"), // Positive = expense
+        -generateAmount("shopping"), // Negative = expense
         generateRandomDate(monthsAgo),
         "shopping",
         shouldBeConfirmed(),
@@ -510,7 +510,7 @@ export async function seedDemoDatabase() {
       addTransaction(
         Math.random() < 0.6 ? checkingAccount : creditAccount,
         formatDescription(merchantData.name, location),
-        generateAmount("car"), // Positive = expense
+        -generateAmount("car"), // Negative = expense
         generateRandomDate(monthsAgo),
         "car",
         shouldBeConfirmed(),
@@ -526,7 +526,7 @@ export async function seedDemoDatabase() {
       addTransaction(
         creditAccount,
         formatDescription(merchantData.name, location),
-        generateAmount("entertainment"), // Positive = expense
+        -generateAmount("entertainment"), // Negative = expense
         generateRandomDate(monthsAgo),
         "entertainment",
         shouldBeConfirmed(),
@@ -543,7 +543,7 @@ export async function seedDemoDatabase() {
         addTransaction(
           creditAccount,
           formatDescription(merchantData.name, location),
-          generateAmount("travel"), // Positive = expense
+          -generateAmount("travel"), // Negative = expense
           generateRandomDate(monthsAgo),
           "travel",
           shouldBeConfirmed(),
@@ -559,7 +559,7 @@ export async function seedDemoDatabase() {
       addTransaction(
         creditAccount,
         formatDescription(merchantData.name, location),
-        generateAmount("work"), // Positive = expense
+        -generateAmount("work"), // Negative = expense
         generateRandomDate(monthsAgo),
         "work",
         shouldBeConfirmed(),
@@ -573,7 +573,7 @@ export async function seedDemoDatabase() {
     addTransaction(
       checkingAccount,
       "CREDIT CARD PAYMENT AMERICAN EXPRESS",
-      ccPaymentAmount, // Positive = expense (transfer out)
+      -ccPaymentAmount, // Negative = expense (transfer out)
       `${monthStr}-25`,
       "credit card payments",
       true,

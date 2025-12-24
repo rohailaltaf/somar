@@ -37,7 +37,7 @@ export function Nav() {
               </div>
               <span className="font-bold text-lg hidden sm:inline">Finance</span>
             </Link>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 overflow-x-auto">
               {navItems.map((item) => {
                 const isActive = pathname === item.href;
                 const Icon = item.icon;
@@ -46,7 +46,7 @@ export function Nav() {
                     key={item.href}
                     href={item.href}
                     className={cn(
-                      "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                      "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors shrink-0",
                       isActive
                         ? "bg-primary text-primary-foreground"
                         : "text-muted-foreground hover:text-foreground hover:bg-accent"

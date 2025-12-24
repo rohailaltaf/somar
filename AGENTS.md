@@ -92,7 +92,7 @@ src/
 
 **transactions**
 - `id`, `account_id` (FK), `category_id` (FK, nullable), `description`, `amount` (real), `date` (YYYY-MM-DD), `excluded` (boolean), `is_confirmed` (boolean), `created_at`, `plaid_transaction_id` (unique, nullable)
-- `amount`: **positive = expense (money out), negative = income/credit (money in)**
+- `amount`: **negative = expense (money out), positive = income/credit (money in)**
 - `excluded`: if true, not counted in spending calculations
 - `is_confirmed`: false until user confirms category in tagger
 - `plaid_transaction_id`: Plaid's transaction ID for deduplication (null for CSV imports)
@@ -167,12 +167,12 @@ return { updatedTransactions: updates };
 - Auto-infers column mappings (date, description, amount, debit/credit)
 - **Sign convention confirmation**: Shows preview of transactions and allows user to flip signs if needed
   - Different banks use different conventions for expense signs
-  - App convention: **positive = expense (money out), negative = income (money in)**
+  - App convention: **negative = expense (money out), positive = income (money in)**
   - User can toggle "Flip all amount signs" checkbox if their bank uses opposite convention
 - **AI-powered duplicate detection** - See [docs/deduplication.md](docs/deduplication.md) for full documentation
   - 3-tier system: Deterministic → Embeddings → LLM verification
   - Catches duplicates even when descriptions differ (e.g., "AplPay CHIPOTLE 1249" vs "Chipotle Mexican Grill")
-- Final amounts: positive = expense, negative = income
+- Final amounts: negative = expense, positive = income
 
 ### 4. Plaid Integration (`src/app/accounts/`, `src/actions/plaid.ts`)
 
@@ -248,7 +248,7 @@ PLAID_ENV=sandbox  # or production
 - Categories page shows tabs for Spending, Income, and Transfers
 - `getCategories(type?: "spending" | "income" | "transfer")` filters by type
 - `getCategoriesWithBudgets()` only returns spending categories
-- Transactions with **positive amounts are expenses, negative amounts are income**
+- Transactions with **negative amounts are expenses, positive amounts are income**
 
 ### 7. Reports & Analytics (`src/app/reports/`)
 
@@ -298,9 +298,9 @@ const date = new Date(year, month - 1, day);
 ```
 
 ### Amount Convention
-- **Positive = expense/debit (money out)** - displayed in red
-- **Negative = income/credit (money in)** - displayed in green
-- This matches the schema.prisma comment and is enforced throughout the UI
+- **Negative = expense/debit (money out)** - displayed in red
+- **Positive = income/credit (money in)** - displayed in green
+- This is enforced throughout the codebase (`amount < 0` filters for expenses)
 
 ### Server Actions
 - All mutations use Next.js Server Actions in `src/actions/`
@@ -657,7 +657,7 @@ With 10,000+ transactions, performance remains the same due to server-side pagin
 
 1. **Timezone issues**: Always use local date construction, never `new Date(dateString).toISOString()`
 2. **SQLite connection caching**: Dev server may hold DB connection; restart after `db:reset`
-3. **Amount signs**: Different banks use different sign conventions. The upload wizard includes a sign confirmation step where users can flip signs if needed. App convention: **positive = expense (money out), negative = income (money in)**.
+3. **Amount signs**: Different banks use different sign conventions. The upload wizard includes a sign confirmation step where users can flip signs if needed. App convention: **negative = expense (money out), positive = income (money in)**.
 4. **Category budgets**: Query must filter by `start_month <= targetMonth` and take most recent. **Only spending categories have budgets** - income and transfer categories don't need budgets.
 5. **Duplicate detection**: Only checks against existing DB records, not within CSV itself (intentional - allows legitimate duplicate transactions like buying pizza twice)
 6. **Missing indexes = disaster**: Always add indexes to frequently queried columns (date, category_id, account_id, etc.)

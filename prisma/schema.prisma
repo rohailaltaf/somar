@@ -70,7 +70,7 @@ model Transaction {
   accountId          String   @map("account_id")
   categoryId         String?  @map("category_id")
   description        String
-  amount             Float    // Positive = expense, Negative = income/credit
+  amount             Float    // Negative = expense (money out), Positive = income/credit (money in)
   date               String   // Format: YYYY-MM-DD (primary date for display/queries)
   excluded           Boolean  @default(false)
   isConfirmed        Boolean  @default(false) @map("is_confirmed")
