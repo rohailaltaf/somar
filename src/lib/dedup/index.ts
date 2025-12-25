@@ -9,7 +9,7 @@
  *   - Threshold: 0.88
  *
  * Tier 2: LLM Verification (accurate, low cost)
- *   - GPT-4o-mini for uncertain cases where deterministic matching fails
+ *   - gpt-5-mini for uncertain cases where deterministic matching fails
  *   - Batch processing for efficiency
  *   - Only called when Tier 1 doesn't find a match but candidates exist
  */

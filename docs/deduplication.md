@@ -44,7 +44,7 @@ Simple substring matching fails because neither string contains the other. Our s
 ┌─────────────────────────────────────────────────────────────┐
 │     TIER 2: LLM Verification (~$0.0003/20 comparisons)      │
 │  ┌─────────────────────────────────────────────────────┐    │
-│  │  GPT-4o-mini with function calling                  │    │
+│  │  gpt-5-mini with function calling                  │    │
 │  │  Structured output via report_transaction_matches    │    │
 │  │  Batch processing for efficiency                     │    │
 │  │  Only called when date+amount match exists           │    │
@@ -121,7 +121,7 @@ hasSignificantTokenOverlap(
 
 ## Tier 2: LLM Verification
 
-Uses GPT-4o-mini with function calling for human-like judgment on uncertain cases. Only called when Tier 1 doesn't find a match but there are date+amount matching candidates.
+Uses gpt-5-mini with function calling for human-like judgment on uncertain cases. Only called when Tier 1 doesn't find a match but there are date+amount matching candidates.
 
 ```typescript
 import { verifyMatchesBatch } from '@/lib/dedup/llm-verifier';
