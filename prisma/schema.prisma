@@ -71,7 +71,7 @@ model Transaction {
   categoryId         String?  @map("category_id")
   description        String
   amount             Float    // Positive = expense, Negative = income/credit
-  date               String   // Format: YYYY-MM-DD
+  date               String   // Format: YYYY-MM-DD (primary date for display/queries)
   excluded           Boolean  @default(false)
   isConfirmed        Boolean  @default(false) @map("is_confirmed")
   createdAt          String   @map("created_at")
@@ -81,6 +81,11 @@ model Transaction {
   plaidOriginalDescription String? @map("plaid_original_description")
   plaidName                String? @map("plaid_name")
   plaidMerchantName        String? @map("plaid_merchant_name")
+  // Store both Plaid dates for accurate deduplication
+  // authorized_date = when transaction occurred (matches CSV)
+  // date = when transaction posted (may differ by 1-3 days)
+  plaidAuthorizedDate      String? @map("plaid_authorized_date")
+  plaidPostedDate          String? @map("plaid_posted_date")
 
   account     Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
   category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
