@@ -25,18 +25,21 @@ export interface DedupAnalysisResult {
       date: string;
     };
     confidence: number;
-    matchTier: "deterministic" | "embedding" | "llm";
+    matchTier: "deterministic" | "llm";
   }>;
   stats: BatchDedupeResult["stats"];
 }
 
 /**
- * Analyze transactions for duplicates using the 3-tier deduplication system.
+ * Analyze transactions for duplicates using the 2-tier deduplication system.
  * This is a server action that can be called from the client.
+ *
+ * Tier 1: Deterministic matching (fast, free)
+ * Tier 2: LLM verification (for uncertain cases)
  *
  * @param transactions Parsed transactions from CSV
  * @param accountId Account to check against
- * @param useAI Whether to use AI-powered matching (embeddings + LLM)
+ * @param useAI Whether to use LLM for uncertain cases
  */
 export async function analyzeForDuplicates(
   transactions: ParsedTransactionForDedup[],
@@ -61,7 +64,7 @@ export async function analyzeForDuplicates(
     // Include Plaid dates for accurate matching against CSV
     plaidAuthorizedDate: t.plaidAuthorizedDate,
     plaidPostedDate: t.plaidPostedDate,
-    // Include Plaid merchant name for better matching (e.g., "Amazon Web Services" vs "AWS")
+    // Include Plaid merchant name for better matching
     plaidMerchantName: t.plaidMerchantName,
   }));
 
@@ -69,10 +72,8 @@ export async function analyzeForDuplicates(
   let result: BatchDedupeResult;
 
   if (useAI && process.env.OPENAI_API_KEY) {
-    // Use full 3-tier system with AI
-    result = await findDuplicatesBatch(newTxs, existingTxs, {
-      skipEmbeddings: false,
-    });
+    // Use 2-tier system: Deterministic + LLM
+    result = await findDuplicatesBatch(newTxs, existingTxs);
   } else {
     // Fall back to deterministic-only
     result = findDuplicatesDeterministic(newTxs, existingTxs);
@@ -110,4 +111,3 @@ export async function analyzeForDuplicates(
 export async function isAIDedupAvailable(): Promise<boolean> {
   return !!process.env.OPENAI_API_KEY;
 }
-

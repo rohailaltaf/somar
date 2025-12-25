@@ -1,6 +1,6 @@
 # Transaction Deduplication System
 
-A world-class 3-tier deduplication engine that accurately detects duplicate transactions even when descriptions are completely different between sources (e.g., raw bank CSV vs clean Plaid merchant names).
+A 2-tier deduplication engine that accurately detects duplicate transactions even when descriptions are completely different between sources (e.g., raw bank CSV vs clean Plaid merchant names).
 
 ## The Problem
 
@@ -35,29 +35,19 @@ Simple substring matching fails because neither string contains the other. Our s
 │  │  1. Extract merchant name (strip prefixes/suffixes)  │    │
 │  │  2. Jaro-Winkler similarity (threshold: 0.88)        │    │
 │  │  3. Token overlap detection                          │    │
+│  │  4. Plaid merchant name comparison                   │    │
 │  └─────────────────────────────────────────────────────┘    │
 │                    Match? ──► DUPLICATE                      │
 └─────────────────────────────────────────────────────────────┘
                               │ No match
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│     TIER 2: Embedding Similarity (~$0.02/1000 txns)         │
+│     TIER 2: LLM Verification (~$0.0003/20 comparisons)      │
 │  ┌─────────────────────────────────────────────────────┐    │
-│  │  OpenAI text-embedding-3-small                       │    │
-│  │  Cosine similarity (threshold: 0.82)                 │    │
-│  │  In-memory caching during imports                    │    │
-│  └─────────────────────────────────────────────────────┘    │
-│                    Match? ──► DUPLICATE                      │
-│              Uncertain (0.65-0.82)? ──► Tier 3              │
-└─────────────────────────────────────────────────────────────┘
-                              │ No match
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│     TIER 3: LLM Verification (~$0.0003/20 comparisons)      │
-│  ┌─────────────────────────────────────────────────────┐    │
-│  │  GPT-5-mini with function calling                   │    │
+│  │  gpt-5-mini with function calling                  │    │
 │  │  Structured output via report_transaction_matches    │    │
 │  │  Batch processing for efficiency                     │    │
+│  │  Only called when date+amount match exists           │    │
 │  └─────────────────────────────────────────────────────┘    │
 │                    Match? ──► DUPLICATE                      │
 └─────────────────────────────────────────────────────────────┘
@@ -73,8 +63,7 @@ src/lib/dedup/
 ├── index.ts              # Main orchestrator, exports findDuplicatesBatch()
 ├── merchant-extractor.ts # Extracts merchant names (50+ patterns)
 ├── jaro-winkler.ts       # String similarity algorithms
-├── embedding-matcher.ts  # OpenAI embeddings + caching
-└── llm-verifier.ts       # GPT-5-mini function calling
+└── llm-verifier.ts       # LLM function calling for uncertain cases
 
 src/actions/
 └── dedup.ts              # Server action for CSV upload integration
@@ -130,31 +119,9 @@ hasSignificantTokenOverlap(
 // Returns: true (both contain "chipotle")
 ```
 
-## Tier 2: Embedding Similarity
+## Tier 2: LLM Verification
 
-Uses OpenAI's `text-embedding-3-small` model for semantic matching.
-
-```typescript
-import { getEmbedding, cosineSimilarity } from '@/lib/dedup/embedding-matcher';
-
-const [emb1, emb2] = await Promise.all([
-  getEmbedding("RAISING CANES 0724 MANASSAS VA"),
-  getEmbedding("Raising Cane's Chicken Fingers"),
-]);
-const score = cosineSimilarity(emb1, emb2);
-// Returns: 0.89 (above 0.82 threshold = match)
-```
-
-**Cost:** ~$0.00002 per 1K tokens (~$0.02 per 1,000 transactions)
-
-**Features:**
-- Batch embedding requests via `getEmbeddingsBatch()` for efficiency
-- In-memory caching during import sessions
-- Automatic cache clearing after import via `clearEmbeddingCache()`
-
-## Tier 3: LLM Verification
-
-Uses GPT-5-mini with function calling for human-like judgment on uncertain cases.
+Uses gpt-5-mini with function calling for human-like judgment on uncertain cases. Only called when Tier 1 doesn't find a match but there are date+amount matching candidates.
 
 ```typescript
 import { verifyMatchesBatch } from '@/lib/dedup/llm-verifier';
@@ -175,7 +142,7 @@ const results = await verifyMatchesBatch([
 **Features:**
 - Function calling for structured, reliable output
 - Batch processing (up to 20 pairs per API call)
-- Low temperature (0.1) for consistent results
+- Only invoked when there's a strong amount+date match but uncertain description match
 
 ## Usage
 
@@ -190,7 +157,7 @@ import { analyzeForDuplicates } from '@/actions/dedup';
 const result = await analyzeForDuplicates(
   transactions,
   accountId,
-  true // useAI: enables Tier 2 & 3
+  true // useAI: enables Tier 2 LLM
 );
 
 // result.unique - transactions to import
@@ -200,7 +167,7 @@ const result = await analyzeForDuplicates(
 
 ### In Plaid Sync (Automatic)
 
-When Plaid syncs transactions, it automatically checks for matching CSV transactions using the **full 3-tier system** (deterministic + embeddings + LLM). If a match is found, instead of creating a duplicate:
+When Plaid syncs transactions, it automatically checks for matching CSV transactions using the **2-tier system** (deterministic + LLM). If a match is found, instead of creating a duplicate:
 
 1. The existing CSV transaction is **upgraded** with Plaid data
 2. `plaidTransactionId`, `plaidMerchantName`, `plaidAuthorizedDate`, etc. are added
@@ -210,13 +177,10 @@ This enables bi-directional data enrichment:
 - Import CSV first → Plaid sync adds merchant names and authorized dates
 - Sync Plaid first → CSV import detects duplicates and skips them
 
-**Note:** Plaid sync waits for data enrichment before proceeding. On initial connection, Plaid needs time to populate `authorized_date` and `merchant_name` fields. The sync retries with exponential backoff until enriched data is available.
-
 ```typescript
 // src/actions/plaid.ts - findDuplicateCsvTransaction()
-// Uses full 3-tier dedup system (deterministic + embeddings + LLM)
 const result = await findDuplicatesBatch([plaidTx], existingTxs, {
-  skipEmbeddings: false, // Use all tiers
+  // LLM tier is enabled by default
 });
 
 if (result.duplicates.length > 0) {
@@ -230,7 +194,6 @@ if (result.duplicates.length > 0) {
       plaidMerchantName: transaction.merchant_name,
       plaidAuthorizedDate: transaction.authorized_date,
       plaidPostedDate: transaction.date,
-      // ... other Plaid fields
     },
   });
 }
@@ -245,7 +208,7 @@ const result = await findDuplicatesBatch(
   newTransactions,
   existingTransactions,
   {
-    skipEmbeddings: false, // Set true to skip Tier 2 & 3
+    skipLLM: false, // Set true to disable LLM tier
     onProgress: (processed, total) => {
       console.log(`${processed}/${total}`);
     }
@@ -255,8 +218,7 @@ const result = await findDuplicatesBatch(
 console.log(`Unique: ${result.stats.unique}`);
 console.log(`Duplicates: ${result.stats.duplicates}`);
 console.log(`Tier 1 matches: ${result.stats.tier1Matches}`);
-console.log(`Tier 2 matches: ${result.stats.tier2Matches}`);
-console.log(`Tier 3 matches: ${result.stats.tier3Matches}`);
+console.log(`Tier 2 matches (LLM): ${result.stats.tier2Matches}`);
 ```
 
 ### Deterministic-Only Mode
@@ -277,7 +239,7 @@ const result = findDuplicatesDeterministic(
 ### Environment Variables
 
 ```bash
-# Required for Tier 2 & 3
+# Required for Tier 2 (LLM)
 OPENAI_API_KEY=sk-...
 ```
 
@@ -286,8 +248,6 @@ OPENAI_API_KEY=sk-...
 | Tier | Threshold | Meaning |
 |------|-----------|---------|
 | Tier 1 | 0.88 | Jaro-Winkler similarity |
-| Tier 2 | 0.82 | Embedding cosine similarity (match) |
-| Tier 2 | 0.65 | Embedding cosine similarity (uncertain → Tier 3) |
 
 ## Cost Estimates
 
@@ -296,39 +256,26 @@ For a typical 1,000 transaction import with 200 potential duplicates:
 | Tier | Transactions | Cost |
 |------|-------------|------|
 | Tier 1 (deterministic) | 200 | $0.00 |
-| Tier 2 (embeddings) | ~50 | ~$0.01 |
-| Tier 3 (LLM) | ~10 | ~$0.005 |
-| **Total** | | **~$0.015** |
+| Tier 2 (LLM) | ~10 | ~$0.005 |
+| **Total** | | **~$0.005** |
 
 ## Test Results
 
-All test cases pass with Tier 1 alone:
+The test suite verifies both Plaid→CSV and CSV→Plaid deduplication scenarios:
 
 ```
-✅ "AplPay CHIPOTLE 1249GAINESVILLE VA" vs "Chipotle Mexican Grill"
-✅ "RAISING CANES 0724 MANASSAS VA" vs "Raising Cane's Chicken Fingers"
-✅ "AplPay HARRIS TEETERBRISTOW VA" vs "Harris Teeter Supermarkets, Inc."
-✅ "SPIRIT HALLOWEEN 612..." vs "Spirit Halloween Superstores"
-✅ "AplPay CINEMARK PLANO TX" vs "Cinemark Theatres"
-✅ "CHIPOTLE 1249" ≠ "Taco Bell" (correctly identified as different)
-✅ "TARGET 1234" ≠ "Walmart" (correctly identified as different)
+Match rate (Plaid after CSV): 100.0% (59/59)
+Match rate (CSV after Plaid): 96.7% (59/61)
+Processing time: 2-5ms for 60+ transactions
 ```
 
-## Database Schema
+All test cases pass with Tier 1 (deterministic) alone:
 
-The system optionally caches embeddings for faster future lookups:
-
-```prisma
-model TransactionEmbedding {
-  id            String   @id @default(uuid())
-  transactionId String   @unique @map("transaction_id")
-  embedding     Bytes    // 1536 floats = 6144 bytes
-  createdAt     String   @map("created_at")
-
-  transaction   Transaction @relation(...)
-  
-  @@map("transaction_embeddings")
-}
+```
+✅ "AplPay BURRITO BARN 1249RIVERDALE XX" vs "Burrito Barn"
+✅ "FRIED CHICKEN CO 724OAKVILLE XX" vs "Fried Chicken Company"
+✅ "TST* STEAKHOUSE - RIRIVERDALE XX" vs "Steakhouse"
+✅ Same amount + date + different merchant → NOT matched (correct)
 ```
 
 ## Extending the System
@@ -350,12 +297,18 @@ const PREFIXES = [
 Edit `src/lib/dedup/index.ts`:
 
 ```typescript
-const TIER1_THRESHOLD = 0.88;       // Increase for stricter matching
-const TIER2_THRESHOLD = 0.82;       // Decrease to catch more matches
-const TIER2_UNCERTAIN_THRESHOLD = 0.65; // Decrease to send more to LLM
+const TIER1_THRESHOLD = 0.88;  // Increase for stricter matching
 ```
 
 ### Custom LLM Prompts
 
 Edit `src/lib/dedup/llm-verifier.ts` to modify the system prompt with domain-specific examples.
 
+## Running Tests
+
+```bash
+npm test                    # Run all tests
+npm run test:watch          # Watch mode for development
+```
+
+Tests are located in `src/lib/dedup/__tests__/` with anonymized fixture data.

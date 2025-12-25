@@ -59,7 +59,7 @@ interface FlaggedTransaction {
   selected: boolean;
   originalIndex: number;
   confidence?: number;
-  matchTier?: "deterministic" | "embedding" | "llm";
+  matchTier?: "deterministic" | "llm";
   matchedDescription?: string;
 }
 
@@ -663,10 +663,7 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
                   <Badge variant="outline">Tier 1: {dedupStats.tier1Matches}</Badge>
                 )}
                 {dedupStats.tier2Matches > 0 && (
-                  <Badge variant="outline">Tier 2 (AI): {dedupStats.tier2Matches}</Badge>
-                )}
-                {dedupStats.tier3Matches > 0 && (
-                  <Badge variant="outline">Tier 3 (LLM): {dedupStats.tier3Matches}</Badge>
+                  <Badge variant="outline">Tier 2 (LLM): {dedupStats.tier2Matches}</Badge>
                 )}
               </div>
             )}
@@ -748,8 +745,7 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
                           </Badge>
                           {item.matchTier && (
                             <span className="text-xs text-muted-foreground">
-                              {item.matchTier === "deterministic" ? "T1" : 
-                               item.matchTier === "embedding" ? "T2" : "T3"}
+                              {item.matchTier === "deterministic" ? "T1" : "T2"}
                             </span>
                           )}
                         </div>

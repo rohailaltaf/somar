@@ -45,7 +45,9 @@
     "db:push:demo": "dotenv -e .env.demo -- prisma db push",
     "db:seed:demo": "dotenv -e .env.demo -- npx tsx src/lib/db/seed-demo.ts",
     "db:reset:demo": "rm -f finance-demo.db finance-demo.db-wal finance-demo.db-shm && npm run db:push:demo && npm run db:seed:demo",
-    "demo": "npm run db:reset:demo && dotenv -e .env.demo -- next dev"
+    "demo": "npm run db:reset:demo && dotenv -e .env.demo -- next dev",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
@@ -92,6 +94,7 @@
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
     "tw-animate-css": "^1.4.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.0.16"
   }
 }
