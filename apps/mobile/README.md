@@ -2,26 +2,40 @@
 
 React Native/Expo mobile app for Somar personal finance tracker.
 
-## Status
+## Development
 
-This app is a placeholder. The mobile app will be built in a future phase.
+```bash
+# From monorepo root
+pnpm dev              # Start all apps (web + mobile)
+pnpm --filter mobile dev   # Start mobile only
 
-## Planned Features
+# Or from this directory
+pnpm dev              # Start Expo dev server
+pnpm ios              # Start iOS simulator
+pnpm android          # Start Android emulator
+```
 
-- View spending and budgets on the go
-- Quick transaction entry
-- Tinder-style transaction categorization (swipe interface)
-- Push notifications for budget alerts
-- Offline support with sync
+## Tech Stack
 
-## Tech Stack (Planned)
-
-- **Framework:** React Native with Expo
+- **Framework:** React Native with Expo SDK 54
 - **Navigation:** Expo Router
-- **State Management:** TBD
-- **API:** Calls to `@somar/web` Next.js API routes
+- **React:** 19.1.0 (pinned to match react-native-renderer)
 
-## Getting Started
+## Project Structure
 
-Mobile development has not started yet. Check back later!
+```
+mobile/
+├── app/              # Expo Router pages
+│   ├── _layout.tsx   # Root layout
+│   └── index.tsx     # Home screen
+├── assets/           # Images, fonts, etc.
+├── app.json          # Expo configuration
+├── metro.config.js   # Metro bundler config (pnpm support)
+└── package.json
+```
 
+## Notes
+
+- Uses `@expo/metro-runtime` as explicit dependency for pnpm compatibility
+- Custom `metro.config.js` enables pnpm symlink support
+- Each app (web/mobile) has its own node_modules with isolated React versions

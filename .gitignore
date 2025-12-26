@@ -24,6 +24,18 @@ dist/
 # turbo
 .turbo/
 
+# expo / react native
+.expo/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+web-build/
+ios/
+android/
+
 # misc
 .DS_Store
 *.pem
@@ -59,3 +71,4 @@ finance-demo.db*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+expo-env.d.ts

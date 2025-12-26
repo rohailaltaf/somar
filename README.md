@@ -50,7 +50,7 @@ This project uses **Turborepo** with **pnpm workspaces** to manage multiple apps
 somar/
 ├── apps/
 │   ├── web/              # Next.js web application
-│   └── mobile/           # React Native/Expo app (coming soon)
+│   └── mobile/           # React Native/Expo mobile app
 ├── packages/
 │   └── shared/           # Shared types and utilities
 ├── turbo.json            # Turborepo configuration
@@ -62,7 +62,7 @@ somar/
 | App | Description | Status |
 |-----|-------------|--------|
 | `@somar/web` | Next.js web application | ✅ Active |
-| `@somar/mobile` | React Native/Expo mobile app | 🚧 Planned |
+| `@somar/mobile` | React Native/Expo mobile app | 🚧 In Development |
 
 ### Packages
 
@@ -193,7 +193,8 @@ PLAID_ENV=sandbox
 ## Tech Stack
 
 - **Monorepo:** [Turborepo](https://turbo.build) with pnpm workspaces
-- **Framework:** [Next.js 16](https://nextjs.org) with App Router
+- **Web:** [Next.js 16](https://nextjs.org) with App Router
+- **Mobile:** [React Native](https://reactnative.dev) with [Expo](https://expo.dev) and Expo Router
 - **Database:** SQLite via [Prisma](https://prisma.io) (runs locally, no server needed)
 - **UI:** [shadcn/ui](https://ui.shadcn.com) + [Tailwind CSS](https://tailwindcss.com)
 - **Animations:** [Framer Motion](https://www.framer.com/motion/)
@@ -213,7 +214,11 @@ somar/
 │   │   │   └── lib/            # Utilities & database
 │   │   ├── prisma/             # Database schema
 │   │   └── public/             # Static assets
-│   └── mobile/                 # React Native app (planned)
+│   └── mobile/                 # React Native/Expo app
+│       ├── app/                # Expo Router pages
+│       ├── components/         # React Native components
+│       ├── hooks/              # Custom hooks
+│       └── metro.config.js     # Metro bundler config for pnpm
 ├── packages/
 │   └── shared/                 # Shared code
 ├── docs/                       # Documentation
@@ -225,7 +230,8 @@ somar/
 ### Root Commands (Turborepo)
 
 ```bash
-pnpm dev          # Start all apps in dev mode
+pnpm dev          # Start all apps (web + mobile)
+pnpm dev:web      # Start web app only
 pnpm build        # Build all apps
 pnpm lint         # Lint all packages
 pnpm test         # Run tests
@@ -252,6 +258,17 @@ pnpm --filter web db:seed:prod  # Seed prod DB
 pnpm --filter web db:reset:prod # Reset prod DB
 pnpm --filter web db:studio:prod # Open Prisma Studio (prod DB)
 ```
+
+### Mobile App Commands
+
+```bash
+pnpm --filter mobile dev       # Start Expo dev server
+pnpm --filter mobile ios       # Start iOS simulator
+pnpm --filter mobile android   # Start Android emulator
+pnpm --filter mobile web       # Start web version
+```
+
+> **Note:** Web uses React ^19.1.4, mobile uses React 19.1.0 (to match react-native-renderer). Each app has its own node_modules, so they run together without conflicts.
 
 ## Environment Configuration
 
