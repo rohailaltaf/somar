@@ -1,7 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-/node_modules
+node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -11,14 +11,18 @@
 !.yarn/versions
 
 # testing
-/coverage
+coverage/
 
 # next.js
-/.next/
-/out/
+.next/
+out/
 
 # production
-/build
+build/
+dist/
+
+# turbo
+.turbo/
 
 # misc
 .DS_Store
@@ -35,6 +39,7 @@ yarn-error.log*
 .env.local
 .env.development
 .env.production
+.env.demo
 .env.development.local
 .env.production.local
 # Allow .env.example to be committed as a template
@@ -43,7 +48,7 @@ yarn-error.log*
 # vercel
 .vercel
 
-# database (dev, prod, and demo)
+# database (dev, prod, and demo) - in apps/web/
 *.db
 *.db-wal
 *.db-shm

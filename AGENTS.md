@@ -10,8 +10,43 @@ A personal finance web app for **tracking spending and income**. Users can impor
 3. Learning categorization - the system learns from user corrections
 4. Plaid integration for connecting financial institutions (Chase, Amex, Fidelity, Robinhood, etc.)
 
+## Monorepo Architecture
+
+This project uses **Turborepo** with **pnpm workspaces**:
+
+```
+somar/
+├── apps/
+│   ├── web/              # Next.js web application (@somar/web)
+│   └── mobile/           # React Native/Expo app - placeholder (@somar/mobile)
+├── packages/
+│   └── shared/           # Shared types and utilities (@somar/shared)
+├── turbo.json            # Turborepo pipeline configuration
+├── pnpm-workspace.yaml   # Defines workspace packages
+├── package.json          # Root package.json (minimal, Turborepo scripts only)
+└── tsconfig.base.json    # Base TypeScript config extended by packages
+```
+
+### Running Commands
+
+**Turborepo commands (run from root):**
+```bash
+pnpm dev          # Start all apps in dev mode
+pnpm build        # Build all apps
+pnpm lint         # Lint all packages
+pnpm test         # Run all tests
+```
+
+**App-specific commands (use --filter):**
+```bash
+pnpm --filter web dev         # Start web dev server
+pnpm --filter web db:reset    # Reset web database
+pnpm --filter web demo        # Run demo mode
+```
+
 ## Tech Stack
 
+- **Monorepo:** Turborepo + pnpm workspaces
 - **Framework:** Next.js 16 with App Router
 - **Database:** SQLite via Prisma ORM
 - **UI:** shadcn/ui components + Tailwind CSS v4
@@ -24,43 +59,61 @@ A personal finance web app for **tracking spending and income**. Users can impor
 ## Project Structure
 
 ```
-src/
-├── app/                    # Next.js App Router pages
-│   ├── page.tsx           # Dashboard - spending overview
-│   ├── reports/           # Reports & analytics with charts
-│   ├── accounts/          # Account management + Plaid connection (unified)
-│   ├── categories/        # Category + budget management
-│   ├── transactions/      # Transaction list with filters
-│   ├── tagger/            # Tinder-style categorization UI
-│   ├── upload/            # CSV import wizard
-│   └── api/               # API routes
-│       ├── transactions/  # Transaction pagination API
-│       ├── plaid/         # Plaid API routes (link token, exchange, sync)
-│       └── reports/       # Reports data API (trends, comparisons)
-├── actions/               # Server Actions
-│   ├── accounts.ts        # Account CRUD
-│   ├── categories.ts      # Category + budget operations
-│   ├── transactions.ts    # Transaction CRUD + analytics
-│   └── plaid.ts           # Plaid operations (connect, sync, disconnect)
-├── components/
-│   ├── ui/                # shadcn components
-│   ├── nav.tsx            # Navigation bar
-│   ├── budget-progress.tsx # Budget progress bars
-│   ├── auto-sync.tsx      # Auto-sync Plaid transactions
-│   └── page-header.tsx    # Page header component
-└── lib/
-    ├── db/
-    │   ├── index.ts       # Prisma client connection
-    │   └── seed.ts        # Seed categories + preset rules
-    ├── dedup/             # Transaction deduplication (see docs/deduplication.md)
-    │   ├── index.ts       # Main 2-tier orchestrator
-    │   ├── merchant-extractor.ts  # Merchant name extraction
-    │   ├── jaro-winkler.ts        # String similarity algorithms
-    │   └── llm-verifier.ts        # LLM verification for uncertain cases
-    ├── plaid.ts           # Plaid client configuration
-    ├── categorizer.ts     # Auto-categorization logic
-    ├── csv-parser.ts      # CSV parsing + column inference
-    └── utils.ts           # Utility functions (cn)
+somar/
+├── apps/
+│   ├── web/                        # Next.js web application
+│   │   ├── src/
+│   │   │   ├── app/                # Next.js App Router pages
+│   │   │   │   ├── page.tsx        # Dashboard - spending overview
+│   │   │   │   ├── reports/        # Reports & analytics with charts
+│   │   │   │   ├── accounts/       # Account management + Plaid connection
+│   │   │   │   ├── categories/     # Category + budget management
+│   │   │   │   ├── transactions/   # Transaction list with filters
+│   │   │   │   ├── tagger/         # Tinder-style categorization UI
+│   │   │   │   ├── upload/         # CSV import wizard
+│   │   │   │   └── api/            # API routes
+│   │   │   ├── actions/            # Server Actions
+│   │   │   │   ├── accounts.ts     # Account CRUD
+│   │   │   │   ├── categories.ts   # Category + budget operations
+│   │   │   │   ├── transactions.ts # Transaction CRUD + analytics
+│   │   │   │   └── plaid.ts        # Plaid operations
+│   │   │   ├── components/
+│   │   │   │   ├── ui/             # shadcn components
+│   │   │   │   ├── nav.tsx         # Navigation bar
+│   │   │   │   ├── budget-progress.tsx
+│   │   │   │   ├── auto-sync.tsx
+│   │   │   │   └── page-header.tsx
+│   │   │   └── lib/
+│   │   │       ├── db/
+│   │   │       │   ├── index.ts    # Prisma client connection
+│   │   │       │   └── seed.ts     # Seed categories + preset rules
+│   │   │       ├── dedup/          # Transaction deduplication
+│   │   │       ├── plaid.ts        # Plaid client configuration
+│   │   │       ├── categorizer.ts  # Auto-categorization logic
+│   │   │       ├── csv-parser.ts   # CSV parsing + column inference
+│   │   │       └── utils.ts        # Utility functions
+│   │   ├── prisma/
+│   │   │   └── schema.prisma       # Database schema
+│   │   ├── scripts/                # Utility scripts
+│   │   ├── public/                 # Static assets
+│   │   ├── package.json            # Web app dependencies + scripts
+│   │   └── tsconfig.json           # Extends ../../tsconfig.base.json
+│   └── mobile/
+│       └── README.md               # Placeholder for future React Native app
+├── packages/
+│   └── shared/
+│       ├── src/index.ts            # Shared exports (minimal for now)
+│       ├── package.json
+│       └── tsconfig.json           # Extends ../../tsconfig.base.json
+├── docs/                           # Documentation
+├── turbo.json                      # Turborepo config
+├── pnpm-workspace.yaml             # Workspace packages
+├── package.json                    # Root (Turborepo scripts only)
+├── tsconfig.base.json              # Base TypeScript config
+├── AGENTS.md                       # This file
+├── README.md                       # Project README
+├── DEMO.md                         # Demo mode documentation
+└── LICENSE
 ```
 
 ## Database Schema
@@ -104,7 +157,7 @@ src/
 
 ## Key Features
 
-### 1. Auto-Categorization (`src/lib/categorizer.ts`)
+### 1. Auto-Categorization (`apps/web/src/lib/categorizer.ts`)
 
 - Matches transaction descriptions against stored patterns
 - Priority: learned rules > preset rules
@@ -148,7 +201,7 @@ recategorizeRemainingTransactions(visibleIds).catch(() => {});
 return { updatedTransactions: updates };
 ```
 
-### 2. Tagger (`src/app/tagger/`)
+### 2. Tagger (`apps/web/src/app/tagger/`)
 
 - Shows unconfirmed transactions one at a time
 - **Click any category pill to auto-confirm** - no need to click confirm button
@@ -160,7 +213,7 @@ return { updatedTransactions: updates };
 - Shows suggestion banner when pattern match found
 - When you confirm a transaction, it learns the pattern and **automatically re-categorizes all remaining unconfirmed transactions**
 
-### 3. CSV Import (`src/app/upload/`, `src/lib/csv-parser.ts`)
+### 3. CSV Import (`apps/web/src/app/upload/`, `apps/web/src/lib/csv-parser.ts`)
 
 - Multi-step wizard: Select account → Upload → Map columns → **Confirm sign convention** → Review duplicates → Preview → Import
 - Auto-infers column mappings (date, description, amount, debit/credit)
@@ -173,7 +226,7 @@ return { updatedTransactions: updates };
   - Catches duplicates even when descriptions differ (e.g., "AplPay CHIPOTLE 1249" vs "Chipotle Mexican Grill")
 - Final amounts: negative = expense, positive = income
 
-### 4. Plaid Integration (`src/app/accounts/`, `src/actions/plaid.ts`)
+### 4. Plaid Integration (`apps/web/src/app/accounts/`, `apps/web/src/actions/plaid.ts`)
 
 Connect financial institutions directly for automatic transaction syncing. **Plaid connection is integrated directly into the Accounts page** - no separate connect page.
 
@@ -201,7 +254,7 @@ Connect financial institutions directly for automatic transaction syncing. **Pla
 - New transactions are auto-categorized using existing rules
 - All synced transactions start as `isConfirmed: false`
 
-**Key Functions** (in `src/actions/plaid.ts`):
+**Key Functions** (in `apps/web/src/actions/plaid.ts`):
 ```typescript
 createLinkToken()              // Generate token for Plaid Link
 createUpdateModeLinkToken(id)  // Generate token for update mode (manage accounts)
@@ -249,7 +302,7 @@ PLAID_ENV=sandbox  # or production
 - `getCategoriesWithBudgets()` only returns spending categories
 - Transactions with **negative amounts are expenses, positive amounts are income**
 
-### 7. Reports & Analytics (`src/app/reports/`)
+### 7. Reports & Analytics (`apps/web/src/app/reports/`)
 
 **Philosophy:** Keep it simple and focused. Start with one useful report, iterate based on actual needs.
 
@@ -263,7 +316,7 @@ PLAID_ENV=sandbox  # or production
 2. **Burn-up Chart**: Line chart showing cumulative daily spending (this month vs last month)
 3. **Category Progress Bars**: Spending vs budget for each category (reuses BudgetProgress component)
 
-**Analytics Functions** (in `src/actions/transactions.ts`):
+**Analytics Functions** (in `apps/web/src/actions/transactions.ts`):
 ```typescript
 // Get daily cumulative spending for a month (for burn-up chart)
 getDailyCumulativeSpending(month: string)
@@ -275,7 +328,7 @@ getSpendingByCategory(month: string)
 ```
 
 **Chart Library: Recharts**
-- Install: `npm install recharts`
+- Install: `pnpm --filter web add recharts`
 - Use LineChart for burn-up visualization
 - Custom tooltips for currency formatting
 - Keep it simple - avoid over-engineering with too many chart types
@@ -302,7 +355,7 @@ const date = new Date(year, month - 1, day);
 - This is enforced throughout the codebase (`amount < 0` filters for expenses)
 
 ### Server Actions
-- All mutations use Next.js Server Actions in `src/actions/`
+- All mutations use Next.js Server Actions in `apps/web/src/actions/`
 - Call `revalidatePath()` after mutations to refresh data
 
 ### Current Month Calculation
@@ -317,6 +370,7 @@ The project supports separate development and production environments with diffe
 
 ### Environment Files
 
+Environment files live in `apps/web/`:
 - `.env.development` - Development configuration (uses `finance-dev.db`)
 - `.env.production` - Production configuration (uses `finance-prod.db`)
 - `.env.demo` - Demo configuration (uses `finance-demo.db`) - for testing with realistic data
@@ -326,38 +380,38 @@ The project supports separate development and production environments with diffe
 
 ```bash
 # Development (uses .env.development)
-npm run dev              # Start dev server with finance-dev.db
+pnpm dev                           # Start dev server with finance-dev.db
 
 # Demo (uses .env.demo)
-npm run demo             # Reset demo DB + start dev server with finance-demo.db
+pnpm --filter web demo             # Reset demo DB + start dev server with finance-demo.db
 
 # Production (uses .env.production)
-npm run build            # Build for production
-npm run start            # Start production server with finance-prod.db
+pnpm build                         # Build for production
+pnpm --filter web start            # Start production server with finance-prod.db
 ```
 
 ### Database Commands
 
-All database commands have environment-specific variants:
+All database commands are web-specific and use the `--filter web` syntax:
 
 ```bash
 # Development database (default)
-npm run db:push          # Push schema changes to dev DB
-npm run db:seed          # Seed dev DB
-npm run db:reset         # Reset dev DB (delete + recreate + seed)
-npm run db:studio        # Open Prisma Studio with dev DB
+pnpm --filter web db:push          # Push schema changes to dev DB
+pnpm --filter web db:seed          # Seed dev DB
+pnpm --filter web db:reset         # Reset dev DB (delete + recreate + seed)
+pnpm --filter web db:studio        # Open Prisma Studio with dev DB
 
 # Demo database (with realistic sample data)
-npm run demo             # Reset demo DB + start dev server
-npm run db:reset:demo    # Reset demo DB only (no server start)
-npm run db:push:demo     # Push schema changes to demo DB
-npm run db:seed:demo     # Seed demo DB with realistic data
+pnpm --filter web demo             # Reset demo DB + start dev server
+pnpm --filter web db:reset:demo    # Reset demo DB only (no server start)
+pnpm --filter web db:push:demo     # Push schema changes to demo DB
+pnpm --filter web db:seed:demo     # Seed demo DB with realistic data
 
 # Production database (explicit :prod suffix)
-npm run db:push:prod     # Push schema changes to prod DB
-npm run db:seed:prod     # Seed prod DB
-npm run db:reset:prod    # Reset prod DB (delete + recreate + seed)
-npm run db:studio:prod   # Open Prisma Studio with prod DB
+pnpm --filter web db:push:prod     # Push schema changes to prod DB
+pnpm --filter web db:seed:prod     # Seed prod DB
+pnpm --filter web db:reset:prod    # Reset prod DB (delete + recreate + seed)
+pnpm --filter web db:studio:prod   # Open Prisma Studio with prod DB
 ```
 
 ## Demo Mode
@@ -367,7 +421,7 @@ Demo mode provides a separate database with realistic sample data for testing an
 ### Running Demo Mode
 
 ```bash
-npm run demo
+pnpm --filter web demo
 ```
 
 This command:
@@ -378,7 +432,7 @@ This command:
 
 ### Demo Data Generated
 
-The demo seed script (`src/lib/db/seed-demo.ts`) creates:
+The demo seed script (`apps/web/src/lib/db/seed-demo.ts`) creates:
 
 **Accounts (6 total):**
 - 2x Checking accounts (one Plaid-connected: Chase, one manual)
@@ -415,8 +469,8 @@ The demo seed script (`src/lib/db/seed-demo.ts`) creates:
 
 ### Demo Database Location
 
-- File: `finance-demo.db` (in project root)
-- Config: `.env.demo`
+- File: `apps/web/finance-demo.db`
+- Config: `apps/web/.env.demo`
 - Completely separate from `finance-dev.db` and `finance-prod.db`
 
 ### Use Cases
@@ -433,14 +487,14 @@ The demo seed script (`src/lib/db/seed-demo.ts`) creates:
 
 ### Reset Database
 ```bash
-npm run db:reset         # Reset development database
-npm run db:reset:prod    # Reset production database
+pnpm --filter web db:reset         # Reset development database
+pnpm --filter web db:reset:prod    # Reset production database
 ```
 Deletes DB files, recreates schema, seeds categories + preset rules.
 
 ### Add New Category
 
-Add to `src/lib/db/seed.ts` in `defaultCategories` array with type and color, then run `npm run db:seed`.
+Add to `apps/web/src/lib/db/seed.ts` in `defaultCategories` array with type and color, then run `pnpm --filter web db:seed`.
 
 Example:
 ```typescript
@@ -460,14 +514,14 @@ const categoryColors: Record<string, string> = {
 ```
 
 ### Add Preset Categorization Rules
-Add to `presetRules` array in `src/lib/db/seed.ts`:
+Add to `presetRules` array in `apps/web/src/lib/db/seed.ts`:
 ```typescript
 { pattern: "MERCHANT NAME", category: "category_name" }
 ```
 
 ### Modify Schema
-1. Edit `prisma/schema.prisma`
-2. Run `npm run db:push` to sync schema changes (or `npm run db:reset` to recreate from scratch)
+1. Edit `apps/web/prisma/schema.prisma`
+2. Run `pnpm --filter web db:push` to sync schema changes (or `pnpm --filter web db:reset` to recreate from scratch)
 
 ### Add New Report
 
@@ -485,7 +539,7 @@ Add to `presetRules` array in `src/lib/db/seed.ts`:
 </Link>
 ```
 
-**Step 2:** Create analytics function in `src/actions/transactions.ts`
+**Step 2:** Create analytics function in `apps/web/src/actions/transactions.ts`
 ```typescript
 export async function getYourData() {
   const result = await db
@@ -497,7 +551,7 @@ export async function getYourData() {
 }
 ```
 
-**Step 3:** Create report page at `src/app/reports/your-report/page.tsx`
+**Step 3:** Create report page at `apps/web/src/app/reports/your-report/page.tsx`
 - Server component fetches data with Suspense
 - Pass to client component for charts/interactivity
 - See `spending-overview` as reference
@@ -510,47 +564,64 @@ export async function getYourData() {
 - Exclude excluded transactions: `eq(transactions.excluded, false)`
 - Avoid over-engineering - add features only when needed
 
-## NPM Scripts
+## Commands Reference
+
+### Root Commands (Turborepo)
+
+```bash
+pnpm dev              # Start all apps in dev mode
+pnpm build            # Build all apps
+pnpm lint             # Lint all packages
+pnpm test             # Run all tests
+```
+
+### Web App Commands
 
 ```bash
 # Development (uses .env.development)
-npm run dev           # Start dev server with finance-dev.db
-npm run db:push       # Push schema to dev DB
-npm run db:studio     # Open Prisma Studio (dev DB)
-npm run db:seed       # Seed dev DB
-npm run db:reset      # Reset dev DB (WARNING: doesn't disconnect Plaid!)
-npm run db:safe-reset # Disconnect Plaid items, then reset dev DB (RECOMMENDED)
+pnpm --filter web dev           # Start dev server with finance-dev.db
+pnpm --filter web db:push       # Push schema to dev DB
+pnpm --filter web db:studio     # Open Prisma Studio (dev DB)
+pnpm --filter web db:seed       # Seed dev DB
+pnpm --filter web db:reset      # Reset dev DB (WARNING: doesn't disconnect Plaid!)
+pnpm --filter web db:safe-reset # Disconnect Plaid items, then reset dev DB (RECOMMENDED)
 
 # Demo (uses .env.demo - realistic sample data)
-npm run demo          # Reset demo DB + start dev server
-npm run db:reset:demo # Reset demo DB only (no server start)
-npm run db:push:demo  # Push schema to demo DB
-npm run db:seed:demo  # Seed demo DB with realistic data
+pnpm --filter web demo          # Reset demo DB + start dev server
+pnpm --filter web db:reset:demo # Reset demo DB only (no server start)
+pnpm --filter web db:push:demo  # Push schema to demo DB
+pnpm --filter web db:seed:demo  # Seed demo DB with realistic data
 
 # Production (uses .env.production)
-npm run build         # Build for production
-npm run start         # Start production server
-npm run db:push:prod  # Push schema to prod DB
-npm run db:studio:prod # Open Prisma Studio (prod DB)
-npm run db:seed:prod  # Seed prod DB
-npm run db:reset:prod # Reset prod DB (WARNING: doesn't disconnect Plaid!)
-npm run db:safe-reset:prod # Disconnect Plaid items, then reset prod DB (RECOMMENDED)
+pnpm --filter web build         # Build for production
+pnpm --filter web start         # Start production server
+pnpm --filter web db:push:prod  # Push schema to prod DB
+pnpm --filter web db:studio:prod # Open Prisma Studio (prod DB)
+pnpm --filter web db:seed:prod  # Seed prod DB
+pnpm --filter web db:reset:prod # Reset prod DB (WARNING: doesn't disconnect Plaid!)
+pnpm --filter web db:safe-reset:prod # Disconnect Plaid items, then reset prod DB (RECOMMENDED)
 
 # Plaid Management
-npm run db:disconnect-plaid      # Disconnect all Plaid items (dev)
-npm run db:disconnect-plaid:prod # Disconnect all Plaid items (prod)
+pnpm --filter web db:disconnect-plaid      # Disconnect all Plaid items (dev)
+pnpm --filter web db:disconnect-plaid:prod # Disconnect all Plaid items (prod)
 
-# Common
-npm run db:generate   # Generate Prisma Client
-npm run lint          # Run ESLint
+# Testing
+pnpm --filter web test          # Run tests
+pnpm --filter web test:watch    # Run tests in watch mode
+
+# Other
+pnpm --filter web db:generate   # Generate Prisma Client
+pnpm --filter web lint          # Run ESLint
 ```
 
 ## Files to Ignore
 
-- `finance-dev.db`, `finance-dev.db-wal`, `finance-dev.db-shm` - Development SQLite database
-- `finance-demo.db`, `finance-demo.db-wal`, `finance-demo.db-shm` - Demo SQLite database
-- `finance-prod.db`, `finance-prod.db-wal`, `finance-prod.db-shm` - Production SQLite database
-- `.next/` - Next.js build cache
+- `apps/web/finance-dev.db`, `apps/web/finance-dev.db-wal`, `apps/web/finance-dev.db-shm` - Development SQLite database
+- `apps/web/finance-demo.db`, `apps/web/finance-demo.db-wal`, `apps/web/finance-demo.db-shm` - Demo SQLite database
+- `apps/web/finance-prod.db`, `apps/web/finance-prod.db-wal`, `apps/web/finance-prod.db-shm` - Production SQLite database
+- `apps/web/.next/` - Next.js build cache
+- `.turbo/` - Turborepo cache
+- `node_modules/` - At all levels (root, apps, packages)
 - `node_modules/@prisma/` - Generated Prisma Client
 
 ## Performance Optimization
@@ -561,7 +632,7 @@ npm run lint          # Run ESLint
 
 **Required indexes:**
 ```prisma
-// In prisma/schema.prisma, Transaction model:
+// In apps/web/prisma/schema.prisma, Transaction model:
 @@index([date], name: "transactions_date_idx")
 @@index([accountId], name: "transactions_account_idx")
 @@index([categoryId], name: "transactions_category_idx")
@@ -573,7 +644,7 @@ npm run lint          # Run ESLint
 
 ### SQLite Configuration
 
-The database connection in `src/lib/db/index.ts` includes performance pragmas:
+The database connection in `apps/web/src/lib/db/index.ts` includes performance pragmas:
 ```typescript
 sqlite.pragma("journal_mode = WAL");      // Write-Ahead Logging
 sqlite.pragma("synchronous = NORMAL");    // Faster writes (safe with WAL)
@@ -667,7 +738,8 @@ With 10,000+ transactions, performance remains the same due to server-side pagin
 11. **Category types**: When querying categories for budget management, use `getCategoriesWithBudgets()` which only returns spending categories. Use `getCategories("income")` for income categories, and `getCategories("transfer")` for transfer categories. Transfer transactions are automatically excluded from all spending and income reports.
 12. **Pattern extraction too specific**: If auto-tagging isn't working, check if the extracted pattern is too specific. Transaction descriptions from same merchant often have different suffixes (PAYROLL vs DIR DEP vs ACH). The pattern should extract just the merchant identifier, not the full description.
 13. **Always use `confirmTransaction()` for category changes**: The transactions page dropdown and tagger both use `confirmTransaction()` which learns patterns and auto-tags. Don't use `updateTransaction()` directly for category changes or patterns won't be learned.
-14. **Plaid orphan items = wasted money**: If you reset the database without calling `itemRemove()` on Plaid, those items remain active and you'll be billed! Always use `npm run db:safe-reset` instead of `npm run db:reset` when you have Plaid connections. To find orphans, check dashboard.plaid.com or call `GET /api/plaid/status`.
+14. **Plaid orphan items = wasted money**: If you reset the database without calling `itemRemove()` on Plaid, those items remain active and you'll be billed! Always use `pnpm --filter web db:safe-reset` instead of `pnpm --filter web db:reset` when you have Plaid connections. To find orphans, check dashboard.plaid.com or call `GET /api/plaid/status`.
+15. **Monorepo commands**: Remember to use `pnpm --filter web` for web-specific commands. Root `pnpm dev/build/lint/test` runs Turborepo pipelines.
 
 ## Additional Documentation
 
@@ -676,4 +748,3 @@ Detailed documentation for specific subsystems:
 | File | Description |
 |------|-------------|
 | [docs/deduplication.md](docs/deduplication.md) | AI-powered transaction deduplication system (2-tier: deterministic + LLM) |
-

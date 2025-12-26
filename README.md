@@ -5,6 +5,7 @@ A modern, privacy-focused personal finance app for tracking spending and income.
 ![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
 ![SQLite](https://img.shields.io/badge/SQLite-Local-blue?logo=sqlite)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
+![Turborepo](https://img.shields.io/badge/Turborepo-Monorepo-blueviolet?logo=turborepo)
 
 ## Screenshots
 
@@ -40,6 +41,34 @@ A modern, privacy-focused personal finance app for tracking spending and income.
     </td>
   </tr>
 </table>
+
+## Monorepo Structure
+
+This project uses **Turborepo** with **pnpm workspaces** to manage multiple apps:
+
+```
+somar/
+├── apps/
+│   ├── web/              # Next.js web application
+│   └── mobile/           # React Native/Expo app (coming soon)
+├── packages/
+│   └── shared/           # Shared types and utilities
+├── turbo.json            # Turborepo configuration
+└── pnpm-workspace.yaml   # pnpm workspace config
+```
+
+### Apps
+
+| App | Description | Status |
+|-----|-------------|--------|
+| `@somar/web` | Next.js web application | ✅ Active |
+| `@somar/mobile` | React Native/Expo mobile app | 🚧 Planned |
+
+### Packages
+
+| Package | Description |
+|---------|-------------|
+| `@somar/shared` | Shared TypeScript types and utilities |
 
 ## Features
 
@@ -86,7 +115,7 @@ Understand your spending patterns with visual reports.
 ### Prerequisites
 
 - Node.js 18+
-- npm or yarn
+- pnpm 9+
 
 ### Installation
 
@@ -96,14 +125,14 @@ git clone https://github.com/yourusername/somar.git
 cd somar
 
 # Install dependencies
-npm install
+pnpm install
 
 # Set up the database
-npm run db:push
-npm run db:seed
+pnpm --filter web db:push
+pnpm --filter web db:seed
 
 # Start the development server
-npm run dev
+pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) to see the app.
@@ -114,7 +143,7 @@ Want to see the app with realistic data right away? Use demo mode:
 
 ```bash
 # Run demo mode (resets demo DB and starts dev server)
-npm run demo
+pnpm --filter web demo
 ```
 
 This creates a separate `finance-demo.db` with:
@@ -133,10 +162,10 @@ Perfect for testing features without connecting your real data!
 To enable bank connections, create a [Plaid](https://plaid.com) account and add your credentials:
 
 ```bash
-# Copy the example environment file
-cp .env.example .env.development
+# Copy the example environment file (in apps/web/)
+cp apps/web/.env.example apps/web/.env.development
 
-# Edit .env.development and add:
+# Edit apps/web/.env.development and add:
 PLAID_CLIENT_ID=your_client_id
 PLAID_SECRET=your_sandbox_secret
 PLAID_ENV=sandbox
@@ -163,6 +192,7 @@ PLAID_ENV=sandbox
 
 ## Tech Stack
 
+- **Monorepo:** [Turborepo](https://turbo.build) with pnpm workspaces
 - **Framework:** [Next.js 16](https://nextjs.org) with App Router
 - **Database:** SQLite via [Prisma](https://prisma.io) (runs locally, no server needed)
 - **UI:** [shadcn/ui](https://ui.shadcn.com) + [Tailwind CSS](https://tailwindcss.com)
@@ -173,38 +203,54 @@ PLAID_ENV=sandbox
 ## Project Structure
 
 ```
-src/
-├── app/                    # Next.js App Router pages
-│   ├── page.tsx            # Dashboard
-│   ├── accounts/           # Account management + Plaid
-│   ├── categories/         # Category & budget management
-│   ├── transactions/       # Transaction list with filters
-│   ├── tagger/             # Swipe-to-categorize UI
-│   ├── upload/             # CSV import wizard
-│   └── reports/            # Analytics & charts
-├── actions/                # Server Actions
-├── components/             # React components
-└── lib/                    # Utilities & database
+somar/
+├── apps/
+│   ├── web/                    # Next.js web app
+│   │   ├── src/
+│   │   │   ├── app/            # Next.js App Router pages
+│   │   │   ├── actions/        # Server Actions
+│   │   │   ├── components/     # React components
+│   │   │   └── lib/            # Utilities & database
+│   │   ├── prisma/             # Database schema
+│   │   └── public/             # Static assets
+│   └── mobile/                 # React Native app (planned)
+├── packages/
+│   └── shared/                 # Shared code
+├── docs/                       # Documentation
+└── turbo.json                  # Turborepo config
 ```
 
-## Database Commands
+## Commands
+
+### Root Commands (Turborepo)
+
+```bash
+pnpm dev          # Start all apps in dev mode
+pnpm build        # Build all apps
+pnpm lint         # Lint all packages
+pnpm test         # Run tests
+```
+
+### Web App Commands (use --filter)
 
 ```bash
 # Development
-npm run db:push       # Apply schema changes
-npm run db:seed       # Seed default categories
-npm run db:reset      # Reset database (WARNING: deletes all data)
-npm run db:studio     # Open Prisma Studio GUI
+pnpm --filter web dev           # Start dev server
+pnpm --filter web db:push       # Apply schema changes
+pnpm --filter web db:seed       # Seed default categories
+pnpm --filter web db:reset      # Reset database (WARNING: deletes all data)
+pnpm --filter web db:studio     # Open Prisma Studio GUI
 
 # Demo (separate database with realistic data)
-npm run demo          # Reset demo DB + start dev server
-npm run db:reset:demo # Reset demo database only
+pnpm --filter web demo          # Reset demo DB + start dev server
+pnpm --filter web db:reset:demo # Reset demo database only
 
 # Production
-npm run db:push:prod
-npm run db:seed:prod
-npm run db:reset:prod
-npm run db:studio:prod
+pnpm --filter web build         # Build for production
+pnpm --filter web db:push:prod  # Push schema to prod DB
+pnpm --filter web db:seed:prod  # Seed prod DB
+pnpm --filter web db:reset:prod # Reset prod DB
+pnpm --filter web db:studio:prod # Open Prisma Studio (prod DB)
 ```
 
 ## Environment Configuration
@@ -216,6 +262,8 @@ The app supports separate development, demo, and production databases:
 | Development | `finance-dev.db` | `.env.development` | Your personal development data |
 | Demo | `finance-demo.db` | `.env.demo` | Realistic sample data for testing |
 | Production | `finance-prod.db` | `.env.production` | Production data |
+
+Note: Environment files live in `apps/web/`.
 
 ## Contributing
 
