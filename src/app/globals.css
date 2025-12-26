@@ -134,12 +134,21 @@
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
+  html, body {
+    @apply bg-background text-foreground overflow-x-hidden;
   }
 }
 
-/* Custom scrollbar */
+/* Custom scrollbar - hidden by default, visible on hover */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+*:hover {
+  scrollbar-color: oklch(0.7 0.02 260) transparent;
+}
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -150,10 +159,15 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: oklch(0.7 0.02 260);
+  background: transparent;
   border-radius: 4px;
+  transition: background 0.2s ease;
 }
 
-::-webkit-scrollbar-thumb:hover {
+*:hover::-webkit-scrollbar-thumb {
+  background: oklch(0.7 0.02 260);
+}
+
+*:hover::-webkit-scrollbar-thumb:hover {
   background: oklch(0.6 0.02 260);
 }

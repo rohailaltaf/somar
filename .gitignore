@@ -43,12 +43,13 @@ yarn-error.log*
 # vercel
 .vercel
 
-# database (dev and prod)
+# database (dev, prod, and demo)
 *.db
 *.db-wal
 *.db-shm
 finance-dev.db*
 finance-prod.db*
+finance-demo.db*
 
 # typescript
 *.tsbuildinfo
