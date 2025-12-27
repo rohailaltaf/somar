@@ -7,6 +7,11 @@
   "scripts": {
     "lint": "eslint src/",
     "build": "echo 'No build step for shared package yet'"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "eslint": "^9.0.0",
+    "typescript-eslint": "^8.0.0"
   }
 }
 
