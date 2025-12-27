@@ -18,7 +18,7 @@ This project uses **Turborepo** with **pnpm workspaces**:
 somar/
 ├── apps/
 │   ├── web/              # Next.js web application (@somar/web)
-│   └── mobile/           # React Native/Expo app - placeholder (@somar/mobile)
+│   └── mobile/           # React Native/Expo app (@somar/mobile)
 ├── packages/
 │   └── shared/           # Shared types and utilities (@somar/shared)
 ├── turbo.json            # Turborepo pipeline configuration
@@ -27,29 +27,47 @@ somar/
 └── tsconfig.base.json    # Base TypeScript config extended by packages
 ```
 
+### React Version Note
+
+Due to React Native's `react-native-renderer` being pinned to a specific React version, web and mobile use different React versions:
+
+- **Web (`@somar/web`):** React ^19.1.4 (latest patched version)
+- **Mobile (`@somar/mobile`):** React 19.1.0 (must match react-native-renderer)
+
+Each app has its own `node_modules` with its own React version, so they can run together without conflicts.
+
 ### Running Commands
 
 **Turborepo commands (run from root):**
 ```bash
-pnpm dev          # Start all apps in dev mode
+pnpm dev          # Start all apps (web + mobile)
+pnpm dev:web      # Start web app only
 pnpm build        # Build all apps
 pnpm lint         # Lint all packages
 pnpm test         # Run all tests
 ```
 
-**App-specific commands (use --filter):**
+**Web app commands (use --filter):**
 ```bash
 pnpm --filter web dev         # Start web dev server
 pnpm --filter web db:reset    # Reset web database
 pnpm --filter web demo        # Run demo mode
 ```
 
+**Mobile app commands:**
+```bash
+pnpm --filter mobile dev       # Start Expo dev server
+pnpm --filter mobile ios       # Start iOS simulator
+pnpm --filter mobile android   # Start Android emulator
+```
+
 ## Tech Stack
 
 - **Monorepo:** Turborepo + pnpm workspaces
-- **Framework:** Next.js 16 with App Router
+- **Web:** Next.js 16 with App Router
+- **Mobile:** React Native with Expo + Expo Router
 - **Database:** SQLite via Prisma ORM
-- **UI:** shadcn/ui components + Tailwind CSS v4
+- **UI (Web):** shadcn/ui components + Tailwind CSS v4
 - **Font:** Lato (Google Fonts)
 - **Animations:** Framer Motion (for tagger swipe)
 - **Charts:** Recharts (for reports/analytics)
@@ -98,8 +116,17 @@ somar/
 │   │   ├── public/                 # Static assets
 │   │   ├── package.json            # Web app dependencies + scripts
 │   │   └── tsconfig.json           # Extends ../../tsconfig.base.json
-│   └── mobile/
-│       └── README.md               # Placeholder for future React Native app
+│   └── mobile/                     # React Native/Expo app
+│       ├── app/                    # Expo Router pages
+│       │   ├── _layout.tsx         # Root layout
+│       │   └── (tabs)/             # Tab navigation
+│       ├── components/             # React Native components
+│       ├── hooks/                  # Custom hooks
+│       ├── constants/              # Theme and constants
+│       ├── app.json                # Expo config
+│       ├── metro.config.js         # Metro bundler config for pnpm
+│       ├── package.json            # Mobile app dependencies
+│       └── tsconfig.json           # Extends expo/tsconfig.base
 ├── packages/
 │   └── shared/
 │       ├── src/index.ts            # Shared exports (minimal for now)
@@ -380,14 +407,15 @@ Environment files live in `apps/web/`:
 
 ```bash
 # Development (uses .env.development)
-pnpm dev                           # Start dev server with finance-dev.db
+pnpm dev                    # Start all apps (web + mobile)
+pnpm dev:web                # Start web only
 
 # Demo (uses .env.demo)
-pnpm --filter web demo             # Reset demo DB + start dev server with finance-demo.db
+pnpm --filter web demo      # Reset demo DB + start dev server with finance-demo.db
 
 # Production (uses .env.production)
-pnpm build                         # Build for production
-pnpm --filter web start            # Start production server with finance-prod.db
+pnpm build                  # Build for production
+pnpm --filter web start     # Start production server with finance-prod.db
 ```
 
 ### Database Commands
@@ -569,7 +597,8 @@ export async function getYourData() {
 ### Root Commands (Turborepo)
 
 ```bash
-pnpm dev              # Start all apps in dev mode
+pnpm dev              # Start all apps (web + mobile)
+pnpm dev:web          # Start web app only
 pnpm build            # Build all apps
 pnpm lint             # Lint all packages
 pnpm test             # Run all tests
@@ -739,7 +768,9 @@ With 10,000+ transactions, performance remains the same due to server-side pagin
 12. **Pattern extraction too specific**: If auto-tagging isn't working, check if the extracted pattern is too specific. Transaction descriptions from same merchant often have different suffixes (PAYROLL vs DIR DEP vs ACH). The pattern should extract just the merchant identifier, not the full description.
 13. **Always use `confirmTransaction()` for category changes**: The transactions page dropdown and tagger both use `confirmTransaction()` which learns patterns and auto-tags. Don't use `updateTransaction()` directly for category changes or patterns won't be learned.
 14. **Plaid orphan items = wasted money**: If you reset the database without calling `itemRemove()` on Plaid, those items remain active and you'll be billed! Always use `pnpm --filter web db:safe-reset` instead of `pnpm --filter web db:reset` when you have Plaid connections. To find orphans, check dashboard.plaid.com or call `GET /api/plaid/status`.
-15. **Monorepo commands**: Remember to use `pnpm --filter web` for web-specific commands. Root `pnpm dev/build/lint/test` runs Turborepo pipelines.
+15. **Monorepo commands**: Remember to use `pnpm --filter web` for web-specific commands. Root `pnpm dev` runs all apps.
+16. **React version mismatch**: Web uses React ^19.1.4 (patched), Mobile uses React 19.1.0 (must match react-native-renderer). Each app has its own node_modules, so they run together without conflicts.
+17. **Mobile needs explicit @expo/metro-runtime**: Due to pnpm's symlink structure, `@expo/metro-runtime` must be listed as an explicit dependency in mobile's package.json.
 
 ## Additional Documentation
 
