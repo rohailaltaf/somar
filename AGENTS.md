@@ -9,6 +9,9 @@ A personal finance web app for **tracking spending and income**. Users can impor
 2. Smart CSV import with column inference
 3. Learning categorization - the system learns from user corrections
 4. Plaid integration for connecting financial institutions (Chase, Amex, Fidelity, Robinhood, etc.)
+5. **End-to-end encryption (E2EE)** - server cannot read user financial data
+
+> **Architecture Documentation:** For detailed technical architecture including the E2EE model, database design, and security considerations, see [docs/architecture.md](docs/architecture.md).
 
 ## Monorepo Architecture
 
