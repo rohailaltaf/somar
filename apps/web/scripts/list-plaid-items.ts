@@ -1,19 +1,19 @@
 /**
  * List All Plaid Items
  * 
- * This script checks all items in your LOCAL database and verifies
+ * This script checks all items in the CENTRAL database and verifies
  * their status with Plaid's API.
  * 
  * Note: This can only check items that are in your database.
- * If you reset your DB without disconnecting, those orphaned items
+ * If you deleted items without disconnecting, those orphaned items
  * won't show up here - you need to check Plaid's Billing page.
  * 
  * Usage:
- *   npx dotenv -e .env.development -- npx tsx scripts/list-plaid-items.ts
- *   npx dotenv -e .env.production -- npx tsx scripts/list-plaid-items.ts
+ *   pnpm --filter web plaid:status       # Development
+ *   pnpm --filter web plaid:status:prod  # Production
  */
 
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from ".prisma/central-client";
 import { Configuration, PlaidApi, PlaidEnvironments } from "plaid";
 
 const db = new PrismaClient();
@@ -39,7 +39,7 @@ async function main() {
   console.log(`📡 Plaid Environment: ${env}\n`);
 
   const plaidItems = await db.plaidItem.findMany({
-    include: { accounts: true },
+    include: { plaidAccounts: true },
   });
 
   if (plaidItems.length === 0) {
@@ -60,7 +60,7 @@ async function main() {
     console.log(`   Local ID: ${item.id}`);
     console.log(`   Created: ${item.createdAt}`);
     console.log(`   Last Synced: ${item.lastSyncedAt || "Never"}`);
-    console.log(`   Local Accounts: ${item.accounts.length}`);
+    console.log(`   Local Accounts: ${item.plaidAccounts.length}`);
     
     // Check status with Plaid
     try {

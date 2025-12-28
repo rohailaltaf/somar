@@ -1,5 +1,9 @@
 # AGENTS.md - AI Agent Guide for Personal Finance Tracker
 
+## Agent Guidelines
+
+**DO NOT do more than what is asked.** If in doubt, confirm with the user before implementing additional features, helpers, or conveniences. Stick to the specific request.
+
 ## Project Overview
 
 A personal finance web app for **tracking spending and income**. Users can import bank/credit card CSV exports, auto-categorize transactions, and track spending against category budgets.
@@ -281,6 +285,12 @@ Connect financial institutions directly for automatic transaction syncing. **Pla
 - Uses Plaid's cursor-based sync (`/transactions/sync`) for efficiency
 - New transactions are auto-categorized using existing rules
 - All synced transactions start as `isConfirmed: false`
+
+**Historical Transaction Limits:**
+- We request **730 days (2 years)** of history via `transactions.days_requested`
+- Default without this setting is only 90 days!
+- **Cannot extend history for existing connections** - must disconnect and reconnect
+- Actual history depends on what the bank provides (some only give 90 days)
 
 **Key Functions** (in `apps/web/src/actions/plaid.ts`):
 ```typescript
