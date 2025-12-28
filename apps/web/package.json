@@ -30,6 +30,8 @@
     "db:studio:prod": "dotenv -e .env.production -- prisma studio --schema=prisma/central-schema.prisma",
     "plaid:status": "dotenv -e .env.development -- npx tsx scripts/list-plaid-items.ts",
     "plaid:status:prod": "dotenv -e .env.production -- npx tsx scripts/list-plaid-items.ts",
+    "db:safe-reset": "dotenv -e .env.development -- npx tsx scripts/safe-db-reset.ts",
+    "db:safe-reset:prod": "dotenv -e .env.production -- npx tsx scripts/safe-db-reset.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },

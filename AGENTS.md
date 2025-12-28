@@ -54,7 +54,6 @@ pnpm test         # Run all tests
 ```bash
 pnpm --filter web dev         # Start web dev server
 pnpm --filter web db:reset    # Reset web database
-pnpm --filter web demo        # Run demo mode
 ```
 
 **Mobile app commands:**
@@ -142,7 +141,6 @@ somar/
 ├── tsconfig.base.json              # Base TypeScript config
 ├── AGENTS.md                       # This file
 ├── README.md                       # Project README
-├── DEMO.md                         # Demo mode documentation
 └── LICENSE
 ```
 
@@ -403,7 +401,6 @@ The project supports separate development and production environments with diffe
 Environment files live in `apps/web/`:
 - `.env.development` - Development configuration (uses `finance-dev.db`)
 - `.env.production` - Production configuration (uses `finance-prod.db`)
-- `.env.demo` - Demo configuration (uses `finance-demo.db`) - for testing with realistic data
 - `.env.example` - Template for environment configuration (committed to git)
 
 ### Running in Different Environments
@@ -412,9 +409,6 @@ Environment files live in `apps/web/`:
 # Development (uses .env.development)
 pnpm dev                    # Start all apps (web + mobile)
 pnpm dev:web                # Start web only
-
-# Demo (uses .env.demo)
-pnpm --filter web demo      # Reset demo DB + start dev server with finance-demo.db
 
 # Production (uses .env.production)
 pnpm build                  # Build for production
@@ -428,100 +422,31 @@ All database commands are web-specific and use the `--filter web` syntax:
 ```bash
 # Development database (default)
 pnpm --filter web db:push          # Push schema changes to dev DB
-pnpm --filter web db:seed          # Seed dev DB
-pnpm --filter web db:reset         # Reset dev DB (delete + recreate + seed)
+pnpm --filter web db:reset         # Reset dev DB (delete + recreate)
 pnpm --filter web db:studio        # Open Prisma Studio with dev DB
-
-# Demo database (with realistic sample data)
-pnpm --filter web demo             # Reset demo DB + start dev server
-pnpm --filter web db:reset:demo    # Reset demo DB only (no server start)
-pnpm --filter web db:push:demo     # Push schema changes to demo DB
-pnpm --filter web db:seed:demo     # Seed demo DB with realistic data
 
 # Production database (explicit :prod suffix)
 pnpm --filter web db:push:prod     # Push schema changes to prod DB
-pnpm --filter web db:seed:prod     # Seed prod DB
-pnpm --filter web db:reset:prod    # Reset prod DB (delete + recreate + seed)
+pnpm --filter web db:reset:prod    # Reset prod DB (delete + recreate)
 pnpm --filter web db:studio:prod   # Open Prisma Studio with prod DB
 ```
-
-## Demo Mode
-
-Demo mode provides a separate database with realistic sample data for testing and demonstrations without affecting development or production data.
-
-### Running Demo Mode
-
-```bash
-pnpm --filter web demo
-```
-
-This command:
-1. Deletes any existing demo database
-2. Creates fresh schema
-3. Seeds with realistic sample data (see below)
-4. Starts the Next.js dev server with demo database
-
-### Demo Data Generated
-
-The demo seed script (`apps/web/src/lib/db/seed-demo.ts`) creates:
-
-**Accounts (6 total):**
-- 2x Checking accounts (one Plaid-connected: Chase, one manual)
-- 2x Credit cards (one Plaid-connected: Amex, one manual)
-- 1x Investment account (Plaid-connected: Fidelity)
-- 1x Savings account (manual)
-
-**Mock Plaid Items (3 total):**
-- Chase (checking account)
-- American Express (credit card)
-- Fidelity Investments (401k)
-- *Note: These use fake tokens and won't actually sync from Plaid APIs*
-
-**Transactions (680+ over 12 months):**
-- **Income**: Bi-monthly paychecks ($4,250 each on 7th and 22nd) + occasional freelance income
-- **Recurring expenses**: 
-  - Rent ($2,400/month on 1st)
-  - Subscriptions (Netflix, Spotify, Adobe, etc. - 12 total)
-  - Utilities (PG&E, Comcast)
-- **Variable expenses**:
-  - Groceries: 8-12 transactions/month ($25-250 each)
-  - Restaurants: 10-15 transactions/month ($8-75 each)
-  - Shopping: 3-8 transactions/month ($15-350 each)
-  - Car/Gas: 4-6 transactions/month ($35-85 each)
-  - Entertainment: 2-4 transactions/month ($12-65 each)
-  - Travel: Occasional ($15-450 each)
-- **Credit card payments**: Monthly payments on 25th ($1,500-3,500)
-- **Mix**: ~80% confirmed, ~20% unconfirmed (for testing tagger)
-- **Realistic descriptions**: Match real bank formats (e.g., "POS CHIPOTLE #1249 SAN FRANCISCO CA")
-
-**Budgets:**
-- Set for all spending categories (restaurant: $500, grocery: $600, house: $2,000, etc.)
-- Start date: 12 months ago for historical tracking
-
-### Demo Database Location
-
-- File: `apps/web/finance-demo.db`
-- Config: `apps/web/.env.demo`
-- Completely separate from `finance-dev.db` and `finance-prod.db`
-
-### Use Cases
-
-- Testing features without polluting development data
-- Demonstrating the app to others
-- Verifying reports with realistic data patterns
-- Testing tagger with unconfirmed transactions
-- Benchmarking performance with substantial data
-
-**See [DEMO.md](DEMO.md) for complete demo mode documentation.**
 
 ## Common Tasks
 
 ### Reset Database
 ```bash
-pnpm --filter web db:reset         # Reset development database
-pnpm --filter web db:reset:prod    # Reset production database
+# RECOMMENDED: Safe reset (disconnects Plaid, then resets)
+pnpm --filter web db:safe-reset       # Safe reset development database
+pnpm --filter web db:safe-reset:prod  # Safe reset production database
+
+# UNSAFE: Reset without disconnecting Plaid (not recommended if you have connections!)
+pnpm --filter web db:reset            # Reset dev database (doesn't disconnect Plaid!)
+pnpm --filter web db:reset:prod       # Reset prod database (doesn't disconnect Plaid!)
 ```
-Deletes DB files, recreates schema, seeds categories + preset rules.
+
+**Safe reset** disconnects all Plaid items, deletes the central DB file, and recreates the Prisma schema.
+
+**⚠️ Important:** Always use `db:safe-reset` instead of `db:reset` if you have Plaid connections, otherwise you'll be billed for orphaned items!
 
 ### Add New Category
 
@@ -614,28 +539,20 @@ pnpm test             # Run all tests
 pnpm --filter web dev           # Start dev server with finance-dev.db
 pnpm --filter web db:push       # Push schema to dev DB
 pnpm --filter web db:studio     # Open Prisma Studio (dev DB)
-pnpm --filter web db:seed       # Seed dev DB
+pnpm --filter web db:safe-reset # Safe reset (disconnect Plaid + reset) - RECOMMENDED
 pnpm --filter web db:reset      # Reset dev DB (WARNING: doesn't disconnect Plaid!)
-pnpm --filter web db:safe-reset # Disconnect Plaid items, then reset dev DB (RECOMMENDED)
-
-# Demo (uses .env.demo - realistic sample data)
-pnpm --filter web demo          # Reset demo DB + start dev server
-pnpm --filter web db:reset:demo # Reset demo DB only (no server start)
-pnpm --filter web db:push:demo  # Push schema to demo DB
-pnpm --filter web db:seed:demo  # Seed demo DB with realistic data
 
 # Production (uses .env.production)
-pnpm --filter web build         # Build for production
-pnpm --filter web start         # Start production server
-pnpm --filter web db:push:prod  # Push schema to prod DB
-pnpm --filter web db:studio:prod # Open Prisma Studio (prod DB)
-pnpm --filter web db:seed:prod  # Seed prod DB
-pnpm --filter web db:reset:prod # Reset prod DB (WARNING: doesn't disconnect Plaid!)
-pnpm --filter web db:safe-reset:prod # Disconnect Plaid items, then reset prod DB (RECOMMENDED)
+pnpm --filter web build              # Build for production
+pnpm --filter web start              # Start production server
+pnpm --filter web db:push:prod       # Push schema to prod DB
+pnpm --filter web db:studio:prod     # Open Prisma Studio (prod DB)
+pnpm --filter web db:safe-reset:prod # Safe reset (disconnect Plaid + reset) - RECOMMENDED
+pnpm --filter web db:reset:prod      # Reset prod DB (WARNING: doesn't disconnect Plaid!)
 
 # Plaid Management
-pnpm --filter web db:disconnect-plaid      # Disconnect all Plaid items (dev)
-pnpm --filter web db:disconnect-plaid:prod # Disconnect all Plaid items (prod)
+pnpm --filter web plaid:status       # Check Plaid connection status (dev)
+pnpm --filter web plaid:status:prod  # Check Plaid connection status (prod)
 
 # Testing
 pnpm --filter web test          # Run tests
@@ -649,7 +566,6 @@ pnpm --filter web lint          # Run ESLint
 ## Files to Ignore
 
 - `apps/web/finance-dev.db`, `apps/web/finance-dev.db-wal`, `apps/web/finance-dev.db-shm` - Development SQLite database
-- `apps/web/finance-demo.db`, `apps/web/finance-demo.db-wal`, `apps/web/finance-demo.db-shm` - Demo SQLite database
 - `apps/web/finance-prod.db`, `apps/web/finance-prod.db-wal`, `apps/web/finance-prod.db-shm` - Production SQLite database
 - `apps/web/.next/` - Next.js build cache
 - `.turbo/` - Turborepo cache
@@ -770,7 +686,7 @@ With 10,000+ transactions, performance remains the same due to server-side pagin
 11. **Category types**: When querying categories for budget management, use `getCategoriesWithBudgets()` which only returns spending categories. Use `getCategories("income")` for income categories, and `getCategories("transfer")` for transfer categories. Transfer transactions are automatically excluded from all spending and income reports.
 12. **Pattern extraction too specific**: If auto-tagging isn't working, check if the extracted pattern is too specific. Transaction descriptions from same merchant often have different suffixes (PAYROLL vs DIR DEP vs ACH). The pattern should extract just the merchant identifier, not the full description.
 13. **Always use `confirmTransaction()` for category changes**: The transactions page dropdown and tagger both use `confirmTransaction()` which learns patterns and auto-tags. Don't use `updateTransaction()` directly for category changes or patterns won't be learned.
-14. **Plaid orphan items = wasted money**: If you reset the database without calling `itemRemove()` on Plaid, those items remain active and you'll be billed! Always use `pnpm --filter web db:safe-reset` instead of `pnpm --filter web db:reset` when you have Plaid connections. To find orphans, check dashboard.plaid.com or call `GET /api/plaid/status`.
+14. **Plaid orphan items = wasted money**: If you reset the database without calling `itemRemove()` on Plaid, those items remain active and you'll be billed! Always use `pnpm --filter web db:safe-reset` instead of `pnpm --filter web db:reset` when you have Plaid connections. The safe reset automatically disconnects Plaid items before resetting. To check for orphans, use `pnpm --filter web plaid:status` or visit dashboard.plaid.com.
 15. **Monorepo commands**: Remember to use `pnpm --filter web` for web-specific commands. Root `pnpm dev` runs all apps.
 16. **React version mismatch**: Web uses React ^19.1.4 (patched), Mobile uses React 19.1.0 (must match react-native-renderer). Each app has its own node_modules, so they run together without conflicts.
 17. **Mobile needs explicit @expo/metro-runtime**: Due to pnpm's symlink structure, `@expo/metro-runtime` must be listed as an explicit dependency in mobile's package.json.
