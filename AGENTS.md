@@ -315,7 +315,7 @@ Plaid needs time to fetch and enrich historical data after initial connection. T
 ```
 apps/web/src/hooks/use-plaid-sync.ts     # Client-side sync hook
 apps/web/src/app/api/plaid/sync/route.ts # Server proxy with retry logic
-apps/web/src/app/api/dedup/verify/route.ts # LLM proxy for deduplication
+apps/web/src/app/api/dedup/batch/route.ts # Unified dedup endpoint (Tier 1 + LLM)
 apps/web/src/components/auto-sync.tsx    # Auto-sync on page load
 ```
 
@@ -324,7 +324,7 @@ apps/web/src/components/auto-sync.tsx    # Auto-sync on page load
 - `POST /api/plaid/update-link-token` - Generate link token for update mode
 - `POST /api/plaid/exchange-token` - Exchange public token, create accounts
 - `POST /api/plaid/sync` - Server proxy for transactionsSync (with retry logic)
-- `POST /api/dedup/verify` - LLM proxy for deduplication verification
+- `POST /api/dedup/batch` - Unified deduplication (Tier 1 deterministic + Tier 2 LLM)
 
 **Client-Side Sync Hook** (`usePlaidSync`):
 ```typescript
