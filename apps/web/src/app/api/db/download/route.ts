@@ -43,7 +43,7 @@ export async function GET() {
     headers: {
       "Content-Type": "application/octet-stream",
       "Content-Length": blob.length.toString(),
-      "X-Database-Version": (metadata?.version ?? 1).toString(),
+      "X-Database-Version": (metadata?.version ?? 1n).toString(),
     },
   });
 }

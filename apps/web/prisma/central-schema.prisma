@@ -132,7 +132,7 @@ model PlaidAccountMeta {
 model EncryptedDatabase {
   id        String   @id @default(uuid())
   userId    String   @unique @map("user_id")
-  version   Int      @default(1) // For optimistic locking
+  version   BigInt   @default(1) // For optimistic locking
   sizeBytes Int      @default(0) @map("size_bytes")
   updatedAt DateTime @updatedAt @map("updated_at")
   createdAt DateTime @default(now()) @map("created_at")

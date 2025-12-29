@@ -440,6 +440,6 @@ async function saveDatabase(
   }
 
   const result = await response.json();
-  return result.version;
+  return parseInt(result.version, 10);
 }
 

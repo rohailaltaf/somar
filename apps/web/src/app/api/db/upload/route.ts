@@ -29,7 +29,7 @@ export async function POST(req: Request) {
   // Get expected version from header (for optimistic locking)
   const expectedVersionHeader = req.headers.get("X-Expected-Version");
   const expectedVersion = expectedVersionHeader
-    ? parseInt(expectedVersionHeader, 10)
+    ? BigInt(expectedVersionHeader)
     : null;
 
   const storage = getStorage();
@@ -60,7 +60,7 @@ export async function POST(req: Request) {
             version: current.version, // Only update if version hasn't changed
           },
           data: {
-            version: current.version + 1,
+            version: current.version + 1n,
             sizeBytes: blob.length,
             updatedAt: new Date(),
           },
@@ -68,10 +68,10 @@ export async function POST(req: Request) {
 
         // If no rows updated, another request beat us to it
         if (updateResult.count === 0) {
-          throw { type: "conflict", serverVersion: current.version + 1 };
+          throw { type: "conflict", serverVersion: current.version + 1n };
         }
 
-        return { version: current.version + 1 };
+        return { version: current.version + 1n };
       } else {
         // New record - create it
         const created = await tx.encryptedDatabase.create({
@@ -87,7 +87,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       ok: true,
-      version: result.version,
+      version: result.version.toString(),
     });
   } catch (err) {
     if (err && typeof err === "object" && "type" in err && err.type === "conflict") {
@@ -95,7 +95,7 @@ export async function POST(req: Request) {
         {
           error: "conflict",
           message: "Database was updated elsewhere. Please refresh.",
-          serverVersion: (err as { serverVersion: number }).serverVersion,
+          serverVersion: (err as { serverVersion: bigint }).serverVersion.toString(),
         },
         { status: 409 }
       );
