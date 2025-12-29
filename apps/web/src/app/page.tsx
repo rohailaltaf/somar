@@ -1,15 +1,12 @@
-import { Suspense } from "react";
+"use client";
+
+import { useMemo } from "react";
 import Link from "next/link";
-import {
-  getSpendingByCategory,
-  getTotalSpending,
-  getUnconfirmedCount,
-} from "@/actions/transactions";
-import { getItemsNeedingSync } from "@/actions/plaid";
+import { useSpendingByCategory, useTotalSpending, useUnconfirmedCount } from "@/hooks";
+import { useDatabase } from "@/hooks/use-database";
 import { Nav } from "@/components/nav";
 import { PageHeader } from "@/components/page-header";
 import { BudgetProgress } from "@/components/budget-progress";
-import { AutoSync } from "@/components/auto-sync";
 import {
   Card,
   CardContent,
@@ -27,16 +24,16 @@ import {
   AlertTriangle,
   Zap,
 } from "lucide-react";
+import { getCurrentMonth, formatMonth, formatCurrency } from "@/lib/utils";
 
-async function DashboardContent() {
-  const now = new Date();
-  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  const [categorySpending, totalSpending, unconfirmedCount, itemsNeedingSync] = await Promise.all([
-    getSpendingByCategory(currentMonth),
-    getTotalSpending(currentMonth),
-    getUnconfirmedCount(),
-    getItemsNeedingSync(),
-  ]);
+function DashboardContent() {
+  const currentMonth = useMemo(() => getCurrentMonth(), []);
+
+  const { data: categorySpending = [], isLoading: loadingSpending } = useSpendingByCategory(currentMonth);
+  const { data: totalSpending = 0, isLoading: loadingTotal } = useTotalSpending(currentMonth);
+  const { data: unconfirmedCount = 0, isLoading: loadingUnconfirmed } = useUnconfirmedCount();
+
+  const isLoading = loadingSpending || loadingTotal || loadingUnconfirmed;
 
   const totalBudget = categorySpending.reduce(
     (sum, cat) => sum + (cat.budget || 0),
@@ -49,28 +46,12 @@ async function DashboardContent() {
     (cat) => cat.budget && cat.spent > cat.budget * 0.8 && cat.spent <= cat.budget
   );
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  const formatMonth = (monthStr: string) => {
-    const [year, month] = monthStr.split("-");
-    return new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString(
-      "en-US",
-      { month: "long", year: "numeric" }
-    );
-  };
+  if (isLoading) {
+    return <DashboardSkeleton />;
+  }
 
   return (
     <div className="space-y-8">
-      {/* Auto-sync connected institutions */}
-      <AutoSync itemsNeedingSync={itemsNeedingSync} />
-      
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
@@ -269,25 +250,6 @@ async function DashboardContent() {
   );
 }
 
-export default function DashboardPage() {
-  return (
-    <div className="min-h-screen bg-background">
-      <Nav />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <PageHeader
-          title="Dashboard"
-          description="Overview of your spending and budgets"
-        />
-        <div className="mt-8">
-          <Suspense fallback={<DashboardSkeleton />}>
-            <DashboardContent />
-          </Suspense>
-        </div>
-      </main>
-    </div>
-  );
-}
-
 function DashboardSkeleton() {
   return (
     <div className="space-y-8">
@@ -315,6 +277,47 @@ function DashboardSkeleton() {
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+export default function DashboardPage() {
+  const { error } = useDatabase();
+
+  // Database error
+  if (error) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+        <Card className="max-w-md w-full mx-4 border-slate-700 bg-slate-800/50">
+          <CardHeader className="text-center">
+            <CardTitle className="text-red-400">Error Loading Data</CardTitle>
+            <CardDescription className="text-slate-400">{error.message}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button 
+              className="w-full"
+              onClick={() => window.location.href = "/login"}
+            >
+              Try Signing In Again
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Nav />
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <PageHeader
+          title="Dashboard"
+          description="Overview of your spending and budgets"
+        />
+        <div className="mt-8">
+          <DashboardContent />
+        </div>
+      </main>
     </div>
   );
 }
