@@ -1,17 +1,29 @@
-import { Suspense } from "react";
-import { getCategoriesWithBudgets, getCategories } from "@/actions/categories";
+"use client";
+
+import { useMemo } from "react";
+import { useCategories, useCategoriesWithBudgets } from "@/hooks";
+import { useDatabase } from "@/hooks/use-database";
 import { Nav } from "@/components/nav";
 import { PageHeader } from "@/components/page-header";
 import { CategoriesList } from "./categories-list";
 import { CreateCategoryDialog } from "./create-category-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2 } from "lucide-react";
 
-export default async function CategoriesPage() {
-  const [spendingCategories, incomeCategories, transferCategories] = await Promise.all([
-    getCategoriesWithBudgets(),
-    getCategories("income"),
-    getCategories("transfer"),
-  ]);
+function getCurrentMonth() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+export default function CategoriesPage() {
+  const { isReady, isLoading: dbLoading } = useDatabase();
+  const currentMonth = useMemo(() => getCurrentMonth(), []);
+
+  const { data: spendingCategories = [], isLoading: loadingSpending } = useCategoriesWithBudgets(currentMonth);
+  const { categories: incomeCategories = [], isLoading: loadingIncome } = useCategories("income");
+  const { categories: transferCategories = [], isLoading: loadingTransfer } = useCategories("transfer");
+
+  const isLoading = dbLoading || !isReady || loadingSpending || loadingIncome || loadingTransfer;
 
   // Convert income and transfer categories to match the expected format
   const incomeCategoriesWithBudgets = incomeCategories.map(cat => ({
@@ -25,6 +37,19 @@ export default async function CategoriesPage() {
     currentBudget: null,
     allBudgets: [],
   }));
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Nav />
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -43,19 +68,13 @@ export default async function CategoriesPage() {
               <TabsTrigger value="transfer">Transfers ({transferCategories.length})</TabsTrigger>
             </TabsList>
             <TabsContent value="spending" className="mt-6">
-              <Suspense fallback={<div>Loading...</div>}>
-                <CategoriesList categories={spendingCategories} />
-              </Suspense>
+              <CategoriesList categories={spendingCategories} />
             </TabsContent>
             <TabsContent value="income" className="mt-6">
-              <Suspense fallback={<div>Loading...</div>}>
-                <CategoriesList categories={incomeCategoriesWithBudgets} />
-              </Suspense>
+              <CategoriesList categories={incomeCategoriesWithBudgets} />
             </TabsContent>
             <TabsContent value="transfer" className="mt-6">
-              <Suspense fallback={<div>Loading...</div>}>
-                <CategoriesList categories={transferCategoriesWithBudgets} />
-              </Suspense>
+              <CategoriesList categories={transferCategoriesWithBudgets} />
             </TabsContent>
           </Tabs>
         </div>
@@ -63,4 +82,3 @@ export default async function CategoriesPage() {
     </div>
   );
 }
-
