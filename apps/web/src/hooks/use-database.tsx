@@ -91,9 +91,27 @@ export function DatabaseProvider({
         if (response.ok) {
           // Decrypt and load existing database
           const encryptedBlob = await response.arrayBuffer();
-          const decrypted = await decrypt(new Uint8Array(encryptedBlob), encryptionKey);
-          database = new SQL.Database(new Uint8Array(decrypted));
-          
+
+          let decrypted: ArrayBuffer;
+          try {
+            decrypted = await decrypt(new Uint8Array(encryptedBlob), encryptionKey);
+          } catch (decryptError) {
+            throw new Error(
+              "Failed to decrypt database. This may indicate an incorrect password or corrupted data."
+            );
+          }
+
+          // Validate decrypted data is a valid SQLite database
+          try {
+            database = new SQL.Database(new Uint8Array(decrypted));
+            // Verify it's a valid database by running a simple query
+            database.exec("SELECT 1");
+          } catch (dbError) {
+            throw new Error(
+              "Decrypted data is not a valid database. The encryption key may be incorrect."
+            );
+          }
+
           // Read version from response header for optimistic locking
           const versionHeader = response.headers.get("X-Database-Version");
           initialVersion = versionHeader ? parseInt(versionHeader, 10) : 1;

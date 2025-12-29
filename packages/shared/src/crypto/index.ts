@@ -3,7 +3,6 @@
 
 export {
   deriveEncryptionKey,
-  deriveVerificationKey,
   hexToBytes,
   bytesToHex,
 } from "./derive";

@@ -81,12 +81,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
         throw new Error(result.error.message || "Failed to sign in");
       }
 
+      // Fetch user's encryption salt from server
+      const saltResponse = await fetch("/api/user/encryption-salt");
+      if (!saltResponse.ok) {
+        throw new Error("Failed to fetch encryption salt");
+      }
+      const { salt } = await saltResponse.json();
+
       // Derive encryption key from password (client-side only)
-      const key = await deriveEncryptionKey(password, email);
-      
-      // Set encryption key in sessionStorage BEFORE navigation
+      const key = await deriveEncryptionKey(password, salt);
+
+      // Set key in sessionStorage BEFORE navigation
       sessionStorage.setItem(ENCRYPTION_KEY_STORAGE, key);
-      
+
       // Hard navigation - ensures fresh page load with sessionStorage already set
       // This avoids race conditions with React state updates
       window.location.href = "/";
@@ -103,12 +110,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
         throw new Error(result.error.message || "Failed to register");
       }
 
+      // Generate salt server-side
+      const saltResponse = await fetch("/api/user/encryption-salt", {
+        method: "POST",
+      });
+
+      if (!saltResponse.ok) {
+        throw new Error("Failed to generate encryption salt");
+      }
+
+      const { salt } = await saltResponse.json();
+
       // Derive encryption key from password (client-side only)
-      const key = await deriveEncryptionKey(password, email);
-      
-      // Set encryption key in sessionStorage BEFORE navigation
+      const key = await deriveEncryptionKey(password, salt);
+
+      // Set key in sessionStorage BEFORE navigation
       sessionStorage.setItem(ENCRYPTION_KEY_STORAGE, key);
-      
+
       // Hard navigation - ensures fresh page load with sessionStorage already set
       window.location.href = "/";
     },
@@ -116,7 +134,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   );
 
   const logout = useCallback(async () => {
-    // Clear encryption key from sessionStorage FIRST
+    // Clear key from sessionStorage FIRST
     sessionStorage.removeItem(ENCRYPTION_KEY_STORAGE);
     setEncryptionKey(null);
 
@@ -145,8 +163,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
         throw new Error("Session expired. Please log in again.");
       }
 
+      // Fetch salt from server
+      const saltResponse = await fetch("/api/user/encryption-salt");
+      if (!saltResponse.ok) {
+        throw new Error("Failed to fetch encryption salt");
+      }
+      const { salt } = await saltResponse.json();
+
       // Derive encryption key from password (client-side only)
-      const key = await deriveEncryptionKey(password, session.user.email);
+      // Wrong passwords will be caught when AES-GCM decryption fails
+      const key = await deriveEncryptionKey(password, salt);
       setEncryptionKey(key);
     },
     [session]

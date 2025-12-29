@@ -32,46 +32,74 @@ export async function POST(req: Request) {
     ? parseInt(expectedVersionHeader, 10)
     : null;
 
-  // Check current version if optimistic locking is requested
-  if (expectedVersion !== null) {
-    const current = await db.encryptedDatabase.findUnique({
-      where: { userId },
-      select: { version: true },
+  const storage = getStorage();
+
+  // Use atomic transaction to prevent race conditions
+  // The version check and update happen atomically
+  try {
+    const result = await db.$transaction(async (tx) => {
+      const current = await tx.encryptedDatabase.findUnique({
+        where: { userId },
+        select: { version: true },
+      });
+
+      // Check version if optimistic locking is requested
+      if (expectedVersion !== null && current && current.version !== expectedVersion) {
+        throw { type: "conflict", serverVersion: current.version };
+      }
+
+      // Store the encrypted blob
+      await storage.put(`users/${userId}.db.enc`, blob);
+
+      // Update metadata atomically
+      if (current) {
+        // Use updateMany with version in WHERE to ensure atomicity
+        const updateResult = await tx.encryptedDatabase.updateMany({
+          where: {
+            userId,
+            version: current.version, // Only update if version hasn't changed
+          },
+          data: {
+            version: current.version + 1,
+            sizeBytes: blob.length,
+            updatedAt: new Date(),
+          },
+        });
+
+        // If no rows updated, another request beat us to it
+        if (updateResult.count === 0) {
+          throw { type: "conflict", serverVersion: current.version + 1 };
+        }
+
+        return { version: current.version + 1 };
+      } else {
+        // New record - create it
+        const created = await tx.encryptedDatabase.create({
+          data: {
+            userId,
+            version: 1,
+            sizeBytes: blob.length,
+          },
+        });
+        return { version: created.version };
+      }
     });
 
-    if (current && current.version !== expectedVersion) {
+    return NextResponse.json({
+      ok: true,
+      version: result.version,
+    });
+  } catch (err) {
+    if (err && typeof err === "object" && "type" in err && err.type === "conflict") {
       return NextResponse.json(
         {
           error: "conflict",
           message: "Database was updated elsewhere. Please refresh.",
-          serverVersion: current.version,
+          serverVersion: (err as { serverVersion: number }).serverVersion,
         },
         { status: 409 }
       );
     }
+    throw err;
   }
-
-  // Store the encrypted blob
-  const storage = getStorage();
-  await storage.put(`users/${userId}.db.enc`, blob);
-
-  // Update metadata in central DB
-  const updated = await db.encryptedDatabase.upsert({
-    where: { userId },
-    update: {
-      version: { increment: 1 },
-      sizeBytes: blob.length,
-      updatedAt: new Date(),
-    },
-    create: {
-      userId,
-      version: 1,
-      sizeBytes: blob.length,
-    },
-  });
-
-  return NextResponse.json({
-    ok: true,
-    version: updated.version,
-  });
 }

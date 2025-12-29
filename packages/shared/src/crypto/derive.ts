@@ -7,32 +7,15 @@
  * (works in browser, Node.js, and React Native).
  *
  * @param password - The user's password
- * @param email - The user's email (used as salt)
+ * @param salt - Random per-user salt (generated server-side, stored in DB)
  * @returns A 256-bit (32-byte) hex-encoded encryption key
  */
 export async function deriveEncryptionKey(
   password: string,
-  email: string
+  salt: string
 ): Promise<string> {
-  const salt = `somar:encrypt:${email}`;
-  return pbkdf2Derive(password, salt);
-}
-
-/**
- * Derive a key for key verification purposes.
- * This is stored (hashed again) to verify the user entered the correct password
- * for decryption without exposing the actual encryption key.
- *
- * @param password - The user's password
- * @param email - The user's email (used as salt)
- * @returns A hex-encoded verification key
- */
-export async function deriveVerificationKey(
-  password: string,
-  email: string
-): Promise<string> {
-  const salt = `somar:verify:${email}`;
-  return pbkdf2Derive(password, salt);
+  const fullSalt = `somar:encrypt:${salt}`;
+  return pbkdf2Derive(password, fullSalt);
 }
 
 /**

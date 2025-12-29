@@ -27,7 +27,8 @@ model User {
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
   // Custom fields for E2EE
-  publicKey     String?   @map("public_key") // RSA public key for encrypting Plaid data
+  publicKey      String?   @map("public_key") // RSA public key for encrypting Plaid data
+  encryptionSalt String?   @map("encryption_salt") // Random salt for key derivation (not secret, but unique per user)
 
   sessions      Session[]
   accounts      Account[]
@@ -98,7 +99,7 @@ model Verification {
 model PlaidItem {
   id              String    @id @default(uuid())
   userId          String    @map("user_id")
-  accessToken     String    @map("access_token") // Encrypted at rest
+  accessToken     String    @map("access_token")
   institutionId   String    @map("institution_id")
   institutionName String    @map("institution_name")
   cursor          String?   // For incremental transaction sync
