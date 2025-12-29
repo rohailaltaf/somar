@@ -67,6 +67,8 @@ export function DatabaseProvider({
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isSavingRef = useRef(false);
   const pendingSaveRef = useRef(false);
+  // Use ref to track version synchronously (avoids stale closure in save callback)
+  const versionRef = useRef(0);
 
   // Initialize database on mount
   useEffect(() => {
@@ -92,7 +94,7 @@ export function DatabaseProvider({
           // Decrypt and load existing database
           const encryptedBlob = await response.arrayBuffer();
 
-          let decrypted: ArrayBuffer;
+          let decrypted: Uint8Array;
           try {
             decrypted = await decrypt(new Uint8Array(encryptedBlob), encryptionKey);
           } catch (decryptError) {
@@ -116,14 +118,48 @@ export function DatabaseProvider({
           const versionHeader = response.headers.get("X-Database-Version");
           initialVersion = versionHeader ? parseInt(versionHeader, 10) : 1;
         } else if (response.status === 404) {
-          // New user - create empty database with schema
-          database = new SQL.Database();
-          await initializeSchema(database);
+          // New user - fetch initial database from server
+          const initResponse = await fetch("/api/db/init", { method: "POST" });
 
-          // Save immediately so server has a copy
-          if (mounted) {
-            const newVersion = await saveDatabase(database, encryptionKey, 0);
-            initialVersion = newVersion;
+          if (!initResponse.ok) {
+            // Handle 409 conflict (database was created between checks)
+            if (initResponse.status === 409) {
+              // Retry download - database was created by another tab/request
+              const retryResponse = await fetch("/api/db/download");
+              if (retryResponse.ok) {
+                const encryptedBlob = await retryResponse.arrayBuffer();
+                const decrypted = await decrypt(
+                  new Uint8Array(encryptedBlob),
+                  encryptionKey
+                );
+                database = new SQL.Database(new Uint8Array(decrypted));
+                const versionHeader =
+                  retryResponse.headers.get("X-Database-Version");
+                initialVersion = versionHeader ? parseInt(versionHeader, 10) : 1;
+              } else {
+                throw new Error(
+                  `Failed to download database after init conflict`
+                );
+              }
+            } else {
+              throw new Error(
+                `Failed to initialize database: ${initResponse.status}`
+              );
+            }
+          } else {
+            // Got fresh database from server - load it
+            const rawDbBytes = await initResponse.arrayBuffer();
+            database = new SQL.Database(new Uint8Array(rawDbBytes));
+
+            // Encrypt and upload immediately
+            if (mounted) {
+              const newVersion = await saveDatabase(
+                database,
+                encryptionKey,
+                0
+              );
+              initialVersion = newVersion;
+            }
           }
         } else {
           throw new Error(`Failed to download database: ${response.status}`);
@@ -131,6 +167,7 @@ export function DatabaseProvider({
 
         if (mounted) {
           setDb(database);
+          versionRef.current = initialVersion;
           setVersion(initialVersion);
           setIsLoading(false);
         }
@@ -163,7 +200,9 @@ export function DatabaseProvider({
 
     isSavingRef.current = true;
     try {
-      const newVersion = await saveDatabase(db, encryptionKey, version);
+      // Use ref for version to avoid stale closure issues
+      const newVersion = await saveDatabase(db, encryptionKey, versionRef.current);
+      versionRef.current = newVersion;
       setVersion(newVersion);
       console.log(`[DB] Saved to server (version ${newVersion})`);
     } catch (err) {
@@ -176,7 +215,7 @@ export function DatabaseProvider({
         save(); // Retry pending save
       }
     }
-  }, [db, encryptionKey, version]);
+  }, [db, encryptionKey]);
 
   // Schedule auto-save
   const scheduleAutoSave = useCallback(() => {
@@ -316,97 +355,6 @@ export function useDatabase() {
   }
   
   return context;
-}
-
-/**
- * Initialize empty database with schema.
- * Creates all tables and seeds default categories.
- */
-async function initializeSchema(db: Database) {
-  db.run(`
-    CREATE TABLE IF NOT EXISTS accounts (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      type TEXT NOT NULL,
-      created_at TEXT NOT NULL,
-      plaid_account_id TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS categories (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL UNIQUE,
-      type TEXT NOT NULL DEFAULT 'spending',
-      color TEXT NOT NULL DEFAULT '#6366f1',
-      created_at TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS category_budgets (
-      id TEXT PRIMARY KEY,
-      category_id TEXT NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
-      amount REAL NOT NULL,
-      start_month TEXT NOT NULL,
-      created_at TEXT NOT NULL
-    );
-    CREATE INDEX IF NOT EXISTS idx_category_budgets_category_start 
-      ON category_budgets(category_id, start_month);
-
-    CREATE TABLE IF NOT EXISTS transactions (
-      id TEXT PRIMARY KEY,
-      account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-      category_id TEXT REFERENCES categories(id) ON DELETE SET NULL,
-      description TEXT NOT NULL,
-      amount REAL NOT NULL,
-      date TEXT NOT NULL,
-      excluded INTEGER NOT NULL DEFAULT 0,
-      is_confirmed INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL,
-      plaid_transaction_id TEXT UNIQUE,
-      plaid_original_description TEXT,
-      plaid_name TEXT,
-      plaid_merchant_name TEXT,
-      plaid_authorized_date TEXT,
-      plaid_posted_date TEXT
-    );
-    CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date);
-    CREATE INDEX IF NOT EXISTS idx_transactions_account ON transactions(account_id);
-    CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions(category_id);
-    CREATE INDEX IF NOT EXISTS idx_transactions_confirmed ON transactions(is_confirmed);
-
-    CREATE TABLE IF NOT EXISTS categorization_rules (
-      id TEXT PRIMARY KEY,
-      pattern TEXT NOT NULL,
-      category_id TEXT NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
-      is_preset INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL
-    );
-    CREATE INDEX IF NOT EXISTS idx_rules_category ON categorization_rules(category_id);
-  `);
-
-  // Seed default categories
-  const defaultCategories = [
-    { name: "personal", type: "spending", color: "oklch(0.65 0.15 280)" },
-    { name: "restaurant", type: "spending", color: "oklch(0.65 0.2 30)" },
-    { name: "grocery", type: "spending", color: "oklch(0.65 0.18 140)" },
-    { name: "shopping", type: "spending", color: "oklch(0.65 0.18 350)" },
-    { name: "entertainment", type: "spending", color: "oklch(0.65 0.2 330)" },
-    { name: "subscriptions", type: "spending", color: "oklch(0.6 0.15 300)" },
-    { name: "travel", type: "spending", color: "oklch(0.6 0.18 200)" },
-    { name: "car", type: "spending", color: "oklch(0.5 0.12 240)" },
-    { name: "house", type: "spending", color: "oklch(0.6 0.12 80)" },
-    { name: "work", type: "spending", color: "oklch(0.55 0.15 250)" },
-    { name: "job income", type: "income", color: "oklch(0.7 0.2 140)" },
-    { name: "transfers", type: "transfer", color: "oklch(0.5 0.08 220)" },
-    { name: "credit card payments", type: "transfer", color: "oklch(0.5 0.08 200)" },
-    { name: "reimbursed", type: "transfer", color: "oklch(0.7 0.15 150)" },
-  ];
-
-  const now = new Date().toISOString();
-  for (const cat of defaultCategories) {
-    db.run(
-      "INSERT OR IGNORE INTO categories (id, name, type, color, created_at) VALUES (?, ?, ?, ?, ?)",
-      [crypto.randomUUID(), cat.name, cat.type, cat.color, now]
-    );
-  }
 }
 
 /**

@@ -95,7 +95,7 @@ export async function POST(req: Request) {
         {
           error: "conflict",
           message: "Database was updated elsewhere. Please refresh.",
-          serverVersion: (err as { serverVersion: bigint }).serverVersion.toString(),
+          serverVersion: (err as unknown as { serverVersion: bigint }).serverVersion.toString(),
         },
         { status: 409 }
       );
