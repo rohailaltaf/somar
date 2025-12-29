@@ -9,11 +9,7 @@ import { CategoriesList } from "./categories-list";
 import { CreateCategoryDialog } from "./create-category-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2 } from "lucide-react";
-
-function getCurrentMonth() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-}
+import { getCurrentMonth } from "@/lib/utils";
 
 export default function CategoriesPage() {
   const { isReady, isLoading: dbLoading } = useDatabase();
