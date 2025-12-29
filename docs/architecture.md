@@ -193,7 +193,7 @@ User's Password
 
 ## Plaid Integration
 
-Plaid access tokens must stay server-side (Plaid security requirement). We use asymmetric encryption so the server can encrypt data for the user without being able to decrypt it:
+Plaid access tokens must stay server-side (Plaid security requirement). We use a **Server Proxy Pattern** - the server calls Plaid and returns raw transaction data to the client, which then encrypts and stores it locally:
 
 ```mermaid
 sequenceDiagram
@@ -201,25 +201,43 @@ sequenceDiagram
     participant Browser
     participant Server
     participant Plaid
-    
-    Note over Browser: User generates RSA keypair
-    Note over Browser: Private key stays in browser
-    Browser->>Server: Send PUBLIC key only
-    
-    Server->>Plaid: Sync transactions
-    Plaid-->>Server: Transaction data
-    
-    Server->>Server: Encrypt with user's PUBLIC key
-    Server->>Server: Store in pending_plaid_syncs
-    Note over Server: Server CANNOT decrypt<br/>(no private key)
-    
-    Browser->>Server: GET /api/plaid/pending
-    Server-->>Browser: RSA-encrypted data
-    
-    Browser->>Browser: Decrypt with PRIVATE key
-    Browser->>Browser: Merge into wa-sqlite
-    Browser->>Browser: Save and upload encrypted DB
+
+    User->>Browser: Click "Connect Bank"
+    Browser->>Server: POST /api/plaid/create-link-token
+    Server-->>Browser: Link token
+    Browser->>Plaid: Open Plaid Link
+    Plaid-->>Browser: Public token
+    Browser->>Server: POST /api/plaid/exchange-token
+    Server->>Plaid: Exchange for access_token
+    Server->>Server: Store access_token in central DB
+    Server-->>Browser: Item ID + account info
+
+    Note over Browser: Auto-sync starts...
+
+    Browser->>Server: POST /api/plaid/sync (cursor from local DB)
+    Server->>Plaid: transactionsSync(cursor)
+    Note over Server: Retry with exponential backoff<br/>until data is enriched
+    Plaid-->>Server: Raw transactions + next cursor
+    Server-->>Browser: Raw transactions + next cursor
+    Note over Server: Server sees transactions<br/>but doesn't store them
+
+    Browser->>Browser: Run deduplication (Tier 1 + LLM)
+    Browser->>Browser: Insert/update transactions
+    Browser->>Browser: Save cursor to local DB
+    Browser->>Browser: Encrypt and upload DB blob
 ```
+
+### Key Design Decisions
+
+1. **Client-side cursor storage**: The sync cursor is stored in the user's encrypted SQLite database, not on the server. This ensures that if the client save fails, the cursor doesn't advance and data isn't lost.
+
+2. **Server proxy for LLM dedup**: The deduplication system has 2 tiers:
+   - Tier 1 (deterministic): Runs in browser, free
+   - Tier 2 (LLM): Requires OpenAI API key, proxied via `/api/dedup/verify`
+
+3. **Retry logic for initial sync**: Plaid needs time to fetch and enrich historical data. The server retries up to 8 times with exponential backoff (2s, 4s, 8s...) until transactions have `authorized_date` (enrichment complete).
+
+4. **Skip pending transactions**: Pending transactions are not imported - they'll be synced when posted.
 
 ## Client-Side Tech Stack
 

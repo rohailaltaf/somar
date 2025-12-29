@@ -263,33 +263,47 @@ return { updatedTransactions: updates };
   - Catches duplicates even when descriptions differ (e.g., "AplPay CHIPOTLE 1249" vs "Chipotle Mexican Grill")
 - Final amounts: negative = expense, positive = income
 
-### 4. Plaid Integration (`apps/web/src/app/accounts/`, `apps/web/src/actions/plaid.ts`)
+### 4. Plaid Integration (`apps/web/src/app/accounts/`, `apps/web/src/hooks/use-plaid-sync.ts`)
 
 Connect financial institutions directly for automatic transaction syncing. **Plaid connection is integrated directly into the Accounts page** - no separate connect page.
 
 **Supported Institutions:** Chase, Amex, Fidelity, Robinhood, and 12,000+ others
 
+**E2EE Architecture - Server Proxy Pattern:**
+With E2EE, transactions are stored in the user's encrypted SQLite database. The server acts as a proxy:
+1. Server calls Plaid API (has access token)
+2. Server returns raw transactions to client
+3. Client runs deduplication, inserts transactions, encrypts and saves
+
 **Connection Flow:**
 1. User clicks "Connect Bank" button on `/accounts` page
 2. Plaid Link widget opens (handled by `react-plaid-link`)
 3. User authenticates with their bank
-4. Backend exchanges public token for access token
-5. Creates PlaidItem + Account records
-6. Immediately syncs transactions
+4. Backend exchanges public token for access token (stored in central DB)
+5. Creates accounts in user's local encrypted SQLite
+6. Auto-sync starts with retry logic
 
 **Accounts Page Features:**
 - **Add Manual Account:** For CSV imports
 - **Connect Bank:** Opens Plaid Link for automatic syncing
 - **Connected Institutions Section:** Shows all Plaid connections with sync/disconnect buttons
-- **Manage Accounts:** Opens Plaid Link in update mode to add/remove accounts from existing connection (e.g., add Chase savings to existing Chase checking connection)
+- **Manage Accounts:** Opens Plaid Link in update mode to add/remove accounts from existing connection
 - **Manual Accounts Section:** Shows manually created accounts
 
 **Sync Behavior:**
-- **Auto-sync:** On dashboard load, items not synced in 1+ hour are synced automatically
+- **Auto-sync on connect:** After connecting, waits for Plaid to fetch historical data with retry logic
+- **Auto-sync on login:** Items not synced in 1+ hour are synced automatically via `AutoSync` component
 - **Manual sync:** "Sync" button per institution on `/accounts` page
-- Uses Plaid's cursor-based sync (`/transactions/sync`) for efficiency
-- New transactions are auto-categorized using existing rules
+- **Client-side cursor:** Stored in `plaid_sync_state` table in user's encrypted DB (not on server)
+- **Deduplication:** 2-tier system catches duplicates between Plaid and existing CSV transactions
+- **Skip pending:** Pending transactions are not imported - synced when posted
 - All synced transactions start as `isConfirmed: false`
+
+**Initial Sync Retry Logic:**
+Plaid needs time to fetch and enrich historical data after initial connection. The server endpoint retries:
+- Up to 8 retries with exponential backoff (2s, 4s, 8s, 16s, 32s, 64s, 128s, 256s)
+- Checks for enrichment (transactions have `authorized_date`)
+- Also retries if no transactions returned yet
 
 **Historical Transaction Limits:**
 - We request **730 days (2 years)** of history via `transactions.days_requested`
@@ -297,29 +311,36 @@ Connect financial institutions directly for automatic transaction syncing. **Pla
 - **Cannot extend history for existing connections** - must disconnect and reconnect
 - Actual history depends on what the bank provides (some only give 90 days)
 
-**Key Functions** (in `apps/web/src/actions/plaid.ts`):
-```typescript
-createLinkToken()              // Generate token for Plaid Link
-createUpdateModeLinkToken(id)  // Generate token for update mode (manage accounts)
-exchangePublicToken(...)       // Exchange for access_token, create accounts
-updatePlaidItemAccounts(id)    // Sync account list, add new accounts after update mode
-syncTransactionsForItem(id)    // Sync transactions for specific item
-syncAllTransactions()          // Sync all connected items
-getItemsNeedingSync()          // Get items not synced in 1+ hour
-disconnectInstitution(id)      // Remove connection (optionally delete transactions)
+**Key Files:**
+```
+apps/web/src/hooks/use-plaid-sync.ts     # Client-side sync hook
+apps/web/src/app/api/plaid/sync/route.ts # Server proxy with retry logic
+apps/web/src/app/api/dedup/verify/route.ts # LLM proxy for deduplication
+apps/web/src/components/auto-sync.tsx    # Auto-sync on page load
 ```
 
 **API Routes:**
 - `POST /api/plaid/create-link-token` - Generate link token
-- `POST /api/plaid/update-link-token` - Generate link token for update mode (manage accounts)
-- `POST /api/plaid/exchange-token` - Exchange public token
-- `POST /api/plaid/sync` - Manual sync trigger
+- `POST /api/plaid/update-link-token` - Generate link token for update mode
+- `POST /api/plaid/exchange-token` - Exchange public token, create accounts
+- `POST /api/plaid/sync` - Server proxy for transactionsSync (with retry logic)
+- `POST /api/dedup/verify` - LLM proxy for deduplication verification
+
+**Client-Side Sync Hook** (`usePlaidSync`):
+```typescript
+const { syncItem, syncAllItems, isSyncing, syncStatus } = usePlaidSync();
+
+// Sync a single Plaid item
+const result = await syncItem(plaidItemId);
+// Returns: { added, modified, removed, upgraded, errors, requiresReauth }
+```
 
 **Environment Variables:**
 ```
 PLAID_CLIENT_ID=your_client_id
 PLAID_SECRET=your_sandbox_secret
 PLAID_ENV=sandbox  # or production
+OPENAI_API_KEY=your_key  # For LLM deduplication (optional)
 ```
 
 **Testing:**
