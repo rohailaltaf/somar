@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       itemId: result.itemId,
-      accountCount: result.accountCount,
+      accounts: result.accounts,
     });
   } catch (error) {
     console.error("Error in exchange-token:", error);
