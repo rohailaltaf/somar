@@ -2,8 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Account } from "@prisma/client";
-import { createManyTransactions } from "@/actions/transactions";
+import { useTransactionMutations, useTransactions } from "@/hooks";
 import { analyzeForDuplicates, DedupAnalysisResult } from "@/actions/dedup";
 import {
   parseCSV,
@@ -11,6 +10,13 @@ import {
   ColumnMapping,
   ParsedTransaction,
 } from "@/lib/csv-parser";
+
+// Simplified transaction type for post-dedup (no rawRow needed)
+interface SimpleTransaction {
+  date: string;
+  description: string;
+  amount: number;
+}
 import {
   Card,
   CardContent,
@@ -49,12 +55,21 @@ import {
   Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 
 type Step = "select-account" | "upload" | "map-columns" | "confirm-signs" | "review-duplicates" | "preview" | "complete";
 
+interface Account {
+  id: string;
+  name: string;
+  type: string;
+  createdAt: string;
+  plaidItemId: string | null;
+  plaidAccountId: string | null;
+}
+
 interface FlaggedTransaction {
-  transaction: ParsedTransaction;
+  transaction: SimpleTransaction;
   reason: "already-exists";
   selected: boolean;
   originalIndex: number;
@@ -69,6 +84,8 @@ interface UploadInterfaceProps {
 
 export function UploadInterface({ accounts }: UploadInterfaceProps) {
   const router = useRouter();
+  const { createManyTransactions } = useTransactionMutations();
+
   const [step, setStep] = useState<Step>("select-account");
   const [selectedAccountId, setSelectedAccountId] = useState<string>("");
   const [fileName, setFileName] = useState<string>("");
@@ -81,7 +98,7 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
     debit: null,
     credit: null,
   });
-  const [uniqueTransactions, setUniqueTransactions] = useState<ParsedTransaction[]>([]);
+  const [uniqueTransactions, setUniqueTransactions] = useState<SimpleTransaction[]>([]);
   const [flaggedTransactions, setFlaggedTransactions] = useState<FlaggedTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
@@ -89,6 +106,11 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
   const [flipAmountSign, setFlipAmountSign] = useState(false);
   const [previewTransactions, setPreviewTransactions] = useState<ParsedTransaction[]>([]);
   const [dedupStats, setDedupStats] = useState<DedupAnalysisResult["stats"] | null>(null);
+
+  // Fetch existing transactions for dedup (only for selected account)
+  const { data: existingTransactions = [] } = useTransactions({
+    accountId: selectedAccountId || undefined,
+  });
 
   const handleFileUpload = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -141,19 +163,27 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
     }
 
     try {
-      // Use the new AI-powered deduplication system
+      // Send existing transactions to server for dedup analysis
+      const existingForDedup = existingTransactions.map(t => ({
+        id: t.id,
+        description: t.description,
+        amount: t.amount,
+        date: t.date,
+      }));
+
+      // Use the AI-powered deduplication system
       const result = await analyzeForDuplicates(
         transformed.map(t => ({
           description: t.description,
           amount: t.amount,
           date: t.date,
         })),
-        selectedAccountId,
+        existingForDedup,
         true // Use AI matching
       );
 
       // Convert results to component format
-      const unique: ParsedTransaction[] = result.unique.map(t => ({
+      const unique: SimpleTransaction[] = result.unique.map(t => ({
         description: t.description,
         amount: t.amount,
         date: t.date,
@@ -189,7 +219,7 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
       setIsLoading(false);
       setLoadingMessage("");
     }
-  }, [rows, mapping, selectedAccountId, flipAmountSign]);
+  }, [rows, mapping, flipAmountSign, existingTransactions]);
 
   const toggleFlagged = (index: number) => {
     setFlaggedTransactions(prev => {
@@ -210,41 +240,32 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
     return [...uniqueTransactions, ...selectedFlagged];
   };
 
-  const handleImport = async () => {
-    setIsLoading(true);
+  const handleImport = () => {
     const toImport = getTransactionsToImport();
 
-    try {
-      if (toImport.length === 0) {
-        toast.error("No transactions to import");
-        setIsLoading(false);
-        return;
-      }
-
-      await createManyTransactions(
-        toImport.map((t) => ({
-          accountId: selectedAccountId,
-          description: t.description,
-          amount: t.amount,
-          date: t.date,
-        }))
-      );
-
-      setImportedCount(toImport.length);
-      setStep("complete");
-      toast.success(`Imported ${toImport.length} transactions`);
-    } catch (error) {
-      toast.error("Failed to import transactions");
-    } finally {
-      setIsLoading(false);
+    if (toImport.length === 0) {
+      toast.error("No transactions to import");
+      return;
     }
-  };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(Math.abs(amount));
+    createManyTransactions.mutate(
+      toImport.map((t) => ({
+        accountId: selectedAccountId,
+        description: t.description,
+        amount: t.amount,
+        date: t.date,
+      })),
+      {
+        onSuccess: () => {
+          setImportedCount(toImport.length);
+          setStep("complete");
+          toast.success(`Imported ${toImport.length} transactions`);
+        },
+        onError: () => {
+          toast.error("Failed to import transactions");
+        },
+      }
+    );
   };
 
   const selectedAccount = accounts.find((a) => a.id === selectedAccountId);
@@ -589,7 +610,7 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
                   <TableBody>
                     {previewTransactions.slice(0, 10).map((t, i) => {
                       const displayAmount = flipAmountSign ? -t.amount : t.amount;
-                      const isExpense = displayAmount < 0; // Negative = expense
+                      const isExpense = displayAmount < 0;
                       return (
                         <TableRow key={i}>
                           <TableCell className="whitespace-nowrap">{t.date}</TableCell>
@@ -602,7 +623,7 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
                               )}
                             >
                               {isExpense ? "-" : "+"}
-                              {formatCurrency(displayAmount)}
+                              {formatCurrency(Math.abs(displayAmount), true)}
                             </span>
                           </TableCell>
                           <TableCell className="text-center">
@@ -651,7 +672,7 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
           <CardHeader>
             <CardTitle>Review Potential Duplicates</CardTitle>
             <CardDescription>
-              {flaggedTransactions.length} transaction{flaggedTransactions.length !== 1 ? "s" : ""} detected as duplicates using AI-powered matching.
+              {flaggedTransactions.length} transaction{flaggedTransactions.length !== 1 ? "s" : ""} detected as duplicates.
               They won&apos;t be imported unless you check them.
             </CardDescription>
           </CardHeader>
@@ -670,8 +691,7 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
             <Alert>
               <AlertCircle className="w-4 h-4" />
               <AlertDescription>
-                These transactions match existing records. The AI detected them as duplicates even with different description formats.
-                Check any that you want to import anyway.
+                These transactions match existing records. Check any that you want to import anyway.
               </AlertDescription>
             </Alert>
 
@@ -730,7 +750,7 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
                           )}
                         >
                           {item.transaction.amount < 0 ? "-" : "+"}
-                          {formatCurrency(item.transaction.amount)}
+                          {formatCurrency(Math.abs(item.transaction.amount), true)}
                         </span>
                       </TableCell>
                       <TableCell className="text-center">
@@ -816,7 +836,7 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
                             )}
                           >
                             {t.amount < 0 ? "-" : "+"}
-                            {formatCurrency(t.amount)}
+                            {formatCurrency(Math.abs(t.amount), true)}
                           </span>
                         </TableCell>
                       </TableRow>
@@ -836,10 +856,10 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
               </Button>
               <Button
                 onClick={handleImport}
-                disabled={isLoading || getTransactionsToImport().length === 0}
+                disabled={createManyTransactions.isPending || getTransactionsToImport().length === 0}
                 className="flex-1"
               >
-                {isLoading ? (
+                {createManyTransactions.isPending ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Importing...
