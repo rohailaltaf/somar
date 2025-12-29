@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Category, CategoryBudget } from "@prisma/client";
-import { deleteCategory, updateCategory, setBudget, deleteBudget } from "@/actions/categories";
+import { useCategoryMutations } from "@/hooks";
 import {
   Card,
   CardContent,
@@ -40,7 +39,18 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 
-interface CategoryWithBudget extends Category {
+interface CategoryBudget {
+  id: string;
+  amount: number;
+  startMonth: string;
+}
+
+interface CategoryWithBudget {
+  id: string;
+  name: string;
+  type: string;
+  color: string;
+  createdAt: string;
   currentBudget: CategoryBudget | null;
   allBudgets: CategoryBudget[];
 }
@@ -50,6 +60,8 @@ interface CategoriesListProps {
 }
 
 export function CategoriesList({ categories }: CategoriesListProps) {
+  const { updateCategory, deleteCategory, setBudget, deleteBudget } = useCategoryMutations();
+
   const [editingCategory, setEditingCategory] = useState<CategoryWithBudget | null>(null);
   const [deletingCategory, setDeletingCategory] = useState<CategoryWithBudget | null>(null);
   const [budgetCategory, setBudgetCategory] = useState<CategoryWithBudget | null>(null);
@@ -69,20 +81,29 @@ export function CategoriesList({ categories }: CategoriesListProps) {
     setEditColor(category.color);
   };
 
-  const handleSaveEdit = async () => {
+  const handleSaveEdit = () => {
     if (!editingCategory || !editName.trim()) return;
 
-    await updateCategory(editingCategory.id, editName.trim(), editType, editColor);
-    setEditingCategory(null);
-    toast.success("Category updated");
+    updateCategory.mutate(
+      { id: editingCategory.id, name: editName.trim(), type: editType, color: editColor },
+      {
+        onSuccess: () => {
+          setEditingCategory(null);
+          toast.success("Category updated");
+        },
+      }
+    );
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!deletingCategory) return;
 
-    await deleteCategory(deletingCategory.id);
-    setDeletingCategory(null);
-    toast.success("Category deleted");
+    deleteCategory.mutate(deletingCategory.id, {
+      onSuccess: () => {
+        setDeletingCategory(null);
+        toast.success("Category deleted");
+      },
+    });
   };
 
   const handleOpenBudget = (category: CategoryWithBudget) => {
@@ -90,7 +111,7 @@ export function CategoriesList({ categories }: CategoriesListProps) {
     setBudgetAmount(category.currentBudget?.amount?.toString() || "");
   };
 
-  const handleSaveBudget = async () => {
+  const handleSaveBudget = () => {
     if (!budgetCategory) return;
 
     const amount = parseFloat(budgetAmount);
@@ -99,9 +120,23 @@ export function CategoriesList({ categories }: CategoriesListProps) {
       return;
     }
 
-    await setBudget(budgetCategory.id, amount, budgetMonth);
-    setBudgetCategory(null);
-    toast.success("Budget saved");
+    setBudget.mutate(
+      { categoryId: budgetCategory.id, amount, startMonth: budgetMonth },
+      {
+        onSuccess: () => {
+          setBudgetCategory(null);
+          toast.success("Budget saved");
+        },
+      }
+    );
+  };
+
+  const handleDeleteBudget = (budgetId: string) => {
+    deleteBudget.mutate(budgetId, {
+      onSuccess: () => {
+        toast.success("Budget removed");
+      },
+    });
   };
 
   const formatCurrency = (amount: number) => {
@@ -248,7 +283,9 @@ export function CategoriesList({ categories }: CategoriesListProps) {
             <Button variant="outline" onClick={() => setEditingCategory(null)}>
               Cancel
             </Button>
-            <Button onClick={handleSaveEdit}>Save Changes</Button>
+            <Button onClick={handleSaveEdit} disabled={updateCategory.isPending}>
+              {updateCategory.isPending ? "Saving..." : "Save Changes"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -336,10 +373,8 @@ export function CategoriesList({ categories }: CategoriesListProps) {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={async () => {
-                              await deleteBudget(budget.id);
-                              toast.success("Budget removed");
-                            }}
+                            onClick={() => handleDeleteBudget(budget.id)}
+                            disabled={deleteBudget.isPending}
                           >
                             <X className="w-4 h-4" />
                           </Button>
@@ -355,7 +390,9 @@ export function CategoriesList({ categories }: CategoriesListProps) {
             <Button variant="outline" onClick={() => setBudgetCategory(null)}>
               Cancel
             </Button>
-            <Button onClick={handleSaveBudget}>Save Budget</Button>
+            <Button onClick={handleSaveBudget} disabled={setBudget.isPending}>
+              {setBudget.isPending ? "Saving..." : "Save Budget"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -374,8 +411,8 @@ export function CategoriesList({ categories }: CategoriesListProps) {
             <Button variant="outline" onClick={() => setDeletingCategory(null)}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleDelete}>
-              Delete
+            <Button variant="destructive" onClick={handleDelete} disabled={deleteCategory.isPending}>
+              {deleteCategory.isPending ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -383,4 +420,3 @@ export function CategoriesList({ categories }: CategoriesListProps) {
     </>
   );
 }
-
