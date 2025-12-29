@@ -2,12 +2,12 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { usePlaidLink, PlaidLinkOnSuccess } from "react-plaid-link";
-import { deleteAccount, updateAccount, AccountType, createAccount } from "@/actions/accounts";
+import { useAccountMutations } from "@/hooks";
 import {
   PlaidItemWithAccounts,
+  PlaidAccountInfo,
   disconnectInstitution,
   syncTransactionsForItem,
-  refreshHistoricalData,
   updatePlaidItemAccounts,
 } from "@/actions/plaid";
 import {
@@ -43,7 +43,6 @@ import {
   Pencil,
   Trash2,
   Link2,
-  Plus,
   RefreshCw,
   Unlink,
   Loader2,
@@ -61,29 +60,30 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+import type { AccountType } from "@somar/shared";
 
-interface AccountWithPlaid {
+interface Account {
   id: string;
   name: string;
   type: string;
   createdAt: string;
   plaidItemId: string | null;
   plaidAccountId: string | null;
-  plaidItem: {
-    institutionName: string;
-    lastSyncedAt: string | null;
-  } | null;
 }
 
 interface AccountsInterfaceProps {
-  accounts: AccountWithPlaid[];
+  accounts: Account[];
   plaidItems: PlaidItemWithAccounts[];
 }
 
 export function AccountsInterface({ accounts, plaidItems }: AccountsInterfaceProps) {
+  const { createAccount, updateAccount, deleteAccount } = useAccountMutations();
+  const queryClient = useQueryClient();
+
   // State for account management
-  const [editingAccount, setEditingAccount] = useState<AccountWithPlaid | null>(null);
-  const [deletingAccount, setDeletingAccount] = useState<AccountWithPlaid | null>(null);
+  const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+  const [deletingAccount, setDeletingAccount] = useState<Account | null>(null);
   const [editName, setEditName] = useState("");
   const [editType, setEditType] = useState<AccountType>("checking");
   
@@ -91,14 +91,12 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newAccountName, setNewAccountName] = useState("");
   const [newAccountType, setNewAccountType] = useState<AccountType>("checking");
-  const [isCreating, setIsCreating] = useState(false);
   
   // State for Plaid connection
   const [items, setItems] = useState<PlaidItemWithAccounts[]>(plaidItems);
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [syncingItems, setSyncingItems] = useState<Set<string>>(new Set());
-  const [refreshingItems, setRefreshingItems] = useState<Set<string>>(new Set());
   const [disconnectingItem, setDisconnectingItem] = useState<PlaidItemWithAccounts | null>(null);
   const [deleteTransactions, setDeleteTransactions] = useState(false);
   
@@ -107,53 +105,68 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
   const [updateModeLinkToken, setUpdateModeLinkToken] = useState<string | null>(null);
   const [isUpdatingAccounts, setIsUpdatingAccounts] = useState(false);
 
+  const invalidateQueries = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["accounts"] });
+    queryClient.invalidateQueries({ queryKey: ["plaidItems"] });
+  }, [queryClient]);
+
   // Separate accounts into connected and manual
-  const connectedAccounts = accounts.filter((a) => a.plaidItemId);
-  const manualAccounts = accounts.filter((a) => !a.plaidItemId);
+  const connectedAccounts = accounts.filter((a) => a.plaidAccountId);
+  const manualAccounts = accounts.filter((a) => !a.plaidAccountId);
 
   // ========== Manual Account Handlers ==========
   
-  const handleCreateAccount = async () => {
+  const handleCreateAccount = () => {
     if (!newAccountName.trim()) {
       toast.error("Please enter an account name");
       return;
     }
 
-    setIsCreating(true);
-    try {
-      await createAccount(newAccountName.trim(), newAccountType);
-      toast.success("Account created");
-      setShowCreateDialog(false);
-      setNewAccountName("");
-      setNewAccountType("checking");
-      window.location.reload();
-    } catch {
-      toast.error("Failed to create account");
-    } finally {
-      setIsCreating(false);
-    }
+    createAccount.mutate(
+      { name: newAccountName.trim(), type: newAccountType },
+      {
+        onSuccess: () => {
+          toast.success("Account created");
+          setShowCreateDialog(false);
+          setNewAccountName("");
+          setNewAccountType("checking");
+        },
+        onError: () => {
+          toast.error("Failed to create account");
+        },
+      }
+    );
   };
 
-  const handleEdit = (account: AccountWithPlaid) => {
+  const handleEdit = (account: Account) => {
     setEditingAccount(account);
     setEditName(account.name);
     setEditType(account.type as AccountType);
   };
 
-  const handleSaveEdit = async () => {
+  const handleSaveEdit = () => {
     if (!editingAccount || !editName.trim()) return;
 
-    await updateAccount(editingAccount.id, editName.trim(), editType);
-    setEditingAccount(null);
-    toast.success("Account updated");
+    updateAccount.mutate(
+      { id: editingAccount.id, name: editName.trim(), type: editType },
+      {
+        onSuccess: () => {
+          setEditingAccount(null);
+          toast.success("Account updated");
+        },
+      }
+    );
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!deletingAccount) return;
 
-    await deleteAccount(deletingAccount.id);
-    setDeletingAccount(null);
-    toast.success("Account deleted");
+    deleteAccount.mutate(deletingAccount.id, {
+      onSuccess: () => {
+        setDeletingAccount(null);
+        toast.success("Account deleted");
+      },
+    });
   };
 
   // ========== Plaid Connection Handlers ==========
@@ -199,11 +212,21 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
           return;
         }
 
+        // Create accounts in user's local encrypted database
+        const accountsToCreate = data.accounts as PlaidAccountInfo[];
+        for (const account of accountsToCreate) {
+          await createAccount.mutateAsync({
+            name: account.name,
+            type: account.type,
+            plaidAccountId: account.plaidAccountId,
+          });
+        }
+
         toast.success(
-          `Connected ${metadata.institution?.name}! ${data.accountCount} account(s) added.`
+          `Connected ${metadata.institution?.name}! ${accountsToCreate.length} account(s) added.`
         );
 
-        window.location.reload();
+        invalidateQueries();
       } catch {
         toast.error("Failed to connect institution");
       } finally {
@@ -211,7 +234,7 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
         setLinkToken(null);
       }
     },
-    []
+    [invalidateQueries, createAccount]
   );
 
   const { open, ready } = usePlaidLink({
@@ -234,17 +257,19 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
 
     try {
       const result = await syncTransactionsForItem(itemId);
-      toast.success(
-        `Synced: ${result.added} added, ${result.modified} modified, ${result.removed} removed`
-      );
-
-      setItems((prev) =>
-        prev.map((item) =>
-          item.id === itemId
-            ? { ...item, lastSyncedAt: new Date().toISOString() }
-            : item
-        )
-      );
+      if (result.success) {
+        toast.success(result.message);
+        setItems((prev) =>
+          prev.map((item) =>
+            item.id === itemId
+              ? { ...item, lastSyncedAt: new Date() }
+              : item
+          )
+        );
+        invalidateQueries();
+      } else {
+        toast.error(result.message);
+      }
     } catch {
       toast.error("Failed to sync transactions");
     } finally {
@@ -256,52 +281,18 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
     }
   };
 
-  const handleRefreshHistory = async (itemId: string) => {
-    setRefreshingItems((prev) => new Set(prev).add(itemId));
-
-    try {
-      const result = await refreshHistoricalData(itemId);
-      toast.success(
-        `Refreshed history: ${result.added} transactions added`
-      );
-
-      setItems((prev) =>
-        prev.map((item) =>
-          item.id === itemId
-            ? { ...item, lastSyncedAt: new Date().toISOString() }
-            : item
-        )
-      );
-    } catch {
-      toast.error("Failed to refresh historical data");
-    } finally {
-      setRefreshingItems((prev) => {
-        const next = new Set(prev);
-        next.delete(itemId);
-        return next;
-      });
-    }
-  };
-
   const handleDisconnect = async () => {
     if (!disconnectingItem) return;
 
     try {
-      const result = await disconnectInstitution(
-        disconnectingItem.id,
-        deleteTransactions
-      );
+      const result = await disconnectInstitution(disconnectingItem.id);
 
       if (result.success) {
-        toast.success(
-          `Disconnected ${disconnectingItem.institutionName}${
-            deleteTransactions ? " and deleted transactions" : ""
-          }`
-        );
+        toast.success(`Disconnected ${disconnectingItem.institutionName}`);
         setItems((prev) =>
           prev.filter((item) => item.id !== disconnectingItem.id)
         );
-        window.location.reload();
+        invalidateQueries();
       } else {
         toast.error(result.error || "Failed to disconnect");
       }
@@ -344,9 +335,7 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
   };
 
   const onUpdateModeSuccess: PlaidLinkOnSuccess = useCallback(
-    async (publicToken, metadata) => {
-      // In update mode, publicToken will be the same as before - no need to exchange
-      // We just need to refresh the accounts list from Plaid
+    async () => {
       if (!updateModeItemId) return;
 
       try {
@@ -360,7 +349,7 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
           } else {
             toast.info("Account selection updated. No new accounts added.");
           }
-          window.location.reload();
+          invalidateQueries();
         } else {
           toast.error(result.error || "Failed to update accounts");
         }
@@ -372,10 +361,9 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
         setUpdateModeLinkToken(null);
       }
     },
-    [updateModeItemId]
+    [updateModeItemId, invalidateQueries]
   );
 
-  // Plaid Link for update mode
   const {
     open: openUpdateMode,
     ready: updateModeReady,
@@ -389,17 +377,16 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
     },
   });
 
-  // Open update mode when link token is ready
   useEffect(() => {
     if (updateModeLinkToken && updateModeReady) {
       openUpdateMode();
     }
   }, [updateModeLinkToken, updateModeReady, openUpdateMode]);
 
-  const formatLastSynced = (lastSyncedAt: string | null): string => {
+  const formatLastSynced = (lastSyncedAt: Date | null): string => {
     if (!lastSyncedAt) return "Never synced";
 
-    const date = new Date(lastSyncedAt);
+    const date = lastSyncedAt;
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
@@ -520,7 +507,7 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
                         variant="outline"
                         size="sm"
                         onClick={() => handleSync(item.id)}
-                        disabled={syncingItems.has(item.id) || refreshingItems.has(item.id) || isUpdatingAccounts}
+                        disabled={syncingItems.has(item.id) || isUpdatingAccounts}
                       >
                         {syncingItems.has(item.id) ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
@@ -533,7 +520,7 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
                         variant="outline"
                         size="sm"
                         onClick={() => handleManageAccounts(item.id)}
-                        disabled={syncingItems.has(item.id) || refreshingItems.has(item.id) || isUpdatingAccounts}
+                        disabled={syncingItems.has(item.id) || isUpdatingAccounts}
                         title="Add or remove accounts from this connection"
                       >
                         {isUpdatingAccounts && updateModeItemId === item.id ? (
@@ -542,20 +529,6 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
                           <Settings2 className="w-4 h-4" />
                         )}
                         <span className="ml-2">Manage Accounts</span>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleRefreshHistory(item.id)}
-                        disabled={syncingItems.has(item.id) || refreshingItems.has(item.id) || isUpdatingAccounts}
-                        title="Re-fetch all historical transactions (use if initial sync was incomplete)"
-                      >
-                        {refreshingItems.has(item.id) ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Clock className="w-4 h-4" />
-                        )}
-                        <span className="ml-2">Refresh History</span>
                       </Button>
                       <Button
                         variant="outline"
@@ -579,7 +552,7 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem 
                             onClick={() => handleSync(item.id)}
-                            disabled={syncingItems.has(item.id) || refreshingItems.has(item.id) || isUpdatingAccounts}
+                            disabled={syncingItems.has(item.id) || isUpdatingAccounts}
                           >
                             {syncingItems.has(item.id) ? (
                               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -590,7 +563,7 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
                           </DropdownMenuItem>
                           <DropdownMenuItem 
                             onClick={() => handleManageAccounts(item.id)}
-                            disabled={syncingItems.has(item.id) || refreshingItems.has(item.id) || isUpdatingAccounts}
+                            disabled={syncingItems.has(item.id) || isUpdatingAccounts}
                           >
                             {isUpdatingAccounts && updateModeItemId === item.id ? (
                               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -598,17 +571,6 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
                               <Settings2 className="w-4 h-4 mr-2" />
                             )}
                             Manage Accounts
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => handleRefreshHistory(item.id)}
-                            disabled={syncingItems.has(item.id) || refreshingItems.has(item.id) || isUpdatingAccounts}
-                          >
-                            {refreshingItems.has(item.id) ? (
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            ) : (
-                              <Clock className="w-4 h-4 mr-2" />
-                            )}
-                            Refresh History
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem 
@@ -626,8 +588,7 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
                 <CardContent>
                   <div className="flex flex-wrap gap-2">
                     {item.accounts.map((account) => {
-                      // Find the full account object to enable editing
-                      const fullAccount = connectedAccounts.find(a => a.id === account.id);
+                      const fullAccount = connectedAccounts.find(a => a.plaidAccountId === account.plaidAccountId);
                       return (
                         <button
                           key={account.id}
@@ -635,10 +596,7 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
                           className="inline-flex items-center gap-1 rounded-md border px-2.5 py-0.5 text-xs font-semibold bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors cursor-pointer group"
                           title="Click to rename"
                         >
-                          {account.name}
-                          <span className="text-muted-foreground">
-                            ({account.type === "credit_card" ? "CC" : account.type})
-                          </span>
+                          {fullAccount?.name || account.name}
                           <Pencil className="w-3 h-3 ml-1 opacity-0 group-hover:opacity-60 transition-opacity" />
                         </button>
                       );
@@ -750,8 +708,8 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
             <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={handleCreateAccount} disabled={isCreating}>
-              {isCreating ? "Creating..." : "Create Account"}
+            <Button onClick={handleCreateAccount} disabled={createAccount.isPending}>
+              {createAccount.isPending ? "Creating..." : "Create Account"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -795,7 +753,9 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
             <Button variant="outline" onClick={() => setEditingAccount(null)}>
               Cancel
             </Button>
-            <Button onClick={handleSaveEdit}>Save Changes</Button>
+            <Button onClick={handleSaveEdit} disabled={updateAccount.isPending}>
+              {updateAccount.isPending ? "Saving..." : "Save Changes"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -814,8 +774,8 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
             <Button variant="outline" onClick={() => setDeletingAccount(null)}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleDelete}>
-              Delete
+            <Button variant="destructive" onClick={handleDelete} disabled={deleteAccount.isPending}>
+              {deleteAccount.isPending ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -891,4 +851,3 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
     </>
   );
 }
-
