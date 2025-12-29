@@ -1,0 +1,158 @@
+// Central database schema for authentication and user management
+// This database stores shared data across all users (auth, Plaid connections, etc.)
+// User-specific finance data is stored in encrypted per-user SQLite blobs
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../node_modules/.prisma/central-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("CENTRAL_DATABASE_URL")
+}
+
+// ============================================================================
+// Better Auth Tables
+// These tables are required by Better Auth and follow their schema conventions
+// ============================================================================
+
+model User {
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false) @map("email_verified")
+  image         String?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Custom fields for E2EE
+  publicKey     String?   @map("public_key") // RSA public key for encrypting Plaid data
+
+  sessions      Session[]
+  accounts      Account[]
+  plaidItems    PlaidItem[]
+  encryptedDb   EncryptedDatabase?
+  pendingSyncs  PendingPlaidSync[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime @map("expires_at")
+  token     String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  userId    String   @map("user_id")
+
+  // Custom fields for device session locking
+  deviceId      String?  @map("device_id")
+  deviceName    String?  @map("device_name")
+  isActive      Boolean  @default(true) @map("is_active")
+  lastHeartbeat DateTime @default(now()) @map("last_heartbeat")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String    @map("account_id")
+  providerId            String    @map("provider_id")
+  userId                String    @map("user_id")
+  accessToken           String?   @map("access_token")
+  refreshToken          String?   @map("refresh_token")
+  idToken               String?   @map("id_token")
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at")
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
+  scope                 String?
+  password              String?   // Hashed password for email/password auth
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("accounts")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime @map("expires_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("verifications")
+}
+
+// ============================================================================
+// Custom Tables for Somar
+// ============================================================================
+
+// Plaid connections - stored centrally because access tokens must stay server-side
+model PlaidItem {
+  id              String    @id @default(uuid())
+  userId          String    @map("user_id")
+  accessToken     String    @map("access_token") // Encrypted at rest
+  institutionId   String    @map("institution_id")
+  institutionName String    @map("institution_name")
+  cursor          String?   // For incremental transaction sync
+  lastSyncedAt    DateTime? @map("last_synced_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Plaid accounts metadata (not the full data - that's in user's encrypted DB)
+  plaidAccounts PlaidAccountMeta[]
+
+  @@map("plaid_items")
+}
+
+// Minimal Plaid account metadata for syncing purposes
+model PlaidAccountMeta {
+  id             String @id @default(uuid())
+  plaidItemId    String @map("plaid_item_id")
+  plaidAccountId String @map("plaid_account_id") // Plaid's account ID
+  name           String
+  type           String // checking, credit_card, etc.
+
+  plaidItem PlaidItem @relation(fields: [plaidItemId], references: [id], onDelete: Cascade)
+
+  @@unique([plaidItemId, plaidAccountId])
+  @@map("plaid_account_meta")
+}
+
+// Metadata about user's encrypted database blob
+model EncryptedDatabase {
+  id        String   @id @default(uuid())
+  userId    String   @unique @map("user_id")
+  version   Int      @default(1) // For optimistic locking
+  sizeBytes Int      @default(0) @map("size_bytes")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("encrypted_databases")
+}
+
+// Queue for Plaid sync data waiting for client to pick up
+// Data is encrypted with user's public key - server cannot read it
+model PendingPlaidSync {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  encryptedData Bytes    @map("encrypted_data") // Encrypted with user's public key
+  syncType      String   @map("sync_type") // "transactions", "accounts", etc.
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("pending_plaid_syncs")
+}
+
