@@ -1,13 +1,7 @@
 "use client";
 
 import { useState, useMemo, memo } from "react";
-import { Category } from "@prisma/client";
-import {
-  updateTransaction,
-  deleteTransaction,
-  toggleExcluded,
-  confirmTransaction,
-} from "@/actions/transactions";
+import { useTransactionMutations } from "@/hooks";
 import {
   Table,
   TableBody,
@@ -38,21 +32,25 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
   Receipt,
   MoreVertical,
-  Tags,
   EyeOff,
   Eye,
   Trash2,
-  Check,
-  X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
+
+interface Category {
+  id: string;
+  name: string;
+  type: string;
+  color: string;
+  createdAt: string;
+}
 
 export interface TransactionWithRelations {
   id: string;
@@ -106,6 +104,8 @@ export function TransactionsList({
   transactions,
   categories,
 }: TransactionsListProps) {
+  const { confirmTransaction, toggleExcluded, deleteTransaction } = useTransactionMutations();
+
   const [editingCategory, setEditingCategory] = useState<{
     transaction: TransactionWithRelations;
     categoryId: string;
@@ -116,11 +116,14 @@ export function TransactionsList({
   // Memoize categories to prevent re-renders
   const memoizedCategories = useMemo(() => categories, [categories]);
 
-  const handleToggleExcluded = async (transaction: TransactionWithRelations) => {
-    await toggleExcluded(transaction.id);
-    toast.success(
-      transaction.excluded ? "Transaction included" : "Transaction excluded"
-    );
+  const handleToggleExcluded = (transaction: TransactionWithRelations) => {
+    toggleExcluded.mutate(transaction.id, {
+      onSuccess: () => {
+        toast.success(
+          transaction.excluded ? "Transaction included" : "Transaction excluded"
+        );
+      },
+    });
   };
 
   const handleCategoryChange = (
@@ -130,36 +133,32 @@ export function TransactionsList({
     setEditingCategory({ transaction, categoryId });
   };
 
-  const handleSaveCategory = async () => {
+  const handleSaveCategory = () => {
     if (!editingCategory) return;
 
-    // Use confirmTransaction to learn the pattern and auto-tag similar transactions
-    if (editingCategory.categoryId) {
-      await confirmTransaction(editingCategory.transaction.id, editingCategory.categoryId);
-    } else {
-      // If setting to uncategorized, just update without learning
-      await updateTransaction(editingCategory.transaction.id, {
-        categoryId: null,
-        isConfirmed: true,
-      });
-    }
-    setEditingCategory(null);
-    toast.success("Category updated");
+    confirmTransaction.mutate(
+      {
+        transactionId: editingCategory.transaction.id,
+        categoryId: editingCategory.categoryId,
+      },
+      {
+        onSuccess: () => {
+          setEditingCategory(null);
+          toast.success("Category updated");
+        },
+      }
+    );
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!deletingTransaction) return;
 
-    await deleteTransaction(deletingTransaction.id);
-    setDeletingTransaction(null);
-    toast.success("Transaction deleted");
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(Math.abs(amount));
+    deleteTransaction.mutate(deletingTransaction.id, {
+      onSuccess: () => {
+        setDeletingTransaction(null);
+        toast.success("Transaction deleted");
+      },
+    });
   };
 
   const formatDate = (dateStr: string) => {
@@ -275,7 +274,7 @@ export function TransactionsList({
                     )}
                   >
                     {transaction.amount < 0 ? "-" : "+"}
-                    {formatCurrency(transaction.amount)}
+                    {formatCurrency(Math.abs(transaction.amount), true)}
                   </span>
                 </TableCell>
                 <TableCell>
@@ -333,7 +332,9 @@ export function TransactionsList({
             <Button variant="outline" onClick={() => setEditingCategory(null)}>
               Cancel
             </Button>
-            <Button onClick={handleSaveCategory}>Save</Button>
+            <Button onClick={handleSaveCategory} disabled={confirmTransaction.isPending}>
+              {confirmTransaction.isPending ? "Saving..." : "Save"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -358,8 +359,8 @@ export function TransactionsList({
             >
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleDelete}>
-              Delete
+            <Button variant="destructive" onClick={handleDelete} disabled={deleteTransaction.isPending}>
+              {deleteTransaction.isPending ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -367,4 +368,3 @@ export function TransactionsList({
     </>
   );
 }
-
