@@ -15,3 +15,11 @@ export function getPreviousMonth(month: string) {
   const date = new Date(year, monthNum - 2, 1);
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
+
+export function formatMonth(monthStr: string) {
+  // Append T00:00:00 to force local time interpretation (date-only strings are UTC)
+  return new Date(`${monthStr}-01T00:00:00`).toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
+}
