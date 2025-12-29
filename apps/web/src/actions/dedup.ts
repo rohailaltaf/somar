@@ -1,6 +1,16 @@
 "use server";
 
-import { getTransactions } from "./transactions";
+/**
+ * Server-side deduplication using LLM.
+ * 
+ * In E2EE mode, the client sends both:
+ * - New transactions (from CSV)
+ * - Existing transactions (from their local encrypted DB)
+ * 
+ * Server runs LLM deduplication and returns results.
+ * The actual data merge happens client-side.
+ */
+
 import {
   findDuplicatesBatch,
   findDuplicatesDeterministic,
@@ -8,16 +18,20 @@ import {
   BatchDedupeResult,
 } from "@/lib/dedup";
 
-export interface ParsedTransactionForDedup {
+export interface TransactionForDedupInput {
+  id?: string; // Only existing transactions have IDs
   description: string;
   amount: number;
   date: string;
+  plaidAuthorizedDate?: string | null;
+  plaidPostedDate?: string | null;
+  plaidMerchantName?: string | null;
 }
 
 export interface DedupAnalysisResult {
-  unique: ParsedTransactionForDedup[];
+  unique: TransactionForDedupInput[];
   duplicates: Array<{
-    transaction: ParsedTransactionForDedup;
+    transaction: TransactionForDedupInput;
     matchedWith: {
       id: string;
       description: string;
@@ -32,25 +46,24 @@ export interface DedupAnalysisResult {
 
 /**
  * Analyze transactions for duplicates using the 2-tier deduplication system.
- * This is a server action that can be called from the client.
+ * 
+ * Client sends both new and existing transactions.
+ * Server runs dedup and returns results.
  *
  * Tier 1: Deterministic matching (fast, free)
  * Tier 2: LLM verification (for uncertain cases)
  *
- * @param transactions Parsed transactions from CSV
- * @param accountId Account to check against
+ * @param newTransactions Parsed transactions from CSV
+ * @param existingTransactions Existing transactions from client's local DB
  * @param useAI Whether to use LLM for uncertain cases
  */
 export async function analyzeForDuplicates(
-  transactions: ParsedTransactionForDedup[],
-  accountId: string,
+  newTransactions: TransactionForDedupInput[],
+  existingTransactions: TransactionForDedupInput[],
   useAI: boolean = true
 ): Promise<DedupAnalysisResult> {
-  // Get existing transactions for this account
-  const existingTransactions = await getTransactions({ accountId });
-
   // Convert to dedup format
-  const newTxs: TransactionForDedup[] = transactions.map((t) => ({
+  const newTxs: TransactionForDedup[] = newTransactions.map((t) => ({
     description: t.description,
     amount: t.amount,
     date: t.date,
@@ -61,10 +74,8 @@ export async function analyzeForDuplicates(
     description: t.description,
     amount: t.amount,
     date: t.date,
-    // Include Plaid dates for accurate matching against CSV
     plaidAuthorizedDate: t.plaidAuthorizedDate,
     plaidPostedDate: t.plaidPostedDate,
-    // Include Plaid merchant name for better matching
     plaidMerchantName: t.plaidMerchantName,
   }));
 
