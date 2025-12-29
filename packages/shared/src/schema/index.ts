@@ -62,6 +62,12 @@ export const SCHEMA_SQL = `
     created_at TEXT NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_rules_category ON categorization_rules(category_id);
+
+  CREATE TABLE IF NOT EXISTS plaid_sync_state (
+    item_id TEXT PRIMARY KEY,
+    cursor TEXT NOT NULL,
+    last_synced_at TEXT NOT NULL
+  );
 `;
 
 /**
