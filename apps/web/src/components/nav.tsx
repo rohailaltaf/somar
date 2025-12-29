@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard,
   CreditCard,
@@ -11,6 +12,7 @@ import {
   Zap,
   Upload,
   BarChart3,
+  LogOut,
 } from "lucide-react";
 
 const navItems = [
@@ -58,6 +60,18 @@ export function Nav() {
                 );
               })}
             </div>
+          </div>
+          <div className="flex items-center">
+            <Link href="/signout">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="hidden sm:inline">Sign out</span>
+              </Button>
+            </Link>
           </div>
         </div>
       </div>
