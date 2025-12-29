@@ -202,17 +202,9 @@ function AuthLoadingScreen() {
  * and encryption key is available.
  */
 function DatabaseGate({ children }: { children: ReactNode }) {
-  const { needsUnlock, isLoading: authLoading, encryptionKey: contextKey, session } = useAuth();
-
-  // Use encryption key from context state, with sessionStorage as fallback
-  // Context state is updated immediately after unlock()
-  // sessionStorage is used on page load (before context state is set)
-  const encryptionKey = contextKey || (typeof window !== "undefined" 
-    ? sessionStorage.getItem("somar_encryption_key") 
-    : null);
+  const { needsUnlock, isLoading: authLoading, encryptionKey, session } = useAuth();
 
   // While auth is loading, show a minimal loading screen to prevent flash of content
-  // This prevents: dashboard → decrypt → dashboard flicker
   if (authLoading) {
     return <AuthLoadingScreen />;
   }
@@ -222,8 +214,7 @@ function DatabaseGate({ children }: { children: ReactNode }) {
     return <UnlockPrompt />;
   }
 
-  // Only use encryption key if we have a valid session
-  // This prevents showing decrypt screen when logged out but sessionStorage has stale key
+  // Authenticated with encryption key - show protected content
   if (session && encryptionKey) {
     return (
       <DatabaseProvider encryptionKey={encryptionKey}>

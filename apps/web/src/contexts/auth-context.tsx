@@ -8,6 +8,7 @@ import {
   useEffect,
   type ReactNode,
 } from "react";
+import { useRouter } from "next/navigation";
 import { signIn, signUp, signOut, useSession, getSession } from "@/lib/auth-client";
 import { deriveEncryptionKey } from "@somar/shared";
 
@@ -48,8 +49,9 @@ interface AuthProviderProps {
  * clears when the browser tab is closed. Never sent to the server.
  */
 export function AuthProvider({ children }: AuthProviderProps) {
+  const router = useRouter();
   const { data: session, isPending: isLoading } = useSession();
-  
+
   // Initialize from sessionStorage if available
   const [encryptionKey, setEncryptionKey] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
@@ -91,14 +93,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Derive encryption key from password (client-side only)
       const key = await deriveEncryptionKey(password, salt);
 
-      // Set key in sessionStorage BEFORE navigation
-      sessionStorage.setItem(ENCRYPTION_KEY_STORAGE, key);
+      // Set React state - this ensures the key is available immediately for routing
+      setEncryptionKey(key);
 
-      // Hard navigation - ensures fresh page load with sessionStorage already set
-      // This avoids race conditions with React state updates
-      window.location.href = "/";
+      // Navigate to dashboard
+      router.push("/");
     },
-    []
+    [router]
   );
 
   const register = useCallback(
@@ -124,13 +125,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Derive encryption key from password (client-side only)
       const key = await deriveEncryptionKey(password, salt);
 
-      // Set key in sessionStorage BEFORE navigation
-      sessionStorage.setItem(ENCRYPTION_KEY_STORAGE, key);
+      // Set React state - this ensures the key is available immediately for routing
+      setEncryptionKey(key);
 
-      // Hard navigation - ensures fresh page load with sessionStorage already set
-      window.location.href = "/";
+      // Navigate to dashboard
+      router.push("/");
     },
-    []
+    [router]
   );
 
   const logout = useCallback(async () => {
@@ -141,9 +142,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Sign out from Better Auth
     await signOut();
 
-    // Hard navigation to login page
-    window.location.href = "/login";
-  }, []);
+    // Navigate to login page
+    router.push("/login");
+  }, [router]);
 
   // Unlock: re-derive encryption key from password without re-authenticating
   // Used when opening a new tab (session cookie exists, but sessionStorage is empty)
@@ -178,14 +179,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     [session]
   );
 
-  // User needs to unlock if:
-  // - Auth is not loading
-  // - Session exists
-  // - No encryption key in state or sessionStorage
-  const storedKey = typeof window !== "undefined" 
-    ? sessionStorage.getItem(ENCRYPTION_KEY_STORAGE) 
-    : null;
-  const needsUnlock = !isLoading && !!session && !encryptionKey && !storedKey;
+  // User needs to unlock if session exists but no encryption key available
+  const needsUnlock = !isLoading && !!session && !encryptionKey;
 
   const value: AuthContextValue = {
     session,
