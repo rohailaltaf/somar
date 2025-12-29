@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import type { CategoryType } from "@somar/shared";
+import { formatCurrency } from "@/lib/utils";
 
 interface CategoryBudget {
   id: string;
@@ -138,15 +139,6 @@ export function CategoriesList({ categories }: CategoriesListProps) {
         toast.success("Budget removed");
       },
     });
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
   };
 
   if (categories.length === 0) {

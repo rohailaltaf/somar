@@ -1,7 +1,7 @@
 "use client";
 
 import { Progress } from "@/components/ui/progress";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 
 interface BudgetProgressProps {
   spent: number;
@@ -26,15 +26,6 @@ export function BudgetProgress({
     if (isOverBudget) return "bg-red-500";
     if (isNearBudget) return "bg-amber-500";
     return "bg-emerald-500";
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
   };
 
   return (
