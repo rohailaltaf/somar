@@ -2,6 +2,9 @@ import { NextResponse, type NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 
+// Use Node.js runtime instead of Edge (required for Prisma)
+export const runtime = "nodejs";
+
 // Routes that don't require authentication
 const publicRoutes = ["/login", "/register", "/signout"];
 
