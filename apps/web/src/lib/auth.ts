@@ -2,12 +2,7 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { db } from "./db";
 
-function getAppUrl(): string {
-  if (!process.env.BETTER_AUTH_URL) {
-    throw new Error("BETTER_AUTH_URL environment variable is required");
-  }
-  return process.env.BETTER_AUTH_URL;
-}
+
 
 export const auth = betterAuth({
   database: prismaAdapter(db, {
@@ -37,7 +32,7 @@ export const auth = betterAuth({
   },
 
   // Trust proxy headers for production (behind reverse proxy)
-  trustedOrigins: [getAppUrl()],
+  trustedOrigins: [process.env.BETTER_AUTH_URL || ""],
 });
 
 // Export types for use in API routes and middleware
