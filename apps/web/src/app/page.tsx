@@ -3,7 +3,6 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { useSpendingByCategory, useTotalSpending, useUnconfirmedCount } from "@/hooks";
-import { useDatabase } from "@/hooks/use-database";
 import { Nav } from "@/components/nav";
 import { PageHeader } from "@/components/page-header";
 import { BudgetProgress } from "@/components/budget-progress";
@@ -26,6 +25,23 @@ import {
 } from "lucide-react";
 import { getCurrentMonth, formatMonth, formatCurrency } from "@/lib/utils";
 
+export default function DashboardPage() {
+  return (
+    <div className="min-h-screen bg-background">
+      <Nav />
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <PageHeader
+          title="Dashboard"
+          description="Overview of your spending and budgets"
+        />
+        <div className="mt-8">
+          <DashboardContent />
+        </div>
+      </main>
+    </div>
+  );
+}
+
 function DashboardContent() {
   const currentMonth = useMemo(() => getCurrentMonth(), []);
 
@@ -34,6 +50,10 @@ function DashboardContent() {
   const { data: unconfirmedCount = 0, isLoading: loadingUnconfirmed } = useUnconfirmedCount();
 
   const isLoading = loadingSpending || loadingTotal || loadingUnconfirmed;
+
+  if (isLoading) {
+    return <DashboardSkeleton />;
+  }
 
   const totalBudget = categorySpending.reduce(
     (sum, cat) => sum + (cat.budget || 0),
@@ -45,10 +65,6 @@ function DashboardContent() {
   const nearBudgetCategories = categorySpending.filter(
     (cat) => cat.budget && cat.spent > cat.budget * 0.8 && cat.spent <= cat.budget
   );
-
-  if (isLoading) {
-    return <DashboardSkeleton />;
-  }
 
   return (
     <div className="space-y-8">
@@ -156,43 +172,7 @@ function DashboardContent() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {categorySpending.length > 0 ? (
-            <div className="space-y-6">
-              {categorySpending
-                .filter((cat) => cat.spent > 0 || cat.budget)
-                .sort((a, b) => b.spent - a.spent)
-                .map((category) => (
-                  <BudgetProgress
-                    key={category.id}
-                    spent={category.spent}
-                    budget={category.budget}
-                    categoryName={category.name}
-                    categoryColor={category.color}
-                  />
-                ))}
-              {categorySpending.filter((cat) => cat.spent > 0 || cat.budget).length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>No spending data yet this month.</p>
-                  <Link href="/upload">
-                    <Button variant="link" className="mt-2">
-                      Upload transactions
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </Button>
-                  </Link>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <p>No categories found.</p>
-              <Link href="/categories">
-                <Button variant="link" className="mt-2">
-                  Set up categories
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </Link>
-            </div>
-          )}
+          <CategoryBreakdown categorySpending={categorySpending} />
         </CardContent>
       </Card>
 
@@ -250,6 +230,54 @@ function DashboardContent() {
   );
 }
 
+function CategoryBreakdown({ categorySpending }: { categorySpending: Array<{ id: string; name: string; color: string; spent: number; budget: number | null }> }) {
+  if (categorySpending.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        <p>No categories found.</p>
+        <Link href="/categories">
+          <Button variant="link" className="mt-2">
+            Set up categories
+            <ArrowRight className="w-4 h-4 ml-2" />
+          </Button>
+        </Link>
+      </div>
+    );
+  }
+
+  const visibleCategories = categorySpending.filter((cat) => cat.spent > 0 || cat.budget);
+  
+  if (visibleCategories.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        <p>No spending data yet this month.</p>
+        <Link href="/upload">
+          <Button variant="link" className="mt-2">
+            Upload transactions
+            <ArrowRight className="w-4 h-4 ml-2" />
+          </Button>
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {visibleCategories
+        .sort((a, b) => b.spent - a.spent)
+        .map((category) => (
+          <BudgetProgress
+            key={category.id}
+            spent={category.spent}
+            budget={category.budget}
+            categoryName={category.name}
+            categoryColor={category.color}
+          />
+        ))}
+    </div>
+  );
+}
+
 function DashboardSkeleton() {
   return (
     <div className="space-y-8">
@@ -277,47 +305,6 @@ function DashboardSkeleton() {
           </div>
         </CardContent>
       </Card>
-    </div>
-  );
-}
-
-export default function DashboardPage() {
-  const { error } = useDatabase();
-
-  // Database error
-  if (error) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-        <Card className="max-w-md w-full mx-4 border-slate-700 bg-slate-800/50">
-          <CardHeader className="text-center">
-            <CardTitle className="text-red-400">Error Loading Data</CardTitle>
-            <CardDescription className="text-slate-400">{error.message}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button 
-              className="w-full"
-              onClick={() => window.location.href = "/login"}
-            >
-              Try Signing In Again
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-background">
-      <Nav />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <PageHeader
-          title="Dashboard"
-          description="Overview of your spending and budgets"
-        />
-        <div className="mt-8">
-          <DashboardContent />
-        </div>
-      </main>
     </div>
   );
 }

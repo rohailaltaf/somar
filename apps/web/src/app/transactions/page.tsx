@@ -1,16 +1,12 @@
-import { getAccounts } from "@/actions/accounts";
-import { getCategories } from "@/actions/categories";
+"use client";
+
+import { useAccounts, useCategories } from "@/hooks";
 import { Nav } from "@/components/nav";
 import { PageHeader } from "@/components/page-header";
 import { TransactionsClient } from "./transactions-client";
+import { Loader2 } from "lucide-react";
 
-export default async function TransactionsPage() {
-  // Only load metadata - transactions will be loaded client-side for fast initial render
-  const [accounts, categories] = await Promise.all([
-    getAccounts(),
-    getCategories(),
-  ]);
-
+export default function TransactionsPage() {
   return (
     <div className="min-h-screen bg-background">
       <Nav />
@@ -20,13 +16,29 @@ export default async function TransactionsPage() {
           description="View and manage all your transactions"
         />
         <div className="mt-6">
-          <TransactionsClient
-            accounts={accounts}
-            categories={categories}
-          />
+          <TransactionsContent />
         </div>
       </main>
     </div>
   );
 }
 
+function TransactionsContent() {
+  const { data: accounts = [], isLoading: loadingAccounts } = useAccounts();
+  const { categories = [], isLoading: loadingCategories } = useCategories();
+
+  if (loadingAccounts || loadingCategories) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <TransactionsClient
+      accounts={accounts}
+      categories={categories}
+    />
+  );
+}
