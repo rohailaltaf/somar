@@ -157,7 +157,7 @@ async function main() {
             date: txn.date,
             name: txn.name,
             amount: txn.amount,
-            merchant_name: txn.merchant_name,
+            merchant_name: txn.merchant_name ?? null,
           });
         }
 

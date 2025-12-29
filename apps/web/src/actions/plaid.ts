@@ -24,6 +24,7 @@ import {
   Products,
   CountryCode,
 } from "plaid";
+import type { AccountType } from "@somar/shared";
 
 // Types
 export interface PlaidItemWithAccounts {
@@ -154,11 +155,11 @@ export async function createUpdateModeLinkToken(
 export interface PlaidAccountInfo {
   plaidAccountId: string;
   name: string;
-  type: "checking" | "credit_card" | "investment" | "loan";
+  type: AccountType;
 }
 
 // Helper function to map Plaid account types to our account types
-function mapPlaidAccountType(plaidType: string): "checking" | "credit_card" | "investment" | "loan" {
+function mapPlaidAccountType(plaidType: string): AccountType {
   switch (plaidType) {
     case "credit":
       return "credit_card";

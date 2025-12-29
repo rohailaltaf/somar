@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
+import type { CategoryType } from "@somar/shared";
 
 const presetColors = [
   "oklch(0.65 0.2 30)",   // Orange
@@ -40,7 +41,7 @@ export function CreateCategoryDialog() {
 
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
-  const [type, setType] = useState<"spending" | "income" | "transfer">("spending");
+  const [type, setType] = useState<CategoryType>("spending");
   const [color, setColor] = useState(presetColors[0]);
 
   const handleCreate = () => {
@@ -93,7 +94,7 @@ export function CreateCategoryDialog() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="type">Type</Label>
-            <Select value={type} onValueChange={(value) => setType(value as "spending" | "income" | "transfer")}>
+            <Select value={type} onValueChange={(value) => setType(value as CategoryType)}>
               <SelectTrigger id="type">
                 <SelectValue />
               </SelectTrigger>

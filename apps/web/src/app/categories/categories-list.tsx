@@ -38,6 +38,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import type { CategoryType } from "@somar/shared";
 
 interface CategoryBudget {
   id: string;
@@ -66,7 +67,7 @@ export function CategoriesList({ categories }: CategoriesListProps) {
   const [deletingCategory, setDeletingCategory] = useState<CategoryWithBudget | null>(null);
   const [budgetCategory, setBudgetCategory] = useState<CategoryWithBudget | null>(null);
   const [editName, setEditName] = useState("");
-  const [editType, setEditType] = useState<"spending" | "income" | "transfer">("spending");
+  const [editType, setEditType] = useState<CategoryType>("spending");
   const [editColor, setEditColor] = useState("");
   const [budgetAmount, setBudgetAmount] = useState("");
   const [budgetMonth, setBudgetMonth] = useState(() => {
@@ -77,7 +78,7 @@ export function CategoriesList({ categories }: CategoriesListProps) {
   const handleEdit = (category: CategoryWithBudget) => {
     setEditingCategory(category);
     setEditName(category.name);
-    setEditType(category.type as "spending" | "income" | "transfer");
+    setEditType(category.type as CategoryType);
     setEditColor(category.color);
   };
 
@@ -251,7 +252,7 @@ export function CategoriesList({ categories }: CategoriesListProps) {
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-type">Type</Label>
-              <Select value={editType} onValueChange={(value) => setEditType(value as "spending" | "income" | "transfer")}>
+              <Select value={editType} onValueChange={(value) => setEditType(value as CategoryType)}>
                 <SelectTrigger id="edit-type">
                   <SelectValue />
                 </SelectTrigger>

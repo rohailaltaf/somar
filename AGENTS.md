@@ -4,6 +4,11 @@
 
 **DO NOT do more than what is asked.** If in doubt, confirm with the user before implementing additional features, helpers, or conveniences. Stick to the specific request.
 
+**Check shared packages before implementing inline types.** Before defining new types inline (especially union types like account types or category types), check if they already exist in `packages/shared/src/`. Shared types should be imported from `@somar/shared`:
+```typescript
+import type { AccountType, CategoryType } from "@somar/shared";
+```
+
 ## Project Overview
 
 A personal finance web app for **tracking spending and income**. Users can import bank/credit card CSV exports, auto-categorize transactions, and track spending against category budgets.
