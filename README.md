@@ -1,6 +1,8 @@
 # Somar
 
-A modern, privacy-focused personal finance app for tracking spending and income. Import bank statements, auto-categorize transactions, and track spending against budgets — all running locally on your machine.
+A modern, privacy-focused personal finance app for tracking spending and income. Import bank statements, auto-categorize transactions, and track spending against budgets — with **end-to-end encryption** for your financial data.
+
+> **Architecture:** See [docs/architecture.md](docs/architecture.md) for detailed technical documentation on the E2EE architecture.
 
 ![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
 ![SQLite](https://img.shields.io/badge/SQLite-Local-blue?logo=sqlite)
@@ -137,26 +139,6 @@ pnpm dev
 
 Open [http://localhost:3000](http://localhost:3000) to see the app.
 
-### Demo Mode (Quick Preview)
-
-Want to see the app with realistic data right away? Use demo mode:
-
-```bash
-# Run demo mode (resets demo DB and starts dev server)
-pnpm --filter web demo
-```
-
-This creates a separate `finance-demo.db` with:
-- 6 accounts (checking, credit cards, savings, investment)
-- 3 mock Plaid connections (Chase, Amex, Fidelity)
-- 680+ transactions over 12 months
-- Realistic spending patterns and merchant names
-- Pre-set budgets for all categories
-
-Perfect for testing features without connecting your real data!
-
-**See [DEMO.md](DEMO.md) for more details.**
-
 ### Plaid Setup (Optional)
 
 To enable bank connections, create a [Plaid](https://plaid.com) account and add your credentials:
@@ -247,14 +229,9 @@ pnpm --filter web db:seed       # Seed default categories
 pnpm --filter web db:reset      # Reset database (WARNING: deletes all data)
 pnpm --filter web db:studio     # Open Prisma Studio GUI
 
-# Demo (separate database with realistic data)
-pnpm --filter web demo          # Reset demo DB + start dev server
-pnpm --filter web db:reset:demo # Reset demo database only
-
 # Production
 pnpm --filter web build         # Build for production
 pnpm --filter web db:push:prod  # Push schema to prod DB
-pnpm --filter web db:seed:prod  # Seed prod DB
 pnpm --filter web db:reset:prod # Reset prod DB
 pnpm --filter web db:studio:prod # Open Prisma Studio (prod DB)
 ```
@@ -272,12 +249,11 @@ pnpm --filter mobile web       # Start web version
 
 ## Environment Configuration
 
-The app supports separate development, demo, and production databases:
+The app supports separate development and production databases:
 
 | Environment | Database File | Config File | Purpose |
 |-------------|---------------|-------------|---------|
 | Development | `finance-dev.db` | `.env.development` | Your personal development data |
-| Demo | `finance-demo.db` | `.env.demo` | Realistic sample data for testing |
 | Production | `finance-prod.db` | `.env.production` | Production data |
 
 Note: Environment files live in `apps/web/`.
@@ -298,4 +274,6 @@ This project is released under the O'Saasy License. See the [LICENSE](LICENSE) f
 
 ---
 
-**Privacy Note:** All your financial data stays on your machine. The SQLite database is stored locally and never uploaded anywhere. Bank connections via Plaid use secure OAuth — your bank credentials are never stored in the app.
+**Privacy Note:** Your financial data is **end-to-end encrypted**. The server stores only encrypted blobs that it cannot decrypt. Your encryption key is derived from your password and never leaves your device. Bank connections via Plaid use secure OAuth — your bank credentials are never stored in the app.
+
+**Learn More:** See [docs/architecture.md](docs/architecture.md) for the full security model and architecture details.
