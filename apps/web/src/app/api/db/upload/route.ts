@@ -48,9 +48,6 @@ export async function POST(req: Request) {
         throw { type: "conflict", serverVersion: current.version };
       }
 
-      // Store the encrypted blob
-      await storage.put(`users/${userId}.db.enc`, blob);
-
       // Upsert metadata - create on first upload, update on subsequent
       const newVersion = current ? current.version + 1n : 1n;
 
@@ -70,6 +67,10 @@ export async function POST(req: Request) {
 
       return { version: newVersion };
     });
+
+    // Write storage only after transaction commits successfully
+    // This ensures only the winner of the version race writes to storage
+    await storage.put(`users/${userId}.db.enc`, blob);
 
     return NextResponse.json({
       ok: true,
