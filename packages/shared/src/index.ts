@@ -9,3 +9,6 @@ export * from "./crypto";
 
 // Database schema for E2EE SQLite database
 export * from "./schema";
+
+// Transaction deduplication (Tier 1 - client-side)
+export * from "./dedup";
