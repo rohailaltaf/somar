@@ -216,7 +216,7 @@ describe("Database Flow E2E", () => {
 
       const request1 = new Request("http://localhost/api/db/upload", {
         method: "POST",
-        body: encrypted1,
+        body: Buffer.from(encrypted1),
         headers: {
           "Content-Type": "application/octet-stream",
           "X-Expected-Version": "0",
@@ -235,7 +235,7 @@ describe("Database Flow E2E", () => {
 
       const request2 = new Request("http://localhost/api/db/upload", {
         method: "POST",
-        body: encrypted2,
+        body: Buffer.from(encrypted2),
         headers: {
           "Content-Type": "application/octet-stream",
           "X-Expected-Version": "1",
@@ -256,7 +256,7 @@ describe("Database Flow E2E", () => {
 
       const request1 = new Request("http://localhost/api/db/upload", {
         method: "POST",
-        body: encrypted1,
+        body: Buffer.from(encrypted1),
         headers: {
           "Content-Type": "application/octet-stream",
           "X-Expected-Version": "0",
@@ -271,7 +271,7 @@ describe("Database Flow E2E", () => {
 
       const request2 = new Request("http://localhost/api/db/upload", {
         method: "POST",
-        body: encrypted2,
+        body: Buffer.from(encrypted2),
         headers: {
           "Content-Type": "application/octet-stream",
           "X-Expected-Version": "0", // Stale!
@@ -304,7 +304,7 @@ describe("Database Flow E2E", () => {
 
       const request = new Request("http://localhost/api/db/upload", {
         method: "POST",
-        body: encrypted,
+        body: Buffer.from(encrypted),
         headers: {
           "Content-Type": "application/octet-stream",
           "X-Expected-Version": "1",
