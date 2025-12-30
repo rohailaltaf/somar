@@ -62,6 +62,31 @@ import {
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 
+// Separate component to isolate the usePlaidLink hook - only mounts when token exists
+function PlaidLinkLauncher({
+  token,
+  onSuccess,
+  onExit,
+}: {
+  token: string;
+  onSuccess: PlaidLinkOnSuccess;
+  onExit: () => void;
+}) {
+  const { open, ready } = usePlaidLink({
+    token,
+    onSuccess,
+    onExit,
+  });
+
+  useEffect(() => {
+    if (ready) {
+      open();
+    }
+  }, [ready, open]);
+
+  return null;
+}
+
 interface AccountsInterfaceProps {
   accounts: Account[];
   plaidItems: PlaidItemWithAccounts[];
@@ -83,16 +108,15 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
   const [newAccountName, setNewAccountName] = useState("");
   const [newAccountType, setNewAccountType] = useState<AccountType>("checking");
   
-  // State for Plaid connection
+  // State for Plaid connection (unified for both new connection and update mode)
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [syncingItems, setSyncingItems] = useState<Set<string>>(new Set());
   const [disconnectingItem, setDisconnectingItem] = useState<PlaidItemWithAccounts | null>(null);
   const [deleteTransactions, setDeleteTransactions] = useState(false);
 
-  // State for update mode (managing accounts)
+  // State for update mode (managing accounts) - uses shared linkToken
   const [updateModeItemId, setUpdateModeItemId] = useState<string | null>(null);
-  const [updateModeLinkToken, setUpdateModeLinkToken] = useState<string | null>(null);
   const [isUpdatingAccounts, setIsUpdatingAccounts] = useState(false);
 
   const invalidateQueries = useCallback(() => {
@@ -182,8 +206,40 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
     }
   };
 
+  // Unified onSuccess handler for both new connection and update mode
   const onSuccess: PlaidLinkOnSuccess = useCallback(
     async (publicToken, metadata) => {
+      // Check if we're in update mode (managing accounts for existing connection)
+      if (updateModeItemId) {
+        try {
+          const response = await fetch(`/api/plaid/items/${updateModeItemId}/accounts`, {
+            method: "POST",
+          });
+          const result = await response.json();
+
+          if (result.success) {
+            if (result.data?.added > 0) {
+              toast.success(
+                `Added ${result.data.added} new account(s)! Total: ${result.data.total} accounts.`
+              );
+            } else {
+              toast.info("Account selection updated. No new accounts added.");
+            }
+            invalidateQueries();
+          } else {
+            toast.error(result.error?.message || "Failed to update accounts");
+          }
+        } catch {
+          toast.error("Failed to update accounts");
+        } finally {
+          setIsUpdatingAccounts(false);
+          setUpdateModeItemId(null);
+          setLinkToken(null);
+        }
+        return;
+      }
+
+      // New connection flow
       try {
         const response = await fetch("/api/plaid/exchange-token", {
           method: "POST",
@@ -257,23 +313,15 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
         setLinkToken(null);
       }
     },
-    [invalidateQueries, createAccount, plaidSyncItem, queryClient]
+    [invalidateQueries, createAccount, plaidSyncItem, queryClient, updateModeItemId]
   );
 
-  const { open, ready } = usePlaidLink({
-    token: linkToken,
-    onSuccess,
-    onExit: () => {
-      setIsConnecting(false);
-      setLinkToken(null);
-    },
-  });
-
-  useEffect(() => {
-    if (linkToken && ready) {
-      open();
-    }
-  }, [linkToken, ready, open]);
+  const handlePlaidExit = useCallback(() => {
+    setIsConnecting(false);
+    setIsUpdatingAccounts(false);
+    setUpdateModeItemId(null);
+    setLinkToken(null);
+  }, []);
 
   const handleSync = async (itemId: string) => {
     setSyncingItems((prev) => new Set(prev).add(itemId));
@@ -378,7 +426,7 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
   };
 
   // ========== Update Mode (Manage Accounts) Handlers ==========
-  
+
   const handleManageAccounts = async (itemId: string) => {
     setUpdateModeItemId(itemId);
     setIsUpdatingAccounts(true);
@@ -399,65 +447,14 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
         return;
       }
 
-      setUpdateModeLinkToken(data.linkToken);
+      // Use shared linkToken state - the unified onSuccess will check updateModeItemId
+      setLinkToken(data.linkToken);
     } catch {
       toast.error("Failed to initialize account management");
       setIsUpdatingAccounts(false);
       setUpdateModeItemId(null);
     }
   };
-
-  const onUpdateModeSuccess: PlaidLinkOnSuccess = useCallback(
-    async () => {
-      if (!updateModeItemId) return;
-
-      try {
-        const response = await fetch(`/api/plaid/items/${updateModeItemId}/accounts`, {
-          method: "POST",
-        });
-        const result = await response.json();
-
-        if (result.success) {
-          if (result.data?.added > 0) {
-            toast.success(
-              `Added ${result.data.added} new account(s)! Total: ${result.data.total} accounts.`
-            );
-          } else {
-            toast.info("Account selection updated. No new accounts added.");
-          }
-          invalidateQueries();
-        } else {
-          toast.error(result.error?.message || "Failed to update accounts");
-        }
-      } catch {
-        toast.error("Failed to update accounts");
-      } finally {
-        setIsUpdatingAccounts(false);
-        setUpdateModeItemId(null);
-        setUpdateModeLinkToken(null);
-      }
-    },
-    [updateModeItemId, invalidateQueries]
-  );
-
-  const {
-    open: openUpdateMode,
-    ready: updateModeReady,
-  } = usePlaidLink({
-    token: updateModeLinkToken,
-    onSuccess: onUpdateModeSuccess,
-    onExit: () => {
-      setIsUpdatingAccounts(false);
-      setUpdateModeItemId(null);
-      setUpdateModeLinkToken(null);
-    },
-  });
-
-  useEffect(() => {
-    if (updateModeLinkToken && updateModeReady) {
-      openUpdateMode();
-    }
-  }, [updateModeLinkToken, updateModeReady, openUpdateMode]);
 
   const formatLastSynced = (lastSyncedAt: string | null): string => {
     if (!lastSyncedAt) return "Never synced";
@@ -496,6 +493,15 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
 
   return (
     <>
+      {/* Plaid Link launcher - only mounts when we have a token */}
+      {linkToken && (
+        <PlaidLinkLauncher
+          token={linkToken}
+          onSuccess={onSuccess}
+          onExit={handlePlaidExit}
+        />
+      )}
+
       {/* Add Account Buttons */}
       <div className="flex flex-wrap gap-3 mb-8">
         <Button onClick={() => setShowCreateDialog(true)} variant="outline">

@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
+import { expo } from "@better-auth/expo";
 import { db } from "./db";
 
 
@@ -8,6 +9,8 @@ export const auth = betterAuth({
   database: prismaAdapter(db, {
     provider: "postgresql",
   }),
+
+  plugins: [expo()],
 
   emailAndPassword: {
     enabled: true,
@@ -31,7 +34,7 @@ export const auth = betterAuth({
   },
 
   // Trust proxy headers for production (behind reverse proxy)
-  trustedOrigins: [process.env.BETTER_AUTH_URL || ""],
+  trustedOrigins: [process.env.BETTER_AUTH_URL || "", "somar://"],
 });
 
 // Export types for use in API routes and middleware
