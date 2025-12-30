@@ -101,11 +101,6 @@ somar/
 │   │   │   │   ├── tagger/         # Tinder-style categorization UI
 │   │   │   │   ├── upload/         # CSV import wizard
 │   │   │   │   └── api/            # API routes
-│   │   │   ├── actions/            # Server Actions
-│   │   │   │   ├── accounts.ts     # Account CRUD
-│   │   │   │   ├── categories.ts   # Category + budget operations
-│   │   │   │   ├── transactions.ts # Transaction CRUD + analytics
-│   │   │   │   └── plaid.ts        # Plaid operations
 │   │   │   ├── components/
 │   │   │   │   ├── ui/             # shadcn components
 │   │   │   │   ├── nav.tsx         # Navigation bar
@@ -116,7 +111,7 @@ somar/
 │   │   │       ├── db/
 │   │   │       │   ├── index.ts    # Prisma client connection
 │   │   │       │   └── seed.ts     # Seed categories + preset rules
-│   │   │       ├── dedup/          # LLM verifier (Tier 2) + re-exports from @somar/shared
+│   │   │       ├── dedup/          # LLM verifier (Tier 2) - llm-verifier.ts only
 │   │   │       ├── plaid.ts        # Plaid client configuration
 │   │   │       ├── categorizer.ts  # Auto-categorization logic
 │   │   │       ├── csv-parser.ts   # CSV parsing + column inference
@@ -390,7 +385,7 @@ OPENAI_API_KEY=your_key  # For LLM deduplication (optional)
 2. **Burn-up Chart**: Line chart showing cumulative daily spending (this month vs last month)
 3. **Category Progress Bars**: Spending vs budget for each category (reuses BudgetProgress component)
 
-**Analytics Functions** (in `apps/web/src/actions/transactions.ts`):
+**Analytics Functions** (in `apps/web/src/services/transactions.ts`):
 ```typescript
 // Get daily cumulative spending for a month (for burn-up chart)
 getDailyCumulativeSpending(month: string)
@@ -428,8 +423,9 @@ const date = new Date(year, month - 1, day);
 - **Positive = income/credit (money in)** - displayed in green
 - This is enforced throughout the codebase (`amount < 0` filters for expenses)
 
-### Server Actions
-- All mutations use Next.js Server Actions in `apps/web/src/actions/`
+### API Routes Pattern
+- Business logic lives in `apps/web/src/lib/` (e.g., `lib/plaid.ts`, `lib/dedup/`)
+- API routes in `apps/web/src/app/api/` handle HTTP concerns and call lib functions
 - Call `revalidatePath()` after mutations to refresh data
 
 ### Current Month Calculation
@@ -541,7 +537,7 @@ Add to `presetRules` array in `apps/web/src/lib/db/seed.ts`:
 </Link>
 ```
 
-**Step 2:** Create analytics function in `apps/web/src/actions/transactions.ts`
+**Step 2:** Create analytics function in `apps/web/src/services/transactions.ts`
 ```typescript
 export async function getYourData() {
   const result = await db

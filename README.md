@@ -191,9 +191,9 @@ somar/
 │   ├── web/                    # Next.js web app
 │   │   ├── src/
 │   │   │   ├── app/            # Next.js App Router pages
-│   │   │   ├── actions/        # Server Actions
 │   │   │   ├── components/     # React components
-│   │   │   └── lib/            # Utilities & database
+│   │   │   ├── lib/            # Utilities & business logic
+│   │   │   └── services/       # Data access layer
 │   │   ├── prisma/             # Database schema
 │   │   └── public/             # Static assets
 │   └── mobile/                 # React Native/Expo app
