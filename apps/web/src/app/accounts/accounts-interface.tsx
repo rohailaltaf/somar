@@ -3,13 +3,13 @@
 import { useState, useCallback, useEffect } from "react";
 import { usePlaidLink, PlaidLinkOnSuccess } from "react-plaid-link";
 import { useAccountMutations } from "@/hooks";
-import {
-  PlaidItemWithAccounts,
+import { usePlaidSync } from "@/hooks/use-plaid-sync";
+import type {
+  Account,
+  AccountType,
   PlaidAccountInfo,
-  disconnectInstitution,
-  syncTransactionsForItem,
-  updatePlaidItemAccounts,
-} from "@/actions/plaid";
+  PlaidItemWithAccounts,
+} from "@/types";
 import {
   Card,
   CardContent,
@@ -61,16 +61,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import type { AccountType } from "@somar/shared";
-
-interface Account {
-  id: string;
-  name: string;
-  type: string;
-  createdAt: string;
-  plaidItemId: string | null;
-  plaidAccountId: string | null;
-}
 
 interface AccountsInterfaceProps {
   accounts: Account[];
@@ -79,6 +69,7 @@ interface AccountsInterfaceProps {
 
 export function AccountsInterface({ accounts, plaidItems }: AccountsInterfaceProps) {
   const { createAccount, updateAccount, deleteAccount } = useAccountMutations();
+  const { syncItem: plaidSyncItem } = usePlaidSync();
   const queryClient = useQueryClient();
 
   // State for account management
@@ -93,13 +84,12 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
   const [newAccountType, setNewAccountType] = useState<AccountType>("checking");
   
   // State for Plaid connection
-  const [items, setItems] = useState<PlaidItemWithAccounts[]>(plaidItems);
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [syncingItems, setSyncingItems] = useState<Set<string>>(new Set());
   const [disconnectingItem, setDisconnectingItem] = useState<PlaidItemWithAccounts | null>(null);
   const [deleteTransactions, setDeleteTransactions] = useState(false);
-  
+
   // State for update mode (managing accounts)
   const [updateModeItemId, setUpdateModeItemId] = useState<string | null>(null);
   const [updateModeLinkToken, setUpdateModeLinkToken] = useState<string | null>(null);
@@ -209,6 +199,8 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
 
         if (data.error) {
           toast.error(data.error);
+          setIsConnecting(false);
+          setLinkToken(null);
           return;
         }
 
@@ -227,6 +219,37 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
         );
 
         invalidateQueries();
+
+        // Auto-sync: Server handles retry logic for initial sync
+        if (data.itemId) {
+          toast.info("Fetching transactions from your bank...", {
+            description: "This may take up to a minute",
+            duration: 3000,
+          });
+
+          try {
+            const result = await plaidSyncItem(data.itemId);
+
+            if (result.errors.length > 0) {
+              toast.error(result.errors[0]);
+            } else {
+              const total = result.added + result.upgraded;
+              if (total > 0) {
+                toast.success(`Synced ${total} transaction${total !== 1 ? "s" : ""}`, {
+                  duration: 5000,
+                });
+              } else {
+                toast.info("No transactions yet - sync again in a few minutes", {
+                  duration: 5000,
+                });
+              }
+            }
+
+            queryClient.invalidateQueries({ queryKey: ["transactions"] });
+          } catch {
+            toast.error("Failed to sync - try again in a few minutes");
+          }
+        }
       } catch {
         toast.error("Failed to connect institution");
       } finally {
@@ -234,7 +257,7 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
         setLinkToken(null);
       }
     },
-    [invalidateQueries, createAccount]
+    [invalidateQueries, createAccount, plaidSyncItem, queryClient]
   );
 
   const { open, ready } = usePlaidLink({
@@ -256,20 +279,43 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
     setSyncingItems((prev) => new Set(prev).add(itemId));
 
     try {
-      const result = await syncTransactionsForItem(itemId);
-      if (result.success) {
-        toast.success(result.message);
-        setItems((prev) =>
-          prev.map((item) =>
-            item.id === itemId
-              ? { ...item, lastSyncedAt: new Date() }
-              : item
-          )
-        );
-        invalidateQueries();
-      } else {
-        toast.error(result.message);
+      const result = await plaidSyncItem(itemId);
+
+      if (result.requiresReauth) {
+        toast.warning("Account needs to be reconnected", {
+          description: "Click 'Manage Accounts' to reconnect",
+          duration: 5000,
+        });
+        return;
       }
+
+      if (result.errors.length > 0) {
+        toast.error(result.errors[0]);
+        return;
+      }
+
+      // Build success message
+      const parts: string[] = [];
+      if (result.added > 0) {
+        parts.push(`${result.added} new`);
+      }
+      if (result.modified > 0) {
+        parts.push(`${result.modified} updated`);
+      }
+      if (result.upgraded > 0) {
+        parts.push(`${result.upgraded} matched`);
+      }
+      if (result.removed > 0) {
+        parts.push(`${result.removed} removed`);
+      }
+
+      if (parts.length > 0) {
+        toast.success(`Synced: ${parts.join(", ")}`);
+      } else {
+        toast.success("Already up to date");
+      }
+
+      invalidateQueries();
     } catch {
       toast.error("Failed to sync transactions");
     } finally {
@@ -285,16 +331,43 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
     if (!disconnectingItem) return;
 
     try {
-      const result = await disconnectInstitution(disconnectingItem.id);
+      const response = await fetch(`/api/plaid/items/${disconnectingItem.id}`, {
+        method: "DELETE",
+      });
+      const result = await response.json();
 
       if (result.success) {
-        toast.success(`Disconnected ${disconnectingItem.institutionName}`);
-        setItems((prev) =>
-          prev.filter((item) => item.id !== disconnectingItem.id)
-        );
+        // Get the plaid account IDs for this institution
+        const plaidAccountIds = disconnectingItem.accounts.map(a => a.plaidAccountId);
+
+        if (deleteTransactions) {
+          // Delete accounts and their transactions from local SQLite
+          for (const plaidAccountId of plaidAccountIds) {
+            const localAccount = accounts.find(a => a.plaidAccountId === plaidAccountId);
+            if (localAccount) {
+              deleteAccount.mutate(localAccount.id);
+            }
+          }
+          toast.success(`Disconnected ${disconnectingItem.institutionName} and deleted transactions`);
+        } else {
+          // Convert to manual accounts (clear plaid_account_id)
+          for (const plaidAccountId of plaidAccountIds) {
+            const localAccount = accounts.find(a => a.plaidAccountId === plaidAccountId);
+            if (localAccount) {
+              updateAccount.mutate({
+                id: localAccount.id,
+                name: localAccount.name,
+                type: localAccount.type as AccountType,
+                plaidAccountId: null,
+              });
+            }
+          }
+          toast.success(`Disconnected ${disconnectingItem.institutionName} (transactions kept)`);
+        }
+
         invalidateQueries();
       } else {
-        toast.error(result.error || "Failed to disconnect");
+        toast.error(result.error?.message || "Failed to disconnect");
       }
     } catch {
       toast.error("Failed to disconnect institution");
@@ -339,19 +412,22 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
       if (!updateModeItemId) return;
 
       try {
-        const result = await updatePlaidItemAccounts(updateModeItemId);
+        const response = await fetch(`/api/plaid/items/${updateModeItemId}/accounts`, {
+          method: "POST",
+        });
+        const result = await response.json();
 
         if (result.success) {
-          if (result.added > 0) {
+          if (result.data?.added > 0) {
             toast.success(
-              `Added ${result.added} new account(s)! Total: ${result.total} accounts.`
+              `Added ${result.data.added} new account(s)! Total: ${result.data.total} accounts.`
             );
           } else {
             toast.info("Account selection updated. No new accounts added.");
           }
           invalidateQueries();
         } else {
-          toast.error(result.error || "Failed to update accounts");
+          toast.error(result.error?.message || "Failed to update accounts");
         }
       } catch {
         toast.error("Failed to update accounts");
@@ -383,10 +459,10 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
     }
   }, [updateModeLinkToken, updateModeReady, openUpdateMode]);
 
-  const formatLastSynced = (lastSyncedAt: Date | null): string => {
+  const formatLastSynced = (lastSyncedAt: string | null): string => {
     if (!lastSyncedAt) return "Never synced";
 
-    const date = lastSyncedAt;
+    const date = new Date(lastSyncedAt);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
@@ -416,7 +492,7 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
     }
   };
 
-  const hasNoAccounts = accounts.length === 0 && items.length === 0;
+  const hasNoAccounts = accounts.length === 0 && plaidItems.length === 0;
 
   return (
     <>
@@ -458,19 +534,19 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
       )}
 
       {/* Connected Institutions */}
-      {items.length > 0 && (
+      {plaidItems.length > 0 && (
         <div className="space-y-6 mb-8">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <Link2 className="w-5 h-5" />
               Connected Institutions
             </h2>
-            {items.length > 1 && (
+            {plaidItems.length > 1 && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={async () => {
-                  for (const item of items) {
+                  for (const item of plaidItems) {
                     await handleSync(item.id);
                   }
                 }}
@@ -481,9 +557,9 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
               </Button>
             )}
           </div>
-          
+
           <div className="space-y-4">
-            {items.map((item) => (
+            {plaidItems.map((item) => (
               <Card key={item.id}>
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
