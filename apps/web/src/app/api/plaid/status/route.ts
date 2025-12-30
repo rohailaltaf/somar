@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { checkAllPlaidItemsStatus } from "@/actions/plaid";
+import { checkAllPlaidItemsStatus } from "@/lib/plaid";
 
 // GET /api/plaid/status - Check the status of all Plaid items
 // Useful for verifying disconnections and debugging billing

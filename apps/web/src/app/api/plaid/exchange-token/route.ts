@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { exchangePublicToken } from "@/actions/plaid";
+import { exchangePublicToken } from "@/lib/plaid";
 
 export async function POST(request: NextRequest) {
   try {

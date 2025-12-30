@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createUpdateModeLinkToken } from "@/actions/plaid";
+import { createUpdateModeLinkToken } from "@/lib/plaid";
 
 export async function POST(request: NextRequest) {
   try {

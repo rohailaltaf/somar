@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createLinkToken } from "@/actions/plaid";
+import { createLinkToken } from "@/lib/plaid";
 
 export async function POST() {
   const result = await createLinkToken();
