@@ -193,6 +193,13 @@ export function DatabaseProvider({
   // Save database to server
   const save = useCallback(async () => {
     if (!db) return;
+
+    // Clear any pending auto-save since we're saving now
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+
     if (isSavingRef.current) {
       pendingSaveRef.current = true;
       return;
