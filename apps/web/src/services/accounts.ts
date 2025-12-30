@@ -74,12 +74,22 @@ export function updateAccount(
   db: Database,
   id: string,
   name: string,
-  type: AccountType
+  type: AccountType,
+  plaidAccountId?: string | null
 ): void {
-  db.run(
-    "UPDATE accounts SET name = ?, type = ? WHERE id = ?",
-    [name, type, id]
-  );
+  if (plaidAccountId !== undefined) {
+    // Update including plaid_account_id (can be null to clear it)
+    db.run(
+      "UPDATE accounts SET name = ?, type = ?, plaid_account_id = ? WHERE id = ?",
+      [name, type, plaidAccountId, id]
+    );
+  } else {
+    // Only update name and type
+    db.run(
+      "UPDATE accounts SET name = ?, type = ? WHERE id = ?",
+      [name, type, id]
+    );
+  }
 }
 
 export function deleteAccount(db: Database, id: string): void {
