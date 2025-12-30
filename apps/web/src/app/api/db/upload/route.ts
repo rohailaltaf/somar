@@ -11,6 +11,7 @@ import { NextResponse } from "next/server";
  * The blob is stored as-is - encryption happens client-side.
  *
  * Supports optimistic locking via version number to prevent conflicts.
+ * Uses upsert to handle both first upload (create) and subsequent uploads (update).
  */
 export async function POST(req: Request) {
   const session = await auth.api.getSession({
@@ -34,16 +35,15 @@ export async function POST(req: Request) {
 
   const storage = getStorage();
 
-  // Use atomic transaction to prevent race conditions
-  // The version check and update happen atomically
   try {
     const result = await db.$transaction(async (tx) => {
+      // Check current version for optimistic locking
       const current = await tx.encryptedDatabase.findUnique({
         where: { userId },
         select: { version: true },
       });
 
-      // Check version if optimistic locking is requested
+      // Validate version if optimistic locking is requested
       if (expectedVersion !== null && current && current.version !== expectedVersion) {
         throw { type: "conflict", serverVersion: current.version };
       }
@@ -51,38 +51,24 @@ export async function POST(req: Request) {
       // Store the encrypted blob
       await storage.put(`users/${userId}.db.enc`, blob);
 
-      // Update metadata atomically
-      if (current) {
-        // Use updateMany with version in WHERE to ensure atomicity
-        const updateResult = await tx.encryptedDatabase.updateMany({
-          where: {
-            userId,
-            version: current.version, // Only update if version hasn't changed
-          },
-          data: {
-            version: current.version + 1n,
-            sizeBytes: blob.length,
-            updatedAt: new Date(),
-          },
-        });
+      // Upsert metadata - create on first upload, update on subsequent
+      const newVersion = current ? current.version + 1n : 1n;
 
-        // If no rows updated, another request beat us to it
-        if (updateResult.count === 0) {
-          throw { type: "conflict", serverVersion: current.version + 1n };
-        }
+      await tx.encryptedDatabase.upsert({
+        where: { userId },
+        create: {
+          userId,
+          version: 1,
+          sizeBytes: blob.length,
+        },
+        update: {
+          version: newVersion,
+          sizeBytes: blob.length,
+          updatedAt: new Date(),
+        },
+      });
 
-        return { version: current.version + 1n };
-      } else {
-        // New record - create it
-        const created = await tx.encryptedDatabase.create({
-          data: {
-            userId,
-            version: 1,
-            sizeBytes: blob.length,
-          },
-        });
-        return { version: created.version };
-      }
+      return { version: newVersion };
     });
 
     return NextResponse.json({
@@ -91,11 +77,12 @@ export async function POST(req: Request) {
     });
   } catch (err) {
     if (err && typeof err === "object" && "type" in err && err.type === "conflict") {
+      const conflictErr = err as unknown as { serverVersion: bigint };
       return NextResponse.json(
         {
           error: "conflict",
           message: "Database was updated elsewhere. Please refresh.",
-          serverVersion: (err as unknown as { serverVersion: bigint }).serverVersion.toString(),
+          serverVersion: conflictErr.serverVersion.toString(),
         },
         { status: 409 }
       );

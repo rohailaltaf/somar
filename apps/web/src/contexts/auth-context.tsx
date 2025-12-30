@@ -13,6 +13,16 @@ import { signIn, signUp, signOut, useSession, getSession } from "@/lib/auth-clie
 import { deriveEncryptionKey } from "@somar/shared";
 
 // Key for sessionStorage - persists across page reloads but clears on tab close
+//
+// SECURITY NOTE: Storing the encryption key in sessionStorage is vulnerable to XSS attacks.
+// An attacker with XSS could extract the key. However, this is an accepted trade-off because:
+// 1. E2EE primarily protects against server compromise, not client-side attacks
+// 2. If an attacker has XSS, they can already intercept the password via keylogging
+// 3. They can also wait for decrypted data to appear in the DOM and steal it directly
+// 4. Using non-extractable CryptoKey (IndexedDB) adds complexity without meaningful security gain
+// 5. Memory-only storage would require re-entering password on every page refresh (poor UX)
+//
+// The real defense against this threat is preventing XSS in the first place (CSP, sanitization, etc.)
 const ENCRYPTION_KEY_STORAGE = "somar_encryption_key";
 
 interface AuthContextValue {
@@ -146,7 +156,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     router.push("/login");
   }, [router]);
 
-  // Unlock: re-derive encryption key from password without re-authenticating
+  // Unlock: re-derive encryption key from password
   // Used when opening a new tab (session cookie exists, but sessionStorage is empty)
   const unlock = useCallback(
     async (password: string) => {
@@ -154,14 +164,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
         throw new Error("No active session");
       }
 
-      // Verify session is still valid on the server before accepting password
-      // This prevents the unlock screen from accepting passwords for expired sessions
-      const freshSession = await getSession();
-      if (!freshSession?.data?.user) {
-        // Session expired - clear local state and redirect to login
-        sessionStorage.removeItem(ENCRYPTION_KEY_STORAGE);
-        window.location.href = "/login";
-        throw new Error("Session expired. Please log in again.");
+      // Re-authenticate with Better Auth to verify password is correct
+      // This gives immediate feedback for wrong passwords instead of failing later during decryption
+      const authResult = await signIn.email({
+        email: session.user.email,
+        password,
+      });
+
+      if (authResult.error) {
+        throw new Error("Wrong password");
       }
 
       // Fetch salt from server
@@ -172,7 +183,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const { salt } = await saltResponse.json();
 
       // Derive encryption key from password (client-side only)
-      // Wrong passwords will be caught when AES-GCM decryption fails
       const key = await deriveEncryptionKey(password, salt);
       setEncryptionKey(key);
     },

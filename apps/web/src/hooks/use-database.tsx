@@ -79,9 +79,9 @@ export function DatabaseProvider({
         // Dynamically import sql.js to avoid SSR bundling issues
         const initSqlJs = (await import("sql.js")).default;
 
-        // Initialize sql.js with WASM
+        // Initialize sql.js with WASM (self-hosted to avoid CDN availability/supply chain risks)
         const SQL = await initSqlJs({
-          locateFile: (file) => `https://sql.js.org/dist/${file}`,
+          locateFile: (file) => `/${file}`,
         });
 
         // Try to download existing database
