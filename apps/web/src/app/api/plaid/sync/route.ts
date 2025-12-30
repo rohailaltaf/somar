@@ -138,15 +138,9 @@ export async function POST(request: NextRequest): Promise<NextResponse<PlaidSync
           const needsRetry = allAdded.length === 0 || !areTransactionsEnriched(allAdded);
           if (needsRetry) {
             const waitTime = Math.pow(2, attempt + 1) * 1000; // 2s, 4s, 8s, 16s, 32s, 64s, 128s, 256s
-            const reason = allAdded.length === 0 ? "no transactions yet" : "data not enriched";
-            console.log(`[Plaid Sync] Attempt ${attempt + 1}: ${reason}, waiting ${waitTime / 1000}s...`);
             await delay(waitTime);
             continue; // Retry
           }
-        }
-
-        if (isInitialSync && allAdded.length === 0) {
-          console.log(`[Plaid Sync] Max retries reached with no transactions`);
         }
 
         // Update only lastSyncedAt on server (cursor is client-side)
@@ -168,7 +162,6 @@ export async function POST(request: NextRequest): Promise<NextResponse<PlaidSync
         lastError = error;
         if (attempt < maxRetries - 1) {
           const waitTime = Math.pow(2, attempt + 1) * 1000;
-          console.log(`[Plaid Sync] Attempt ${attempt + 1} failed, waiting ${waitTime / 1000}s before retry...`);
           await delay(waitTime);
         }
       }

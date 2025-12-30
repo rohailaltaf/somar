@@ -211,7 +211,6 @@ export function DatabaseProvider({
       const newVersion = await saveDatabase(db, encryptionKey, versionRef.current);
       versionRef.current = newVersion;
       setVersion(newVersion);
-      console.log(`[DB] Saved to server (version ${newVersion})`);
     } catch (err) {
       console.error("[DB] Save error:", err);
       // Don't throw - auto-save should be silent
@@ -307,10 +306,8 @@ export function DatabaseProvider({
   // Run VACUUM to reclaim disk space after deletions
   const vacuum = useCallback(async () => {
     if (!db) throw new Error("Database not ready");
-    console.log("[DB] Running VACUUM to reclaim space...");
     db.run("VACUUM");
     await save();
-    console.log("[DB] VACUUM complete, database saved");
   }, [db, save]);
 
   const value: DatabaseContextValue = {
