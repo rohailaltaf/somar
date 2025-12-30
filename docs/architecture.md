@@ -6,14 +6,14 @@ This document describes the architecture of Somar, a personal finance tracking a
 
 Somar uses **client-side E2EE** - all user financial data is encrypted and decrypted **in the browser**. The server only stores opaque encrypted blobs and can **never** read user data.
 
-**Key principle:** All SQLite queries run client-side using `wa-sqlite`. The Next.js server is a thin API for authentication and blob storage.
+**Key principle:** All SQLite queries run client-side using `sql.js` (SQLite compiled to WebAssembly). The Next.js server is a thin API for authentication and blob storage.
 
 ## High-Level Architecture
 
 ```mermaid
 flowchart TB
     subgraph clients [Client Apps - WHERE DATA LIVES]
-        WebApp[Web App<br/>wa-sqlite in browser]
+        WebApp[Web App<br/>sql.js in browser]
         MobileApp[Mobile App<br/>expo-sqlite]
     end
     
@@ -38,10 +38,10 @@ flowchart TB
 ```mermaid
 sequenceDiagram
     participant User
-    participant Browser as Browser (wa-sqlite)
+    participant Browser as Browser (sql.js)
     participant Server as API Server
     participant Storage as Blob Storage
-    
+
     User->>Browser: Enter email + password
     Browser->>Server: POST /api/auth/sign-in
     Server-->>Browser: Session token
@@ -57,10 +57,10 @@ sequenceDiagram
     Note over Server: Server sees only<br/>encrypted bytes
     
     Browser->>Browser: AES-256-GCM decrypt
-    Browser->>Browser: Load into wa-sqlite
+    Browser->>Browser: Load into sql.js
     Note over Browser: Full SQLite database<br/>running in browser
-    
-    Browser->>Browser: Execute Prisma queries
+
+    Browser->>Browser: Execute SQL queries
     Browser-->>User: Display transactions
 ```
 
@@ -69,12 +69,12 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant User
-    participant Browser as Browser (wa-sqlite)
+    participant Browser as Browser (sql.js)
     participant Server as API Server
     participant Storage as Blob Storage
-    
+
     User->>Browser: Edit transaction
-    Browser->>Browser: Update wa-sqlite
+    Browser->>Browser: Update sql.js database
     
     Note over Browser: Auto-save triggers...
     
@@ -122,7 +122,7 @@ sequenceDiagram
 | Database | Type | Location | Purpose |
 |----------|------|----------|---------|
 | **Central DB** | PostgreSQL | Server | Auth, sessions, Plaid tokens |
-| **User Data** | SQLite | Browser (wa-sqlite) | Transactions, accounts, budgets |
+| **User Data** | SQLite | Browser (sql.js) | Transactions, accounts, budgets |
 
 ### What Runs Where
 
@@ -130,7 +130,7 @@ sequenceDiagram
 |-----------|---------|-------|
 | Authentication | Server | Better Auth handles sessions |
 | Plaid sync | Server | Plaid requires server-side tokens |
-| User queries | **Browser** | All Prisma queries run in wa-sqlite |
+| User queries | **Browser** | Raw SQL queries run in sql.js |
 | Encryption | **Browser** | Key derivation and crypto |
 | Data storage | Server | Encrypted blobs only |
 
@@ -151,9 +151,10 @@ Each user has a SQLite database that runs **entirely in the browser**:
 
 - **accounts** - Bank/credit card accounts
 - **transactions** - All transactions
-- **categories** - Spending/income categories  
+- **categories** - Spending/income categories
 - **category_budgets** - Monthly budgets
 - **categorization_rules** - Auto-categorization patterns
+- **plaid_sync_state** - Cursor for incremental Plaid syncs
 
 ## Security Model
 
@@ -231,10 +232,9 @@ sequenceDiagram
 
 1. **Client-side cursor storage**: The sync cursor is stored in the user's encrypted SQLite database, not on the server. This ensures that if the client save fails, the cursor doesn't advance and data isn't lost.
 
-2. **Server proxy for dedup**: The deduplication system has 2 tiers:
-   - Tier 1 (deterministic): Merchant extraction + Jaro-Winkler similarity
-   - Tier 2 (LLM): For uncertain cases, uses OpenAI API
-   - Both tiers run server-side via `/api/dedup/batch` (LLM requires server-side API key)
+2. **2-tier deduplication**: The deduplication system has 2 tiers:
+   - Tier 1 (deterministic): Runs **client-side** using `@somar/shared/dedup` - merchant extraction + Jaro-Winkler similarity
+   - Tier 2 (LLM): For uncertain cases only, calls `/api/dedup/verify` which uses OpenAI API server-side
 
 3. **Retry logic for initial sync**: Plaid needs time to fetch and enrich historical data. The server retries up to 8 times with exponential backoff (2s, 4s, 8s...) until transactions have `authorized_date` (enrichment complete).
 
@@ -244,15 +244,15 @@ sequenceDiagram
 
 ### Web (Browser)
 
-- **wa-sqlite** - SQLite compiled to WebAssembly
-- **@prisma/client** - Query builder (runs against wa-sqlite)
-- **React Query** - Data fetching and caching
+- **sql.js** - SQLite compiled to WebAssembly (self-hosted WASM to avoid CDN risks)
+- **Raw SQL** - Direct SQL queries via sql.js (no ORM for user data)
+- **@tanstack/react-query** - Data fetching and caching
 - **Web Crypto API** - AES-256-GCM and PBKDF2
 
 ### Mobile
 
 - **expo-sqlite** - Native SQLite
-- **@prisma/client** - Same queries as web
+- **Raw SQL** - Same query patterns as web
 - **expo-secure-store** - Key storage
 
 ## Project Structure
@@ -262,21 +262,26 @@ somar/
 ├── apps/
 │   ├── web/
 │   │   ├── prisma/
-│   │   │   ├── schema.prisma            # Local SQLite (legacy dev)
 │   │   │   └── central-schema.prisma    # PostgreSQL (auth, Plaid)
 │   │   ├── src/
 │   │   │   ├── app/
 │   │   │   │   ├── (auth)/              # Login, register
 │   │   │   │   └── api/
 │   │   │   │       ├── auth/            # Better Auth
-│   │   │   │       └── db/              # Blob upload/download
+│   │   │   │       ├── db/              # Blob upload/download/init
+│   │   │   │       ├── plaid/           # Plaid integration
+│   │   │   │       └── dedup/           # LLM dedup verification
+│   │   │   ├── services/                # Data access layer (raw SQL)
+│   │   │   │   ├── transactions.ts
+│   │   │   │   ├── accounts.ts
+│   │   │   │   └── categories.ts
 │   │   │   ├── lib/
 │   │   │   │   ├── auth.ts              # Better Auth config
-│   │   │   │   ├── db/
-│   │   │   │   │   └── central.ts       # Central DB client
-│   │   │   │   └── storage/             # Blob storage
+│   │   │   │   ├── db/index.ts          # Central DB Prisma client
+│   │   │   │   └── storage/             # Blob storage (filesystem)
 │   │   │   └── hooks/
-│   │   │       └── use-database.ts      # wa-sqlite + React Query
+│   │   │       ├── use-database.tsx     # sql.js + React Query
+│   │   │       └── use-plaid-sync.ts    # Plaid sync with dedup
 │   │   └── data/                        # Encrypted blobs (gitignored)
 │   │
 │   └── mobile/
@@ -284,7 +289,11 @@ somar/
 │
 └── packages/
     └── shared/
-        └── src/crypto/                  # Encryption utilities
+        └── src/
+            ├── crypto/                  # Encryption utilities
+            ├── schema/                  # SQLite schema DDL + default categories
+            ├── types/                   # Shared TypeScript types
+            └── dedup/                   # Tier 1 deduplication (client-side)
 ```
 
 ## Development Setup
@@ -319,15 +328,17 @@ DATA_DIR="./data"
 ### Database Setup
 
 ```bash
-# Generate Prisma clients
+# Generate Prisma client for central database
 pnpm --filter web db:generate
 
 # Push central schema to PostgreSQL
-pnpm --filter web db:central:push
+pnpm --filter web db:push
 
 # Open Prisma Studio for central DB
-pnpm --filter web db:central:studio
+pnpm --filter web db:studio
 ```
+
+Note: User data schemas are defined in `packages/shared/src/schema/index.ts` and applied client-side when a new database is created.
 
 ## Security Considerations
 
@@ -350,7 +361,7 @@ pnpm --filter web db:central:studio
 
 ## References
 
-- [wa-sqlite](https://github.com/nicozirr/nicozirr-wa-sqlite) - SQLite for WebAssembly
+- [sql.js](https://github.com/sql-js/sql.js) - SQLite compiled to WebAssembly
 - [Better Auth Documentation](https://www.better-auth.com/)
 - [Web Crypto API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API)
-- [Prisma Documentation](https://www.prisma.io/docs)
+- [Prisma Documentation](https://www.prisma.io/docs) - Used for central PostgreSQL database only
