@@ -1,7 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
 import { exchangePublicToken } from "@/lib/plaid";
 
 export async function POST(request: NextRequest) {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (!session?.user?.id) {
+    return NextResponse.json(
+      { error: "Not authenticated" },
+      { status: 401 }
+    );
+  }
+
   try {
     const body = await request.json();
     const { publicToken, institutionId, institutionName } = body;
@@ -14,6 +27,7 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await exchangePublicToken(
+      session.user.id,
       publicToken,
       institutionId,
       institutionName
