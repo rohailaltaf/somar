@@ -231,9 +231,10 @@ sequenceDiagram
 
 1. **Client-side cursor storage**: The sync cursor is stored in the user's encrypted SQLite database, not on the server. This ensures that if the client save fails, the cursor doesn't advance and data isn't lost.
 
-2. **Server proxy for LLM dedup**: The deduplication system has 2 tiers:
-   - Tier 1 (deterministic): Runs in browser, free
-   - Tier 2 (LLM): Requires OpenAI API key, proxied via `/api/dedup/verify`
+2. **Server proxy for dedup**: The deduplication system has 2 tiers:
+   - Tier 1 (deterministic): Merchant extraction + Jaro-Winkler similarity
+   - Tier 2 (LLM): For uncertain cases, uses OpenAI API
+   - Both tiers run server-side via `/api/dedup/batch` (LLM requires server-side API key)
 
 3. **Retry logic for initial sync**: Plaid needs time to fetch and enrich historical data. The server retries up to 8 times with exponential backoff (2s, 4s, 8s...) until transactions have `authorized_date` (enrichment complete).
 

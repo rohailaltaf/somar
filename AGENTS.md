@@ -116,7 +116,7 @@ somar/
 │   │   │       ├── db/
 │   │   │       │   ├── index.ts    # Prisma client connection
 │   │   │       │   └── seed.ts     # Seed categories + preset rules
-│   │   │       ├── dedup/          # Transaction deduplication
+│   │   │       ├── dedup/          # LLM verifier (Tier 2) + re-exports from @somar/shared
 │   │   │       ├── plaid.ts        # Plaid client configuration
 │   │   │       ├── categorizer.ts  # Auto-categorization logic
 │   │   │       ├── csv-parser.ts   # CSV parsing + column inference
@@ -140,7 +140,15 @@ somar/
 │       └── tsconfig.json           # Extends expo/tsconfig.base
 ├── packages/
 │   └── shared/
-│       ├── src/index.ts            # Shared exports (minimal for now)
+│       ├── src/
+│       │   ├── index.ts            # Shared exports
+│       │   └── dedup/              # Transaction deduplication (Tier 1 - client-side)
+│       │       ├── index.ts        # Public exports
+│       │       ├── types.ts        # Shared type definitions
+│       │       ├── tier1.ts        # Deterministic matching logic
+│       │       ├── merchant-extractor.ts  # Extracts merchant names
+│       │       ├── jaro-winkler.ts # String similarity algorithms
+│       │       └── batch-utils.ts  # Batching utilities
 │       ├── package.json
 │       └── tsconfig.json           # Extends ../../tsconfig.base.json
 ├── docs/                           # Documentation
@@ -259,7 +267,8 @@ return { updatedTransactions: updates };
   - App convention: **negative = expense (money out), positive = income (money in)**
   - User can toggle "Flip all amount signs" checkbox if their bank uses opposite convention
 - **AI-powered duplicate detection** - See [docs/deduplication.md](docs/deduplication.md) for full documentation
-  - 2-tier system: Deterministic → LLM verification (for uncertain cases)
+  - 2-tier system: Tier 1 (deterministic, client-side) → Tier 2 (LLM API for uncertain cases)
+  - Tier 1 runs in browser using `@somar/shared/dedup`, only uncertain pairs call `/api/dedup/verify`
   - Catches duplicates even when descriptions differ (e.g., "AplPay CHIPOTLE 1249" vs "Chipotle Mexican Grill")
 - Final amounts: negative = expense, positive = income
 
@@ -295,7 +304,7 @@ With E2EE, transactions are stored in the user's encrypted SQLite database. The 
 - **Auto-sync on login:** Items not synced in 1+ hour are synced automatically via `AutoSync` component
 - **Manual sync:** "Sync" button per institution on `/accounts` page
 - **Client-side cursor:** Stored in `plaid_sync_state` table in user's encrypted DB (not on server)
-- **Deduplication:** 2-tier system catches duplicates between Plaid and existing CSV transactions
+- **Deduplication:** 2-tier system (Tier 1 client-side via `@somar/shared/dedup`, Tier 2 via `/api/dedup/verify`)
 - **Skip pending:** Pending transactions are not imported - synced when posted
 - All synced transactions start as `isConfirmed: false`
 
@@ -313,10 +322,11 @@ Plaid needs time to fetch and enrich historical data after initial connection. T
 
 **Key Files:**
 ```
-apps/web/src/hooks/use-plaid-sync.ts     # Client-side sync hook
-apps/web/src/app/api/plaid/sync/route.ts # Server proxy with retry logic
-apps/web/src/app/api/dedup/batch/route.ts # Unified dedup endpoint (Tier 1 + LLM)
-apps/web/src/components/auto-sync.tsx    # Auto-sync on page load
+apps/web/src/hooks/use-plaid-sync.ts      # Client-side sync hook (runs Tier 1 dedup locally)
+apps/web/src/app/api/plaid/sync/route.ts  # Server proxy with retry logic
+apps/web/src/app/api/dedup/verify/route.ts # LLM-only dedup verification (Tier 2)
+apps/web/src/components/auto-sync.tsx     # Auto-sync on page load
+packages/shared/src/dedup/                # Tier 1 dedup (client-side, used by web + mobile)
 ```
 
 **API Routes:**
@@ -324,7 +334,7 @@ apps/web/src/components/auto-sync.tsx    # Auto-sync on page load
 - `POST /api/plaid/update-link-token` - Generate link token for update mode
 - `POST /api/plaid/exchange-token` - Exchange public token, create accounts
 - `POST /api/plaid/sync` - Server proxy for transactionsSync (with retry logic)
-- `POST /api/dedup/batch` - Unified deduplication (Tier 1 deterministic + Tier 2 LLM)
+- `POST /api/dedup/verify` - LLM verification for uncertain pairs (max 100 pairs per request)
 
 **Client-Side Sync Hook** (`usePlaidSync`):
 ```typescript

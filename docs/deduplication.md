@@ -30,23 +30,26 @@ Simple substring matching fails because neither string contains the other. Our s
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│     TIER 1: Deterministic Matching (Free, Instant)          │
+│     TIER 1: Deterministic Matching (CLIENT-SIDE)            │
+│     Location: @somar/shared/dedup                            │
 │  ┌─────────────────────────────────────────────────────┐    │
 │  │  1. Extract merchant name (strip prefixes/suffixes)  │    │
 │  │  2. Jaro-Winkler similarity (threshold: 0.88)        │    │
 │  │  3. Token overlap detection                          │    │
 │  │  4. Plaid merchant name comparison                   │    │
 │  └─────────────────────────────────────────────────────┘    │
-│                    Match? ──► DUPLICATE                      │
+│                    Match? ──► DUPLICATE (definiteMatch)      │
+│                    Candidates but no match? ──► uncertainPair│
 └─────────────────────────────────────────────────────────────┘
-                              │ No match
+                              │ Uncertain pairs
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│     TIER 2: LLM Verification (~$0.0003/20 comparisons)      │
+│     TIER 2: LLM Verification (SERVER API)                   │
+│     Endpoint: POST /api/dedup/verify                         │
 │  ┌─────────────────────────────────────────────────────┐    │
-│  │  gpt-5-mini with function calling                  │    │
+│  │  gpt-5-mini with function calling                    │    │
 │  │  Structured output via report_transaction_matches    │    │
-│  │  Batch processing for efficiency                     │    │
+│  │  Batch processing (max 100 pairs per request)        │    │
 │  │  Only called when date+amount match exists           │    │
 │  └─────────────────────────────────────────────────────┘    │
 │                    Match? ──► DUPLICATE                      │
@@ -59,24 +62,35 @@ Simple substring matching fails because neither string contains the other. Our s
 ## File Structure
 
 ```
-src/lib/dedup/
-├── index.ts              # Main orchestrator, exports findDuplicatesBatch()
-├── merchant-extractor.ts # Extracts merchant names (50+ patterns)
-├── jaro-winkler.ts       # String similarity algorithms
-└── llm-verifier.ts       # LLM function calling for uncertain cases
+packages/shared/src/dedup/     # Tier 1 - Client-side (web + mobile)
+├── index.ts                   # Public exports
+├── types.ts                   # Shared type definitions
+├── tier1.ts                   # Tier 1 matching logic
+├── merchant-extractor.ts      # Extracts merchant names (50+ patterns)
+├── jaro-winkler.ts            # String similarity algorithms
+└── batch-utils.ts             # Batching utilities (LLM_API_BATCH_LIMIT)
 
-src/actions/
-└── dedup.ts              # Server action for CSV upload integration
+apps/web/src/lib/dedup/        # Tier 2 - Server-side (LLM)
+├── index.ts                   # Re-exports shared + findDuplicatesBatch()
+└── llm-verifier.ts            # LLM function calling for uncertain cases
+
+apps/web/src/app/api/dedup/
+└── verify/route.ts            # POST /api/dedup/verify - LLM-only endpoint
 ```
 
-## Tier 1: Deterministic Matching
+## Tier 1: Deterministic Matching (Client-Side)
+
+Tier 1 runs entirely on the client (browser/mobile) using `@somar/shared/dedup`. This provides:
+- **Zero latency** - No network round-trip for deterministic matches
+- **Mobile-ready** - Same code works in React Native
+- **Cost-free** - No API calls for high-confidence matches
 
 ### Merchant Name Extraction
 
 Strips common prefixes and suffixes to extract the core merchant name:
 
 ```typescript
-import { extractMerchantName } from '@/lib/dedup';
+import { extractMerchantName } from '@somar/shared/dedup';
 
 extractMerchantName("AplPay CHIPOTLE 1249GAINESVILLE VA")
 // Returns: "CHIPOTLE"
@@ -99,7 +113,7 @@ Better than Levenshtein for merchant names because:
 3. Returns 0-1 score (1 = perfect match)
 
 ```typescript
-import { jaroWinkler } from '@/lib/dedup';
+import { jaroWinkler } from '@somar/shared/dedup';
 
 jaroWinkler("CHIPOTLE", "CHIPOTLE MEXICAN GRILL")
 // Returns: 0.873
@@ -110,7 +124,7 @@ jaroWinkler("CHIPOTLE", "CHIPOTLE MEXICAN GRILL")
 Checks if significant words appear in both descriptions:
 
 ```typescript
-import { hasSignificantTokenOverlap } from '@/lib/dedup/merchant-extractor';
+import { hasSignificantTokenOverlap } from '@somar/shared/dedup';
 
 hasSignificantTokenOverlap(
   "AplPay CHIPOTLE 1249GAINESVILLE VA",
@@ -119,87 +133,119 @@ hasSignificantTokenOverlap(
 // Returns: true (both contain "chipotle")
 ```
 
-## Tier 2: LLM Verification
+### Running Tier 1
+
+```typescript
+import { runTier1Dedup } from '@somar/shared/dedup';
+
+const tier1Result = runTier1Dedup(newTransactions, existingTransactions);
+
+// tier1Result.definiteMatches - High confidence, no LLM needed
+// tier1Result.uncertainPairs - Need LLM verification
+// tier1Result.unique - No candidates found
+// tier1Result.stats - Processing metrics
+```
+
+## Tier 2: LLM Verification (Server API)
 
 Uses gpt-5-mini with function calling for human-like judgment on uncertain cases. Only called when Tier 1 doesn't find a match but there are date+amount matching candidates.
 
-```typescript
-import { verifyMatchesBatch } from '@/lib/dedup/llm-verifier';
+### API Endpoint
 
-const results = await verifyMatchesBatch([
-  {
-    newDescription: "AplPay CINEMARK PLANO TX",
-    existingDescription: "Cinemark Theatres",
-    amount: -34.98,
-    date: "2025-09-27"
+```
+POST /api/dedup/verify
+
+Request:
+{
+  "uncertainPairs": [
+    {
+      "newTransaction": { "id": "...", "description": "...", "amount": -34.98, "date": "2025-09-27" },
+      "candidate": { "id": "...", "description": "...", "amount": -34.98, "date": "2025-09-27" },
+      "tier1Score": 0.65
+    }
+  ]
+}
+
+Response:
+{
+  "success": true,
+  "data": {
+    "matches": [
+      { "newTransactionId": "...", "newTransactionDescription": "...", "candidateId": "...", "confidence": 0.95 }
+    ],
+    "nonMatches": ["..."],
+    "stats": { "totalPairs": 1, "matchesFound": 1, "processingTimeMs": 1234 }
   }
-]);
-// Returns: [{ isSameMerchant: true, confidence: "high" }]
+}
 ```
 
-**Cost:** ~$0.0003 per batch of 20 comparisons
+**Limits:**
+- Max 100 pairs per request
+- Client must batch using `chunkArray()` utility
 
-**Features:**
-- Function calling for structured, reliable output
-- Batch processing (up to 20 pairs per API call)
-- Only invoked when there's a strong amount+date match but uncertain description match
+**Cost:** ~$0.0003 per batch of 20 comparisons
 
 ## Usage
 
 ### In CSV Upload (Automatic)
 
-The upload wizard automatically uses the deduplication system:
+The upload wizard runs Tier 1 client-side, then calls the API for uncertain pairs:
 
 ```typescript
-// src/app/upload/upload-interface.tsx
-import { analyzeForDuplicates } from '@/actions/dedup';
+// apps/web/src/app/upload/upload-interface.tsx
+import { runTier1Dedup, chunkArray, LLM_API_BATCH_LIMIT } from '@somar/shared/dedup';
 
-const result = await analyzeForDuplicates(
-  transactions,
-  accountId,
-  true // useAI: enables Tier 2 LLM
-);
+// Step 1: Run Tier 1 locally
+const tier1Result = runTier1Dedup(newTransactions, existingTransactions);
 
-// result.unique - transactions to import
-// result.duplicates - detected duplicates with confidence scores
-// result.stats - processing metrics
+// Step 2: If uncertain pairs exist, call API with batching
+if (tier1Result.uncertainPairs.length > 0) {
+  const batches = chunkArray(tier1Result.uncertainPairs, LLM_API_BATCH_LIMIT);
+  for (const batch of batches) {
+    const response = await fetch("/api/dedup/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ uncertainPairs: batch }),
+    });
+    // Process LLM results...
+  }
+}
 ```
 
 ### In Plaid Sync (Automatic)
 
-When Plaid syncs transactions, it automatically checks for matching CSV transactions using the **2-tier system** (deterministic + LLM). If a match is found, instead of creating a duplicate:
+When Plaid syncs transactions, it runs the same 2-tier process:
 
-1. The existing CSV transaction is **upgraded** with Plaid data
-2. `plaidTransactionId`, `plaidMerchantName`, `plaidAuthorizedDate`, etc. are added
-3. No new transaction is created
-
-This enables bi-directional data enrichment:
-- Import CSV first → Plaid sync adds merchant names and authorized dates
-- Sync Plaid first → CSV import detects duplicates and skips them
+1. **Tier 1 client-side** - Fast deterministic matching
+2. **Tier 2 API** - LLM verification for uncertain cases
+3. **Upgrade or Insert** - Matched transactions upgrade existing CSV records
 
 ```typescript
-// src/actions/plaid.ts - findDuplicateCsvTransaction()
-const result = await findDuplicatesBatch([plaidTx], existingTxs, {
-  // LLM tier is enabled by default
-});
+// apps/web/src/hooks/use-plaid-sync.ts
+import { runTier1Dedup, chunkArray, LLM_API_BATCH_LIMIT } from '@somar/shared/dedup';
 
-if (result.duplicates.length > 0) {
-  const duplicateCsvId = result.duplicates[0].matchedWith.id;
-  
-  // Upgrade existing CSV transaction with Plaid data
-  await db.transaction.update({
-    where: { id: duplicateCsvId },
-    data: {
-      plaidTransactionId: transaction.transaction_id,
-      plaidMerchantName: transaction.merchant_name,
-      plaidAuthorizedDate: transaction.authorized_date,
-      plaidPostedDate: transaction.date,
-    },
-  });
+// Run Tier 1 locally
+const tier1Result = runTier1Dedup(plaidForDedup, existingForDedup);
+
+// Call API for uncertain pairs (with batching)
+if (tier1Result.uncertainPairs.length > 0) {
+  const batches = chunkArray(tier1Result.uncertainPairs, LLM_API_BATCH_LIMIT);
+  // ... process batches
+}
+
+// Build duplicate map and process
+for (const plaidTx of plaidTxsToProcess) {
+  if (duplicateMap.has(plaidTx.transaction_id)) {
+    // Upgrade existing CSV transaction with Plaid data
+  } else {
+    // Insert new transaction
+  }
 }
 ```
 
-### Programmatic Usage
+### Server-Side Usage (for tests)
+
+The web module still exports `findDuplicatesBatch()` for backward compatibility:
 
 ```typescript
 import { findDuplicatesBatch } from '@/lib/dedup';
@@ -223,15 +269,13 @@ console.log(`Tier 2 matches (LLM): ${result.stats.tier2Matches}`);
 
 ### Deterministic-Only Mode
 
-For fast processing without API calls:
+For fast processing without API calls, use `runTier1Dedup()` directly:
 
 ```typescript
-import { findDuplicatesDeterministic } from '@/lib/dedup';
+import { runTier1Dedup } from '@somar/shared/dedup';
 
-const result = findDuplicatesDeterministic(
-  newTransactions,
-  existingTransactions
-);
+const result = runTier1Dedup(newTransactions, existingTransactions);
+// result.definiteMatches + result.unique = all transactions (no LLM)
 ```
 
 ## Configuration
@@ -239,15 +283,17 @@ const result = findDuplicatesDeterministic(
 ### Environment Variables
 
 ```bash
-# Required for Tier 2 (LLM)
+# Required for Tier 2 (LLM) - server-side only
 OPENAI_API_KEY=sk-...
 ```
 
-### Thresholds
+### Thresholds and Limits
 
-| Tier | Threshold | Meaning |
-|------|-----------|---------|
-| Tier 1 | 0.88 | Jaro-Winkler similarity |
+| Setting | Value | Location |
+|---------|-------|----------|
+| Tier 1 threshold | 0.88 | `@somar/shared/dedup/tier1.ts` |
+| LLM batch limit | 100 | `@somar/shared/dedup/batch-utils.ts` |
+| Date tolerance | ±2 days | `@somar/shared/dedup/tier1.ts` |
 
 ## Cost Estimates
 
@@ -282,7 +328,7 @@ All test cases pass with Tier 1 (deterministic) alone:
 
 ### Adding New Prefixes
 
-Edit `src/lib/dedup/merchant-extractor.ts`:
+Edit `packages/shared/src/dedup/merchant-extractor.ts`:
 
 ```typescript
 const PREFIXES = [
@@ -294,21 +340,21 @@ const PREFIXES = [
 
 ### Adjusting Thresholds
 
-Edit `src/lib/dedup/index.ts`:
+Edit `packages/shared/src/dedup/tier1.ts`:
 
 ```typescript
-const TIER1_THRESHOLD = 0.88;  // Increase for stricter matching
+export const TIER1_THRESHOLD = 0.88;  // Increase for stricter matching
 ```
 
 ### Custom LLM Prompts
 
-Edit `src/lib/dedup/llm-verifier.ts` to modify the system prompt with domain-specific examples.
+Edit `apps/web/src/lib/dedup/llm-verifier.ts` to modify the system prompt with domain-specific examples.
 
 ## Running Tests
 
 ```bash
-npm test                    # Run all tests
-npm run test:watch          # Watch mode for development
+pnpm --filter @somar/web test     # Run all tests
+pnpm --filter @somar/web test:watch  # Watch mode for development
 ```
 
-Tests are located in `src/lib/dedup/__tests__/` with anonymized fixture data.
+Tests are located in `apps/web/src/lib/dedup/__tests__/` with anonymized fixture data.
