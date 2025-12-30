@@ -71,7 +71,6 @@ packages/shared/src/dedup/     # Tier 1 - Client-side (web + mobile)
 └── batch-utils.ts             # Batching utilities (LLM_API_BATCH_LIMIT)
 
 apps/web/src/lib/dedup/        # Tier 2 - Server-side (LLM)
-├── index.ts                   # Re-exports shared + findDuplicatesBatch()
 └── llm-verifier.ts            # LLM function calling for uncertain cases
 
 apps/web/src/app/api/dedup/
