@@ -4,27 +4,7 @@
  */
 
 import type { Database } from "sql.js";
-import type { AccountType } from "@somar/shared";
-
-// Re-export shared types for convenience
-export type { AccountType } from "@somar/shared";
-
-// ============ Types ============
-
-export interface Account {
-  id: string;
-  name: string;
-  type: AccountType;
-  createdAt: string;
-  plaidItemId: string | null;
-  plaidAccountId: string | null;
-}
-
-export interface CreateAccountInput {
-  name: string;
-  type: AccountType;
-  plaidAccountId?: string | null;
-}
+import type { Account, AccountType, CreateAccountInput } from "@somar/shared";
 
 // ============ Queries ============
 

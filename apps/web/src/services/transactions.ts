@@ -4,38 +4,13 @@
  */
 
 import type { Database } from "sql.js";
-import type { AccountType, CategoryType } from "@somar/shared";
-import type { Category } from "./categories";
-import type { Account } from "./accounts";
-
-// ============ Types ============
-
-export interface Transaction {
-  id: string;
-  accountId: string;
-  categoryId: string | null;
-  description: string;
-  amount: number;
-  date: string;
-  excluded: boolean;
-  isConfirmed: boolean;
-  createdAt: string;
-  plaidTransactionId: string | null;
-}
-
-export interface TransactionWithRelations extends Transaction {
-  category: Category | null;
-  account: Account;
-}
-
-export interface CreateTransactionInput {
-  accountId: string;
-  description: string;
-  amount: number;
-  date: string;
-  categoryId?: string | null;
-  plaidTransactionId?: string | null;
-}
+import type {
+  AccountType,
+  CategoryType,
+  CreateTransactionInput,
+  Transaction,
+  TransactionWithRelations,
+} from "@somar/shared";
 
 // ============ Queries ============
 
@@ -601,6 +576,9 @@ interface RawTransaction {
   is_confirmed: number;
   created_at: string;
   plaid_transaction_id: string | null;
+  plaid_authorized_date: string | null;
+  plaid_posted_date: string | null;
+  plaid_merchant_name: string | null;
   cat_id: string | null;
   cat_name: string | null;
   cat_type: string | null;
@@ -624,6 +602,9 @@ function mapTransactionRow(row: RawTransaction): TransactionWithRelations {
     isConfirmed: row.is_confirmed === 1,
     createdAt: row.created_at,
     plaidTransactionId: row.plaid_transaction_id,
+    plaidAuthorizedDate: row.plaid_authorized_date,
+    plaidPostedDate: row.plaid_posted_date,
+    plaidMerchantName: row.plaid_merchant_name,
     category: row.cat_id
       ? {
           id: row.cat_id,

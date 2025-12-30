@@ -4,39 +4,13 @@
  */
 
 import type { Database } from "sql.js";
-import type { CategoryType } from "@somar/shared";
-
-// Re-export shared types for convenience
-export type { CategoryType } from "@somar/shared";
-
-// ============ Types ============
-
-export interface Category {
-  id: string;
-  name: string;
-  type: CategoryType;
-  color: string;
-  createdAt: string;
-}
-
-export interface CategoryBudget {
-  id: string;
-  categoryId: string;
-  amount: number;
-  startMonth: string;
-  createdAt: string;
-}
-
-export interface CategoryWithBudget extends Category {
-  currentBudget: CategoryBudget | null;
-  allBudgets: CategoryBudget[];
-}
-
-export interface CreateCategoryInput {
-  name: string;
-  type: CategoryType;
-  color: string;
-}
+import type {
+  Category,
+  CategoryBudget,
+  CategoryType,
+  CategoryWithBudget,
+  CreateCategoryInput,
+} from "@somar/shared";
 
 // ============ Queries ============
 
