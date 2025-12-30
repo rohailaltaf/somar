@@ -11,6 +11,16 @@ import {
 } from "react";
 import type { Database, BindParams } from "sql.js";
 import { decrypt, encrypt } from "@somar/shared";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react";
 
 // Auto-save debounce time in milliseconds
 const AUTO_SAVE_DELAY = 3000;
@@ -63,6 +73,7 @@ export function DatabaseProvider({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [version, setVersion] = useState(0);
+  const [hasConflict, setHasConflict] = useState(false);
 
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isSavingRef = useRef(false);
@@ -153,12 +164,16 @@ export function DatabaseProvider({
 
             // Encrypt and upload immediately
             if (mounted) {
-              const newVersion = await saveDatabase(
+              const result = await saveDatabase(
                 database,
                 encryptionKey,
                 0
               );
-              initialVersion = newVersion;
+              if (result.ok) {
+                initialVersion = result.version;
+              } else {
+                throw new Error(result.conflict ? "Version conflict during init" : result.error);
+              }
             }
           }
         } else {
@@ -208,12 +223,22 @@ export function DatabaseProvider({
     isSavingRef.current = true;
     try {
       // Use ref for version to avoid stale closure issues
-      const newVersion = await saveDatabase(db, encryptionKey, versionRef.current);
-      versionRef.current = newVersion;
-      setVersion(newVersion);
+      const result = await saveDatabase(db, encryptionKey, versionRef.current);
+
+      if (result.ok) {
+        versionRef.current = result.version;
+        setVersion(result.version);
+      } else if (result.conflict) {
+        // Version conflict - show modal, don't retry
+        setHasConflict(true);
+        pendingSaveRef.current = false;
+      } else {
+        // Other error - log it
+        console.error("[DB] Save error:", result.error);
+      }
     } catch (err) {
+      // Unexpected error (network failure, encryption error, etc.)
       console.error("[DB] Save error:", err);
-      // Don't throw - auto-save should be silent
     } finally {
       isSavingRef.current = false;
       if (pendingSaveRef.current) {
@@ -327,6 +352,25 @@ export function DatabaseProvider({
   return (
     <DatabaseContext.Provider value={value}>
       {children}
+
+      {/* Version conflict modal - shown when another tab updated the database */}
+      <Dialog open={hasConflict}>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Data Out of Sync</DialogTitle>
+            <DialogDescription>
+              Your data was updated in another tab or device. Please refresh to
+              get the latest version.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => window.location.reload()}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Refresh
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DatabaseContext.Provider>
   );
 }
@@ -361,14 +405,20 @@ export function useDatabase() {
   return context;
 }
 
+type SaveDatabaseResult =
+  | { ok: true; version: number }
+  | { ok: false; conflict: true }
+  | { ok: false; conflict: false; error: string };
+
 /**
  * Encrypt and upload database to server.
+ * Returns a result object instead of throwing to avoid Next.js dev overlay issues.
  */
 async function saveDatabase(
   db: Database,
   encryptionKey: string,
   expectedVersion: number
-): Promise<number> {
+): Promise<SaveDatabaseResult> {
   // Export database to bytes
   const data = db.export();
 
@@ -387,11 +437,14 @@ async function saveDatabase(
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to save database");
+    const errorData = await response.json();
+    if (errorData.error === "conflict") {
+      return { ok: false, conflict: true };
+    }
+    return { ok: false, conflict: false, error: errorData.message || "Failed to save database" };
   }
 
   const result = await response.json();
-  return parseInt(result.version, 10);
+  return { ok: true, version: parseInt(result.version, 10) };
 }
 
