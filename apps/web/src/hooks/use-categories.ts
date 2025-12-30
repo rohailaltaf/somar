@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useDatabase } from "./use-database";
 import * as CategoryService from "@/services/categories";
-import type { CategoryType } from "@somar/shared";
+import type { CategoryType, CreateCategoryInput } from "@somar/shared";
 
 /**
  * Hook for accessing categories.
@@ -60,7 +60,7 @@ export function useCategoryMutations() {
   };
 
   const createCategory = useMutation({
-    mutationFn: (input: CategoryService.CreateCategoryInput) => {
+    mutationFn: (input: CreateCategoryInput) => {
       if (!db) throw new Error("Database not ready");
       return Promise.resolve(CategoryService.createCategory(db, input));
     },

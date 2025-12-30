@@ -9,7 +9,7 @@ import type {
   AccountType,
   PlaidAccountInfo,
   PlaidItemWithAccounts,
-} from "@/types";
+} from "@somar/shared";
 import {
   Card,
   CardContent,

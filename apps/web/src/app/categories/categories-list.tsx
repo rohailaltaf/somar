@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useCategoryMutations } from "@/hooks";
+import type { CategoryType, CategoryWithBudget } from "@somar/shared";
 import {
   Card,
   CardContent,
@@ -38,24 +39,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import type { CategoryType } from "@somar/shared";
 import { formatCurrency } from "@/lib/utils";
-
-interface CategoryBudget {
-  id: string;
-  amount: number;
-  startMonth: string;
-}
-
-interface CategoryWithBudget {
-  id: string;
-  name: string;
-  type: string;
-  color: string;
-  createdAt: string;
-  currentBudget: CategoryBudget | null;
-  allBudgets: CategoryBudget[];
-}
 
 interface CategoriesListProps {
   categories: CategoryWithBudget[];

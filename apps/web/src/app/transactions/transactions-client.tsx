@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { useTransactions } from "@/hooks";
 import { TransactionsList } from "./transactions-list";
+import type { Account, Category } from "@somar/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,23 +17,6 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { X, Search } from "lucide-react";
-
-interface Account {
-  id: string;
-  name: string;
-  type: string;
-  createdAt: string;
-  plaidItemId: string | null;
-  plaidAccountId: string | null;
-}
-
-interface Category {
-  id: string;
-  name: string;
-  type: string;
-  color: string;
-  createdAt: string;
-}
 
 interface TransactionsClientProps {
   accounts: Account[];

@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useDatabase } from "./use-database";
 import * as AccountService from "@/services/accounts";
-import { getPlaidItems as getPlaidItemsAction } from "@/actions/plaid";
+import type { AccountType, CreateAccountInput, PlaidItemWithAccounts } from "@somar/shared";
 
 /**
  * Hook for accessing accounts.
@@ -22,12 +22,19 @@ export function useAccounts() {
 }
 
 /**
- * Hook for accessing Plaid items (from central DB via server action).
+ * Hook for accessing Plaid items (from central DB via API route).
  */
 export function usePlaidItems() {
   return useQuery({
     queryKey: ["plaidItems"],
-    queryFn: () => getPlaidItemsAction(),
+    queryFn: async (): Promise<PlaidItemWithAccounts[]> => {
+      const response = await fetch("/api/plaid/items");
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error?.message || "Failed to fetch Plaid items");
+      }
+      return data.data;
+    },
   });
 }
 
@@ -45,7 +52,7 @@ export function useAccountMutations() {
   };
 
   const createAccount = useMutation({
-    mutationFn: (input: AccountService.CreateAccountInput) => {
+    mutationFn: (input: CreateAccountInput) => {
       if (!db) throw new Error("Database not ready");
       return Promise.resolve(AccountService.createAccount(db, input));
     },
@@ -53,9 +60,9 @@ export function useAccountMutations() {
   });
 
   const updateAccount = useMutation({
-    mutationFn: ({ id, name, type }: { id: string; name: string; type: AccountService.AccountType }) => {
+    mutationFn: ({ id, name, type, plaidAccountId }: { id: string; name: string; type: AccountType; plaidAccountId?: string | null }) => {
       if (!db) throw new Error("Database not ready");
-      AccountService.updateAccount(db, id, name, type);
+      AccountService.updateAccount(db, id, name, type, plaidAccountId);
       return Promise.resolve();
     },
     onSuccess: invalidateAndSave,

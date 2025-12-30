@@ -2,6 +2,7 @@
 
 import { useState, useMemo, memo } from "react";
 import { useTransactionMutations } from "@/hooks";
+import type { Category, TransactionWithRelations } from "@somar/shared";
 import {
   Table,
   TableBody,
@@ -43,36 +44,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn, formatCurrency } from "@/lib/utils";
-
-interface Category {
-  id: string;
-  name: string;
-  type: string;
-  color: string;
-  createdAt: string;
-}
-
-export interface TransactionWithRelations {
-  id: string;
-  accountId: string;
-  categoryId: string | null;
-  description: string;
-  amount: number;
-  date: string;
-  excluded: boolean;
-  isConfirmed: boolean;
-  createdAt: string;
-  plaidTransactionId: string | null;
-  category: Category | null;
-  account: {
-    id: string;
-    name: string;
-    type: string;
-    createdAt: string;
-    plaidItemId: string | null;
-    plaidAccountId: string | null;
-  };
-}
 
 interface TransactionsListProps {
   transactions: TransactionWithRelations[];

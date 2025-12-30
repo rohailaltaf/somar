@@ -2,7 +2,7 @@
 // This package contains code shared between web and mobile apps
 
 // Shared type definitions
-export * from "./types";
+export * from "./types/index";
 
 // Crypto utilities for client-side E2EE
 export * from "./crypto";

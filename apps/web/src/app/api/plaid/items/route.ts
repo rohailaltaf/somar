@@ -2,25 +2,13 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { headers } from "next/headers";
+import type { AccountType, PlaidItemWithAccounts } from "@somar/shared";
 
 /**
  * GET /api/plaid/items
  *
  * List all connected Plaid institutions for the current user.
  */
-
-export interface PlaidItemWithAccounts {
-  id: string;
-  institutionId: string;
-  institutionName: string;
-  lastSyncedAt: string | null;
-  accounts: {
-    id: string;
-    plaidAccountId: string;
-    name: string;
-    type: string;
-  }[];
-}
 
 interface PlaidItemsResponse {
   success: boolean;
@@ -68,7 +56,7 @@ export async function GET(): Promise<NextResponse<PlaidItemsResponse>> {
         id: acc.id,
         plaidAccountId: acc.plaidAccountId,
         name: acc.name,
-        type: acc.type,
+        type: acc.type as AccountType,
       })),
     }));
 

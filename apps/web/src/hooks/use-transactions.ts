@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useDatabase } from "./use-database";
 import * as TransactionService from "@/services/transactions";
+import type { CreateTransactionInput } from "@somar/shared";
 
 /**
  * Hook for accessing transactions with filtering and relations.
@@ -108,7 +109,7 @@ export function useTransactionMutations() {
   };
 
   const createTransaction = useMutation({
-    mutationFn: (input: TransactionService.CreateTransactionInput) => {
+    mutationFn: (input: CreateTransactionInput) => {
       if (!db) throw new Error("Database not ready");
       return Promise.resolve(TransactionService.createTransaction(db, input));
     },
@@ -116,7 +117,7 @@ export function useTransactionMutations() {
   });
 
   const createManyTransactions = useMutation({
-    mutationFn: (inputs: TransactionService.CreateTransactionInput[]) => {
+    mutationFn: (inputs: CreateTransactionInput[]) => {
       if (!db) throw new Error("Database not ready");
       return Promise.resolve(TransactionService.createManyTransactions(db, inputs));
     },

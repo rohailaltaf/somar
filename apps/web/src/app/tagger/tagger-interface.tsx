@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import { useTransactionMutations } from "@/hooks";
+import type { Category, TransactionWithRelations } from "@somar/shared";
 import {
   Card,
   CardContent,
@@ -26,38 +27,6 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { cn, formatCurrency } from "@/lib/utils";
-
-interface Category {
-  id: string;
-  name: string;
-  type: string;
-  color: string;
-  createdAt: string;
-}
-
-interface Account {
-  id: string;
-  name: string;
-  type: string;
-  createdAt: string;
-  plaidItemId?: string | null;
-  plaidAccountId?: string | null;
-}
-
-interface TransactionWithRelations {
-  id: string;
-  accountId: string;
-  categoryId: string | null;
-  description: string;
-  amount: number;
-  date: string;
-  excluded: boolean;
-  isConfirmed: boolean;
-  createdAt: string;
-  plaidTransactionId?: string | null;
-  category: Category | null;
-  account: Account;
-}
 
 interface TaggerInterfaceProps {
   initialTransactions: TransactionWithRelations[];

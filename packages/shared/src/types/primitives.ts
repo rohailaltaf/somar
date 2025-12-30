@@ -1,9 +1,7 @@
 /**
- * Shared type definitions for Somar apps.
- * These types are used across web and mobile apps.
+ * Primitive type definitions for Somar apps.
+ * These are the base union types used throughout the application.
  */
-
-// ============ Account Types ============
 
 /**
  * The type of financial account.
@@ -13,8 +11,6 @@
  * - loan: Mortgages, auto loans, student loans, etc.
  */
 export type AccountType = "checking" | "credit_card" | "investment" | "loan";
-
-// ============ Category Types ============
 
 /**
  * The type of transaction category.
