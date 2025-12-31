@@ -2,15 +2,29 @@
 
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Account } from "@prisma/client";
-import { createManyTransactions } from "@/actions/transactions";
-import { analyzeForDuplicates, DedupAnalysisResult } from "@/actions/dedup";
+import { useTransactionMutations, useTransactions } from "@/hooks";
+import {
+  runTier1Dedup,
+  chunkArray,
+  LLM_API_BATCH_LIMIT,
+  type TransactionForDedup,
+  type DuplicateMatch,
+  type UncertainPair,
+} from "@somar/shared/dedup";
 import {
   parseCSV,
   transformToTransactions,
   ColumnMapping,
   ParsedTransaction,
 } from "@/lib/csv-parser";
+import type { Account } from "@somar/shared";
+
+// Simplified transaction type for post-dedup (no rawRow needed)
+interface SimpleTransaction {
+  date: string;
+  description: string;
+  amount: number;
+}
 import {
   Card,
   CardContent,
@@ -49,12 +63,12 @@ import {
   Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 
 type Step = "select-account" | "upload" | "map-columns" | "confirm-signs" | "review-duplicates" | "preview" | "complete";
 
 interface FlaggedTransaction {
-  transaction: ParsedTransaction;
+  transaction: SimpleTransaction;
   reason: "already-exists";
   selected: boolean;
   originalIndex: number;
@@ -63,12 +77,19 @@ interface FlaggedTransaction {
   matchedDescription?: string;
 }
 
+interface UniqueTransaction {
+  transaction: SimpleTransaction;
+  selected: boolean;
+}
+
 interface UploadInterfaceProps {
   accounts: Account[];
 }
 
 export function UploadInterface({ accounts }: UploadInterfaceProps) {
   const router = useRouter();
+  const { createManyTransactions } = useTransactionMutations();
+
   const [step, setStep] = useState<Step>("select-account");
   const [selectedAccountId, setSelectedAccountId] = useState<string>("");
   const [fileName, setFileName] = useState<string>("");
@@ -81,14 +102,26 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
     debit: null,
     credit: null,
   });
-  const [uniqueTransactions, setUniqueTransactions] = useState<ParsedTransaction[]>([]);
+  const [uniqueTransactions, setUniqueTransactions] = useState<UniqueTransaction[]>([]);
   const [flaggedTransactions, setFlaggedTransactions] = useState<FlaggedTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
   const [importedCount, setImportedCount] = useState(0);
   const [flipAmountSign, setFlipAmountSign] = useState(false);
   const [previewTransactions, setPreviewTransactions] = useState<ParsedTransaction[]>([]);
-  const [dedupStats, setDedupStats] = useState<DedupAnalysisResult["stats"] | null>(null);
+  const [dedupStats, setDedupStats] = useState<{
+    total: number;
+    unique: number;
+    duplicates: number;
+    tier1Matches: number;
+    tier2Matches: number;
+    processingTimeMs: number;
+  } | null>(null);
+
+  // Fetch existing transactions for dedup (only for selected account)
+  const { data: existingTransactions = [] } = useTransactions({
+    accountId: selectedAccountId || undefined,
+  });
 
   const handleFileUpload = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -129,9 +162,10 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
   const handleAnalyzeDuplicates = useCallback(async () => {
     setIsLoading(true);
     setLoadingMessage("Analyzing transactions for duplicates...");
-    
+    const startTime = Date.now();
+
     let transformed = transformToTransactions(rows, mapping);
-    
+
     // Apply sign flip if needed
     if (flipAmountSign) {
       transformed = transformed.map(t => ({
@@ -141,25 +175,102 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
     }
 
     try {
-      // Use the new AI-powered deduplication system
-      const result = await analyzeForDuplicates(
-        transformed.map(t => ({
-          description: t.description,
-          amount: t.amount,
-          date: t.date,
-        })),
-        selectedAccountId,
-        true // Use AI matching
-      );
-
-      // Convert results to component format
-      const unique: ParsedTransaction[] = result.unique.map(t => ({
+      // Prepare data for dedup
+      const newForDedup: TransactionForDedup[] = transformed.map(t => ({
         description: t.description,
         amount: t.amount,
         date: t.date,
       }));
 
-      const flagged: FlaggedTransaction[] = result.duplicates.map((d, index) => ({
+      const existingForDedup: TransactionForDedup[] = existingTransactions.map(t => ({
+        id: t.id,
+        description: t.description,
+        amount: t.amount,
+        date: t.date,
+        plaidAuthorizedDate: t.plaidAuthorizedDate,
+        plaidPostedDate: t.plaidPostedDate,
+        plaidMerchantName: t.plaidMerchantName,
+      }));
+
+      // Step 1: Run Tier 1 (deterministic) matching locally
+      const tier1Result = runTier1Dedup(newForDedup, existingForDedup);
+
+      // Step 2: If uncertain pairs exist, call API for LLM verification (with batching)
+      let finalDuplicates: DuplicateMatch[] = [...tier1Result.definiteMatches];
+      let finalUnique: TransactionForDedup[] = [...tier1Result.unique];
+      let tier2Matches = 0;
+
+      if (tier1Result.uncertainPairs.length > 0) {
+        setLoadingMessage("Verifying uncertain matches with AI...");
+
+        // Batch API calls to respect the 100 pair limit
+        const batches = chunkArray(tier1Result.uncertainPairs, LLM_API_BATCH_LIMIT);
+        const processedNewTxs = new Set<string>();
+
+        for (const batch of batches) {
+          try {
+            const response = await fetch("/api/dedup/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ uncertainPairs: batch }),
+            });
+
+            const llmResult = await response.json();
+
+            if (llmResult.success && llmResult.data) {
+              // Add LLM-confirmed matches to duplicates
+              for (const match of llmResult.data.matches) {
+                const pair = batch.find(
+                  (p: UncertainPair) =>
+                    p.newTransaction.description === match.newTransactionDescription &&
+                    p.candidate.id === match.candidateId
+                );
+                if (pair && !processedNewTxs.has(pair.newTransaction.description)) {
+                  finalDuplicates.push({
+                    transaction: pair.newTransaction,
+                    matchedWith: pair.candidate,
+                    confidence: match.confidence,
+                    matchTier: "llm",
+                  });
+                  tier2Matches++;
+                  processedNewTxs.add(pair.newTransaction.description);
+                }
+              }
+            }
+          } catch (error) {
+            console.error("[CSV Upload] LLM verification batch failed:", error);
+            // Continue with remaining batches
+          }
+        }
+
+        // Add non-matches to unique (transactions that didn't match any candidate)
+        const matchedDescriptions = new Set(
+          finalDuplicates.map(d => d.transaction.description)
+        );
+        for (const pair of tier1Result.uncertainPairs) {
+          if (!matchedDescriptions.has(pair.newTransaction.description)) {
+            // Only add if not already in unique
+            const alreadyInUnique = finalUnique.some(
+              u => u.description === pair.newTransaction.description
+            );
+            if (!alreadyInUnique) {
+              finalUnique.push(pair.newTransaction);
+            }
+          }
+        }
+      }
+
+      // Convert results to component format
+      const unique: UniqueTransaction[] = finalUnique.map(t => ({
+        transaction: {
+          description: t.description,
+          amount: t.amount,
+          date: t.date,
+        },
+        selected: true, // Default to import
+      }));
+
+      const flagged: FlaggedTransaction[] = finalDuplicates.map((d, index) => ({
         transaction: {
           description: d.transaction.description,
           amount: d.transaction.amount,
@@ -175,7 +286,14 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
 
       setUniqueTransactions(unique);
       setFlaggedTransactions(flagged);
-      setDedupStats(result.stats);
+      setDedupStats({
+        total: newForDedup.length,
+        unique: unique.length,
+        duplicates: flagged.length,
+        tier1Matches: tier1Result.definiteMatches.length,
+        tier2Matches,
+        processingTimeMs: Date.now() - startTime,
+      });
 
       if (flagged.length > 0) {
         setStep("review-duplicates");
@@ -189,7 +307,7 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
       setIsLoading(false);
       setLoadingMessage("");
     }
-  }, [rows, mapping, selectedAccountId, flipAmountSign]);
+  }, [rows, mapping, flipAmountSign, existingTransactions]);
 
   const toggleFlagged = (index: number) => {
     setFlaggedTransactions(prev => {
@@ -203,51 +321,58 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
     setFlaggedTransactions(prev => prev.map(f => ({ ...f, selected })));
   };
 
+  const toggleUnique = (index: number) => {
+    setUniqueTransactions(prev => {
+      const newUnique = [...prev];
+      newUnique[index] = { ...newUnique[index], selected: !newUnique[index].selected };
+      return newUnique;
+    });
+  };
+
+  const selectAllUnique = (selected: boolean) => {
+    setUniqueTransactions(prev => prev.map(u => ({ ...u, selected })));
+  };
+
   const getTransactionsToImport = () => {
+    const selectedUnique = uniqueTransactions
+      .filter(u => u.selected)
+      .map(u => u.transaction);
     const selectedFlagged = flaggedTransactions
       .filter(f => f.selected)
       .map(f => f.transaction);
-    return [...uniqueTransactions, ...selectedFlagged];
+    return [...selectedUnique, ...selectedFlagged];
   };
 
-  const handleImport = async () => {
-    setIsLoading(true);
+  const handleImport = () => {
     const toImport = getTransactionsToImport();
 
-    try {
-      if (toImport.length === 0) {
-        toast.error("No transactions to import");
-        setIsLoading(false);
-        return;
-      }
-
-      await createManyTransactions(
-        toImport.map((t) => ({
-          accountId: selectedAccountId,
-          description: t.description,
-          amount: t.amount,
-          date: t.date,
-        }))
-      );
-
-      setImportedCount(toImport.length);
-      setStep("complete");
-      toast.success(`Imported ${toImport.length} transactions`);
-    } catch (error) {
-      toast.error("Failed to import transactions");
-    } finally {
-      setIsLoading(false);
+    if (toImport.length === 0) {
+      toast.error("No transactions to import");
+      return;
     }
-  };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(Math.abs(amount));
+    createManyTransactions.mutate(
+      toImport.map((t) => ({
+        accountId: selectedAccountId,
+        description: t.description,
+        amount: t.amount,
+        date: t.date,
+      })),
+      {
+        onSuccess: () => {
+          setImportedCount(toImport.length);
+          setStep("complete");
+          toast.success(`Imported ${toImport.length} transactions`);
+        },
+        onError: () => {
+          toast.error("Failed to import transactions");
+        },
+      }
+    );
   };
 
   const selectedAccount = accounts.find((a) => a.id === selectedAccountId);
+  const selectedUniqueCount = uniqueTransactions.filter(u => u.selected).length;
   const selectedFlaggedCount = flaggedTransactions.filter(f => f.selected).length;
 
   return (
@@ -589,7 +714,7 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
                   <TableBody>
                     {previewTransactions.slice(0, 10).map((t, i) => {
                       const displayAmount = flipAmountSign ? -t.amount : t.amount;
-                      const isExpense = displayAmount < 0; // Negative = expense
+                      const isExpense = displayAmount < 0;
                       return (
                         <TableRow key={i}>
                           <TableCell className="whitespace-nowrap">{t.date}</TableCell>
@@ -602,7 +727,7 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
                               )}
                             >
                               {isExpense ? "-" : "+"}
-                              {formatCurrency(displayAmount)}
+                              {formatCurrency(Math.abs(displayAmount), true)}
                             </span>
                           </TableCell>
                           <TableCell className="text-center">
@@ -651,7 +776,7 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
           <CardHeader>
             <CardTitle>Review Potential Duplicates</CardTitle>
             <CardDescription>
-              {flaggedTransactions.length} transaction{flaggedTransactions.length !== 1 ? "s" : ""} detected as duplicates using AI-powered matching.
+              {flaggedTransactions.length} transaction{flaggedTransactions.length !== 1 ? "s" : ""} detected as duplicates.
               They won&apos;t be imported unless you check them.
             </CardDescription>
           </CardHeader>
@@ -670,8 +795,7 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
             <Alert>
               <AlertCircle className="w-4 h-4" />
               <AlertDescription>
-                These transactions match existing records. The AI detected them as duplicates even with different description formats.
-                Check any that you want to import anyway.
+                These transactions match existing records. Check any that you want to import anyway.
               </AlertDescription>
             </Alert>
 
@@ -730,7 +854,7 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
                           )}
                         >
                           {item.transaction.amount < 0 ? "-" : "+"}
-                          {formatCurrency(item.transaction.amount)}
+                          {formatCurrency(Math.abs(item.transaction.amount), true)}
                         </span>
                       </TableCell>
                       <TableCell className="text-center">
@@ -780,66 +904,97 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
       {step === "preview" && (
         <Card>
           <CardHeader>
-            <CardTitle>Preview Import</CardTitle>
+            <CardTitle>Review New Transactions</CardTitle>
             <CardDescription>
-              {getTransactionsToImport().length} transactions ready to import
+              {uniqueTransactions.length} transaction{uniqueTransactions.length !== 1 ? "s" : ""} not found in existing records.
+              Uncheck any you don&apos;t want to import.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            {getTransactionsToImport().length === 0 ? (
-              <Alert variant="destructive">
-                <AlertCircle className="w-4 h-4" />
+          <CardContent className="space-y-4">
+            {uniqueTransactions.length === 0 ? (
+              <Alert>
+                <Check className="w-4 h-4" />
                 <AlertDescription>
-                  No transactions to import. Go back to select transactions.
+                  All transactions matched existing records. Nothing new to import.
                 </AlertDescription>
               </Alert>
             ) : (
-              <div className="border rounded-lg overflow-hidden max-h-[400px] overflow-y-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {getTransactionsToImport().map((t, i) => (
-                      <TableRow key={i}>
-                        <TableCell className="whitespace-nowrap">{t.date}</TableCell>
-                        <TableCell>{t.description}</TableCell>
-                        <TableCell className="text-right whitespace-nowrap">
-                          <span
-                            className={cn(
-                              "font-medium",
-                              t.amount < 0 ? "text-red-600" : "text-emerald-600"
-                            )}
-                          >
-                            {t.amount < 0 ? "-" : "+"}
-                            {formatCurrency(t.amount)}
-                          </span>
-                        </TableCell>
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">
+                    {selectedUniqueCount} of {uniqueTransactions.length} selected to import
+                  </span>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => selectAllUnique(false)}>
+                      Select None
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => selectAllUnique(true)}>
+                      Select All
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="border rounded-lg overflow-hidden max-h-[400px] overflow-y-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[50px]">Import</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableHeader>
+                    <TableBody>
+                      {uniqueTransactions.map((item, idx) => (
+                        <TableRow
+                          key={idx}
+                          className={cn(item.selected && "bg-emerald-50 dark:bg-emerald-950/30")}
+                        >
+                          <TableCell>
+                            <Checkbox
+                              checked={item.selected}
+                              onCheckedChange={() => toggleUnique(idx)}
+                            />
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">{item.transaction.date}</TableCell>
+                          <TableCell>{item.transaction.description}</TableCell>
+                          <TableCell className="text-right whitespace-nowrap">
+                            <span
+                              className={cn(
+                                "font-medium",
+                                item.transaction.amount < 0 ? "text-red-600" : "text-emerald-600"
+                              )}
+                            >
+                              {item.transaction.amount < 0 ? "-" : "+"}
+                              {formatCurrency(Math.abs(item.transaction.amount), true)}
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
             )}
 
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => flaggedTransactions.length > 0 ? setStep("review-duplicates") : setStep("confirm-signs")}
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back
-              </Button>
-              <Button
-                onClick={handleImport}
-                disabled={isLoading || getTransactionsToImport().length === 0}
-                className="flex-1"
-              >
-                {isLoading ? (
+            <div className="flex items-center justify-between pt-4 border-t">
+              <div className="text-sm">
+                <span className="font-medium">{selectedUniqueCount + selectedFlaggedCount}</span>
+                <span className="text-muted-foreground"> transactions will be imported</span>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => flaggedTransactions.length > 0 ? setStep("review-duplicates") : setStep("confirm-signs")}
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back
+                </Button>
+                <Button
+                  onClick={handleImport}
+                  disabled={createManyTransactions.isPending || getTransactionsToImport().length === 0}
+                >
+                  {createManyTransactions.isPending ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Importing...
@@ -851,6 +1006,7 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
                   </>
                 )}
               </Button>
+              </div>
             </div>
           </CardContent>
         </Card>

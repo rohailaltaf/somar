@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
-import { Account, Category } from "@prisma/client";
+import { useState, useMemo, useCallback } from "react";
+import { useTransactions } from "@/hooks";
 import { TransactionsList } from "./transactions-list";
+import type { Account, Category } from "@somar/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,35 +18,6 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { X, Search } from "lucide-react";
 
-// Type for transaction with relations
-interface TransactionWithRelations {
-  id: string;
-  accountId: string;
-  categoryId: string | null;
-  description: string;
-  amount: number;
-  date: string;
-  excluded: boolean;
-  isConfirmed: boolean;
-  createdAt: string;
-  plaidTransactionId: string | null;
-  category: {
-    id: string;
-    name: string;
-    type: string;
-    color: string;
-    createdAt: string;
-  } | null;
-  account: {
-    id: string;
-    name: string;
-    type: string;
-    createdAt: string;
-    plaidItemId: string | null;
-    plaidAccountId: string | null;
-  };
-}
-
 interface TransactionsClientProps {
   accounts: Account[];
   categories: Category[];
@@ -55,58 +27,59 @@ export function TransactionsClient({
   accounts,
   categories,
 }: TransactionsClientProps) {
-  const [transactions, setTransactions] = useState<TransactionWithRelations[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [totalCount, setTotalCount] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [accountFilter, setAccountFilter] = useState<string>("all");
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [startDate, setStartDate] = useState<string>("");
-  const [endDate, setEndDate] = useState<string>("");
-  const [showExcluded, setShowExcluded] = useState<boolean>(false);
-  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [accountFilter, setAccountFilterState] = useState<string>("all");
+  const [categoryFilter, setCategoryFilterState] = useState<string>("all");
+  const [startDate, setStartDateState] = useState<string>("");
+  const [endDate, setEndDateState] = useState<string>("");
+  const [showExcluded, setShowExcludedState] = useState<boolean>(false);
+  const [searchQuery, setSearchQueryState] = useState<string>("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 50;
 
-  // Load transactions from server with pagination and filters
-  useEffect(() => {
-    const loadTransactions = async () => {
-      try {
-        setLoading(true);
-        const params = new URLSearchParams({
-          page: currentPage.toString(),
-          limit: itemsPerPage.toString(),
-        });
-        
-        if (accountFilter !== "all") params.set("accountId", accountFilter);
-        if (categoryFilter !== "all") params.set("categoryId", categoryFilter);
-        if (startDate) params.set("startDate", startDate);
-        if (endDate) params.set("endDate", endDate);
-        if (showExcluded) params.set("showExcluded", "true");
-        if (searchQuery.trim()) params.set("search", searchQuery.trim());
-        
-        const response = await fetch(`/api/transactions?${params.toString()}`);
-        
-        if (!response.ok) {
-          throw new Error(`API error: ${response.status} ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        setTransactions(data.transactions);
-        setTotalCount(data.pagination.totalCount);
-        setTotalPages(data.pagination.totalPages);
-      } catch (error) {
-        console.error("Failed to load transactions:", error);
-        setTransactions([]);
-        setTotalCount(0);
-        setTotalPages(0);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Wrapper setters that also reset page to 1
+  const setAccountFilter = useCallback((value: string) => {
+    setAccountFilterState(value);
+    setCurrentPage(1);
+  }, []);
+  const setCategoryFilter = useCallback((value: string) => {
+    setCategoryFilterState(value);
+    setCurrentPage(1);
+  }, []);
+  const setStartDate = useCallback((value: string) => {
+    setStartDateState(value);
+    setCurrentPage(1);
+  }, []);
+  const setEndDate = useCallback((value: string) => {
+    setEndDateState(value);
+    setCurrentPage(1);
+  }, []);
+  const setShowExcluded = useCallback((value: boolean) => {
+    setShowExcludedState(value);
+    setCurrentPage(1);
+  }, []);
+  const setSearchQuery = useCallback((value: string) => {
+    setSearchQueryState(value);
+    setCurrentPage(1);
+  }, []);
 
-    loadTransactions();
-  }, [currentPage, accountFilter, categoryFilter, startDate, endDate, showExcluded, searchQuery]);
+  // Build filter options for the hook
+  const filterOptions = useMemo(() => ({
+    accountId: accountFilter !== "all" ? accountFilter : undefined,
+    categoryId: categoryFilter === "uncategorized" ? null : categoryFilter !== "all" ? categoryFilter : undefined,
+    startDate: startDate || undefined,
+    endDate: endDate || undefined,
+    showExcluded,
+    search: searchQuery.trim() || undefined,
+  }), [accountFilter, categoryFilter, startDate, endDate, showExcluded, searchQuery]);
+
+  const { data: transactions = [], isLoading } = useTransactions(filterOptions);
+
+  // Paginate client-side
+  const totalCount = transactions.length;
+  const totalPages = Math.ceil(totalCount / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalCount);
+  const paginatedTransactions = transactions.slice(startIndex, endIndex);
 
   const clearFilters = () => {
     setAccountFilter("all");
@@ -118,16 +91,6 @@ export function TransactionsClient({
   };
 
   const hasFilters = accountFilter !== "all" || categoryFilter !== "all" || startDate || endDate || searchQuery.trim();
-
-  // Calculate display range
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = Math.min(startIndex + itemsPerPage, totalCount);
-
-  // Reset to page 1 when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accountFilter, categoryFilter, startDate, endDate, showExcluded, searchQuery]);
 
   return (
     <>
@@ -173,6 +136,7 @@ export function TransactionsClient({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All categories</SelectItem>
+                  <SelectItem value="uncategorized">Uncategorized</SelectItem>
                   {categories.map((category) => (
                     <SelectItem key={category.id} value={category.id}>
                       <div className="flex items-center gap-2">
@@ -229,7 +193,7 @@ export function TransactionsClient({
             </Label>
           </div>
           <div className="mt-2 text-sm text-muted-foreground">
-            {loading ? (
+            {isLoading ? (
               "Loading transactions..."
             ) : totalCount === 0 ? (
               "No transactions found"
@@ -243,7 +207,7 @@ export function TransactionsClient({
       </Card>
 
       <div className="mt-6">
-        {loading ? (
+        {isLoading ? (
           <Card>
             <CardContent className="pt-6">
               <div className="space-y-3">
@@ -256,7 +220,7 @@ export function TransactionsClient({
         ) : (
           <>
             <TransactionsList
-              transactions={transactions}
+              transactions={paginatedTransactions}
               categories={categories}
             />
             {totalPages > 1 && (
@@ -335,4 +299,3 @@ export function TransactionsClient({
     </>
   );
 }
-

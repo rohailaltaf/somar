@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Category, CategoryBudget } from "@prisma/client";
-import { deleteCategory, updateCategory, setBudget, deleteBudget } from "@/actions/categories";
+import { useCategoryMutations } from "@/hooks";
+import type { CategoryType, CategoryWithBudget } from "@somar/shared";
 import {
   Card,
   CardContent,
@@ -39,22 +39,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-
-interface CategoryWithBudget extends Category {
-  currentBudget: CategoryBudget | null;
-  allBudgets: CategoryBudget[];
-}
+import { formatCurrency } from "@/lib/utils";
 
 interface CategoriesListProps {
   categories: CategoryWithBudget[];
 }
 
 export function CategoriesList({ categories }: CategoriesListProps) {
+  const { updateCategory, deleteCategory, setBudget, deleteBudget } = useCategoryMutations();
+
   const [editingCategory, setEditingCategory] = useState<CategoryWithBudget | null>(null);
   const [deletingCategory, setDeletingCategory] = useState<CategoryWithBudget | null>(null);
   const [budgetCategory, setBudgetCategory] = useState<CategoryWithBudget | null>(null);
   const [editName, setEditName] = useState("");
-  const [editType, setEditType] = useState<"spending" | "income" | "transfer">("spending");
+  const [editType, setEditType] = useState<CategoryType>("spending");
   const [editColor, setEditColor] = useState("");
   const [budgetAmount, setBudgetAmount] = useState("");
   const [budgetMonth, setBudgetMonth] = useState(() => {
@@ -65,24 +63,33 @@ export function CategoriesList({ categories }: CategoriesListProps) {
   const handleEdit = (category: CategoryWithBudget) => {
     setEditingCategory(category);
     setEditName(category.name);
-    setEditType(category.type as "spending" | "income" | "transfer");
+    setEditType(category.type as CategoryType);
     setEditColor(category.color);
   };
 
-  const handleSaveEdit = async () => {
+  const handleSaveEdit = () => {
     if (!editingCategory || !editName.trim()) return;
 
-    await updateCategory(editingCategory.id, editName.trim(), editType, editColor);
-    setEditingCategory(null);
-    toast.success("Category updated");
+    updateCategory.mutate(
+      { id: editingCategory.id, name: editName.trim(), type: editType, color: editColor },
+      {
+        onSuccess: () => {
+          setEditingCategory(null);
+          toast.success("Category updated");
+        },
+      }
+    );
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!deletingCategory) return;
 
-    await deleteCategory(deletingCategory.id);
-    setDeletingCategory(null);
-    toast.success("Category deleted");
+    deleteCategory.mutate(deletingCategory.id, {
+      onSuccess: () => {
+        setDeletingCategory(null);
+        toast.success("Category deleted");
+      },
+    });
   };
 
   const handleOpenBudget = (category: CategoryWithBudget) => {
@@ -90,7 +97,7 @@ export function CategoriesList({ categories }: CategoriesListProps) {
     setBudgetAmount(category.currentBudget?.amount?.toString() || "");
   };
 
-  const handleSaveBudget = async () => {
+  const handleSaveBudget = () => {
     if (!budgetCategory) return;
 
     const amount = parseFloat(budgetAmount);
@@ -99,18 +106,23 @@ export function CategoriesList({ categories }: CategoriesListProps) {
       return;
     }
 
-    await setBudget(budgetCategory.id, amount, budgetMonth);
-    setBudgetCategory(null);
-    toast.success("Budget saved");
+    setBudget.mutate(
+      { categoryId: budgetCategory.id, amount, startMonth: budgetMonth },
+      {
+        onSuccess: () => {
+          setBudgetCategory(null);
+          toast.success("Budget saved");
+        },
+      }
+    );
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
+  const handleDeleteBudget = (budgetId: string) => {
+    deleteBudget.mutate(budgetId, {
+      onSuccess: () => {
+        toast.success("Budget removed");
+      },
+    });
   };
 
   if (categories.length === 0) {
@@ -216,7 +228,7 @@ export function CategoriesList({ categories }: CategoriesListProps) {
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-type">Type</Label>
-              <Select value={editType} onValueChange={(value) => setEditType(value as "spending" | "income" | "transfer")}>
+              <Select value={editType} onValueChange={(value) => setEditType(value as CategoryType)}>
                 <SelectTrigger id="edit-type">
                   <SelectValue />
                 </SelectTrigger>
@@ -248,7 +260,9 @@ export function CategoriesList({ categories }: CategoriesListProps) {
             <Button variant="outline" onClick={() => setEditingCategory(null)}>
               Cancel
             </Button>
-            <Button onClick={handleSaveEdit}>Save Changes</Button>
+            <Button onClick={handleSaveEdit} disabled={updateCategory.isPending}>
+              {updateCategory.isPending ? "Saving..." : "Save Changes"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -336,10 +350,8 @@ export function CategoriesList({ categories }: CategoriesListProps) {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={async () => {
-                              await deleteBudget(budget.id);
-                              toast.success("Budget removed");
-                            }}
+                            onClick={() => handleDeleteBudget(budget.id)}
+                            disabled={deleteBudget.isPending}
                           >
                             <X className="w-4 h-4" />
                           </Button>
@@ -355,7 +367,9 @@ export function CategoriesList({ categories }: CategoriesListProps) {
             <Button variant="outline" onClick={() => setBudgetCategory(null)}>
               Cancel
             </Button>
-            <Button onClick={handleSaveBudget}>Save Budget</Button>
+            <Button onClick={handleSaveBudget} disabled={setBudget.isPending}>
+              {setBudget.isPending ? "Saving..." : "Save Budget"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -374,8 +388,8 @@ export function CategoriesList({ categories }: CategoriesListProps) {
             <Button variant="outline" onClick={() => setDeletingCategory(null)}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleDelete}>
-              Delete
+            <Button variant="destructive" onClick={handleDelete} disabled={deleteCategory.isPending}>
+              {deleteCategory.isPending ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -383,4 +397,3 @@ export function CategoriesList({ categories }: CategoriesListProps) {
     </>
   );
 }
-

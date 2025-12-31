@@ -17,8 +17,9 @@ import {
   YAxis, 
   CartesianGrid, 
   Tooltip, 
-  ResponsiveContainer 
+  ResponsiveContainer,
 } from "recharts";
+import { formatMonth, formatCurrency } from "@/lib/utils";
 
 interface IncomeOverviewClientProps {
   currentMonth: string;
@@ -52,6 +53,63 @@ interface IncomeOverviewClientProps {
   }>;
 }
 
+// Utility functions defined at module level (not recreated on render)
+const formatYAxis = (value: number) => {
+  if (value >= 1000) {
+    return `$${(value / 1000).toFixed(1)}k`;
+  }
+  return `$${value}`;
+};
+
+const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+const getMonthName = (monthNum: number) => {
+  return MONTH_NAMES[monthNum - 1] || "";
+};
+
+// Custom tooltip component for the bar chart
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: Array<{
+    value?: number;
+    color?: string;
+    fill?: string;
+  }>;
+  label?: number;
+}
+
+function IncomeTooltip({ active, payload, label }: CustomTooltipProps) {
+  if (!active || !payload || payload.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl p-4">
+      <p className="font-semibold text-sm mb-3 text-gray-900 dark:text-gray-100">
+        {typeof label === "number" ? getMonthName(label) : label}
+      </p>
+      <div className="space-y-2">
+        {payload.map((entry, index) => (
+          <div key={index} className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <div 
+                className="w-3 h-3 rounded-full" 
+                style={{ backgroundColor: entry.color || entry.fill || "#10b981" }}
+              />
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                Income
+              </span>
+            </div>
+            <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              {typeof entry.value === "number" ? formatCurrency(entry.value) : "$0"}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function IncomeOverviewClient({
   currentMonth,
   lastMonth,
@@ -65,35 +123,6 @@ export function IncomeOverviewClient({
   yearMonthlyData,
 }: IncomeOverviewClientProps) {
   const [selectedPeriod, setSelectedPeriod] = useState<"current" | "last" | "year">("current");
-  
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  const formatYAxis = (value: number) => {
-    if (value >= 1000) {
-      return `$${(value / 1000).toFixed(1)}k`;
-    }
-    return `$${value}`;
-  };
-
-  const formatMonth = (monthStr: string) => {
-    const [year, month] = monthStr.split("-");
-    return new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString("en-US", {
-      month: "long",
-      year: "numeric",
-    });
-  };
-
-  const getMonthName = (monthNum: number) => {
-    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    return monthNames[monthNum - 1];
-  };
 
   // Determine which data to display based on selected period
   const displayMonth = selectedPeriod === "current" ? currentMonth : selectedPeriod === "last" ? lastMonth : `${currentYear}`;
@@ -130,38 +159,6 @@ export function IncomeOverviewClient({
     );
   };
 
-  // Custom tooltip for chart
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl p-4">
-          <p className="font-semibold text-sm mb-3 text-gray-900 dark:text-gray-100">
-            {getMonthName(label)}
-          </p>
-          <div className="space-y-2">
-            {payload.map((entry: any, index: number) => (
-              <div key={index} className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-2">
-                  <div 
-                    className="w-3 h-3 rounded-full" 
-                    style={{ backgroundColor: entry.fill }}
-                  />
-                  <span className="text-sm text-gray-600 dark:text-gray-400">
-                    Income
-                  </span>
-                </div>
-                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {formatCurrency(entry.value)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      );
-    }
-    return null;
-  };
-
   return (
     <div className="space-y-8">
       {/* Total Income with Period Selector */}
@@ -171,7 +168,7 @@ export function IncomeOverviewClient({
             <CardTitle>Total Income</CardTitle>
             <CardDescription className="mt-1.5">{displayLabel}</CardDescription>
           </div>
-          <Select value={selectedPeriod} onValueChange={(value: any) => setSelectedPeriod(value)}>
+          <Select value={selectedPeriod} onValueChange={(value: "current" | "last" | "year") => setSelectedPeriod(value)}>
             <SelectTrigger className="w-[180px]">
               <SelectValue />
             </SelectTrigger>
@@ -222,7 +219,7 @@ export function IncomeOverviewClient({
                     tickLine={false}
                     axisLine={{ stroke: '#e2e8f0' }}
                   />
-                  <Tooltip content={<CustomTooltip />} />
+                  <Tooltip content={<IncomeTooltip />} />
                   <Bar 
                     dataKey="amount" 
                     fill="#10b981"
@@ -278,10 +275,3 @@ export function IncomeOverviewClient({
     </div>
   );
 }
-
-
-
-
-
-
-

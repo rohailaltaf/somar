@@ -1,15 +1,11 @@
-import { Suspense } from "react";
+"use client";
+
+import { useMemo } from "react";
 import Link from "next/link";
-import {
-  getSpendingByCategory,
-  getTotalSpending,
-  getUnconfirmedCount,
-} from "@/actions/transactions";
-import { getItemsNeedingSync } from "@/actions/plaid";
+import { useSpendingByCategory, useTotalSpending, useUnconfirmedCount } from "@/hooks";
 import { Nav } from "@/components/nav";
 import { PageHeader } from "@/components/page-header";
 import { BudgetProgress } from "@/components/budget-progress";
-import { AutoSync } from "@/components/auto-sync";
 import {
   Card,
   CardContent,
@@ -27,16 +23,37 @@ import {
   AlertTriangle,
   Zap,
 } from "lucide-react";
+import { getCurrentMonth, formatMonth, formatCurrency } from "@/lib/utils";
 
-async function DashboardContent() {
-  const now = new Date();
-  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  const [categorySpending, totalSpending, unconfirmedCount, itemsNeedingSync] = await Promise.all([
-    getSpendingByCategory(currentMonth),
-    getTotalSpending(currentMonth),
-    getUnconfirmedCount(),
-    getItemsNeedingSync(),
-  ]);
+export default function DashboardPage() {
+  return (
+    <div className="min-h-screen bg-background">
+      <Nav />
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <PageHeader
+          title="Dashboard"
+          description="Overview of your spending and budgets"
+        />
+        <div className="mt-8">
+          <DashboardContent />
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function DashboardContent() {
+  const currentMonth = useMemo(() => getCurrentMonth(), []);
+
+  const { data: categorySpending = [], isLoading: loadingSpending } = useSpendingByCategory(currentMonth);
+  const { data: totalSpending = 0, isLoading: loadingTotal } = useTotalSpending(currentMonth);
+  const { data: unconfirmedCount = 0, isLoading: loadingUnconfirmed } = useUnconfirmedCount();
+
+  const isLoading = loadingSpending || loadingTotal || loadingUnconfirmed;
+
+  if (isLoading) {
+    return <DashboardSkeleton />;
+  }
 
   const totalBudget = categorySpending.reduce(
     (sum, cat) => sum + (cat.budget || 0),
@@ -49,28 +66,8 @@ async function DashboardContent() {
     (cat) => cat.budget && cat.spent > cat.budget * 0.8 && cat.spent <= cat.budget
   );
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  const formatMonth = (monthStr: string) => {
-    const [year, month] = monthStr.split("-");
-    return new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString(
-      "en-US",
-      { month: "long", year: "numeric" }
-    );
-  };
-
   return (
     <div className="space-y-8">
-      {/* Auto-sync connected institutions */}
-      <AutoSync itemsNeedingSync={itemsNeedingSync} />
-      
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
@@ -175,43 +172,7 @@ async function DashboardContent() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {categorySpending.length > 0 ? (
-            <div className="space-y-6">
-              {categorySpending
-                .filter((cat) => cat.spent > 0 || cat.budget)
-                .sort((a, b) => b.spent - a.spent)
-                .map((category) => (
-                  <BudgetProgress
-                    key={category.id}
-                    spent={category.spent}
-                    budget={category.budget}
-                    categoryName={category.name}
-                    categoryColor={category.color}
-                  />
-                ))}
-              {categorySpending.filter((cat) => cat.spent > 0 || cat.budget).length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>No spending data yet this month.</p>
-                  <Link href="/upload">
-                    <Button variant="link" className="mt-2">
-                      Upload transactions
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </Button>
-                  </Link>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <p>No categories found.</p>
-              <Link href="/categories">
-                <Button variant="link" className="mt-2">
-                  Set up categories
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </Link>
-            </div>
-          )}
+          <CategoryBreakdown categorySpending={categorySpending} />
         </CardContent>
       </Card>
 
@@ -269,21 +230,50 @@ async function DashboardContent() {
   );
 }
 
-export default function DashboardPage() {
+function CategoryBreakdown({ categorySpending }: { categorySpending: Array<{ id: string; name: string; color: string; spent: number; budget: number | null }> }) {
+  if (categorySpending.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        <p>No categories found.</p>
+        <Link href="/categories">
+          <Button variant="link" className="mt-2">
+            Set up categories
+            <ArrowRight className="w-4 h-4 ml-2" />
+          </Button>
+        </Link>
+      </div>
+    );
+  }
+
+  const visibleCategories = categorySpending.filter((cat) => cat.spent > 0 || cat.budget);
+  
+  if (visibleCategories.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        <p>No spending data yet this month.</p>
+        <Link href="/upload">
+          <Button variant="link" className="mt-2">
+            Upload transactions
+            <ArrowRight className="w-4 h-4 ml-2" />
+          </Button>
+        </Link>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-background">
-      <Nav />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <PageHeader
-          title="Dashboard"
-          description="Overview of your spending and budgets"
-        />
-        <div className="mt-8">
-          <Suspense fallback={<DashboardSkeleton />}>
-            <DashboardContent />
-          </Suspense>
-        </div>
-      </main>
+    <div className="space-y-6">
+      {visibleCategories
+        .sort((a, b) => b.spent - a.spent)
+        .map((category) => (
+          <BudgetProgress
+            key={category.id}
+            spent={category.spent}
+            budget={category.budget}
+            categoryName={category.name}
+            categoryColor={category.color}
+          />
+        ))}
     </div>
   );
 }

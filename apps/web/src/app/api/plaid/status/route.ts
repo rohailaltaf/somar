@@ -1,12 +1,25 @@
 import { NextResponse } from "next/server";
-import { checkAllPlaidItemsStatus } from "@/actions/plaid";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+import { checkAllPlaidItemsStatus } from "@/lib/plaid";
 
 // GET /api/plaid/status - Check the status of all Plaid items
 // Useful for verifying disconnections and debugging billing
 export async function GET() {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (!session?.user?.id) {
+    return NextResponse.json(
+      { error: "Not authenticated" },
+      { status: 401 }
+    );
+  }
+
   try {
-    const result = await checkAllPlaidItemsStatus();
-    
+    const result = await checkAllPlaidItemsStatus(session.user.id);
+
     return NextResponse.json({
       ...result,
       summary: {

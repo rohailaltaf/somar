@@ -1,19 +1,33 @@
-import { getUnconfirmedTransactions, getUnconfirmedCount } from "@/actions/transactions";
-import { getCategories } from "@/actions/categories";
+"use client";
+
+import { useCategories, useUnconfirmedTransactions } from "@/hooks";
 import { Nav } from "@/components/nav";
 import { PageHeader } from "@/components/page-header";
 import { TaggerInterface } from "./tagger-interface";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
-export default async function TaggerPage() {
-  const [transactions, categories, unconfirmedCount] = await Promise.all([
-    getUnconfirmedTransactions(),
-    getCategories(),
-    getUnconfirmedCount(),
-  ]);
+export default function TaggerPage() {
+  const { categories = [], isLoading: loadingCategories } = useCategories();
+  const { data: transactions = [], isLoading: loadingTransactions } = useUnconfirmedTransactions();
+
+  const isLoading = loadingCategories || loadingTransactions;
+  const unconfirmedCount = transactions.length;
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Nav />
+        <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -55,10 +69,3 @@ export default async function TaggerPage() {
     </div>
   );
 }
-
-
-
-
-
-
-

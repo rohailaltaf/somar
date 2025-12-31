@@ -68,6 +68,12 @@ finance-dev.db*
 finance-prod.db*
 finance-demo.db*
 
+# User encrypted database blobs (E2EE architecture)
+apps/web/data/users/*.enc
+apps/web/data/*.json
+!apps/web/data/.gitkeep
+!apps/web/data/users/.gitkeep
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

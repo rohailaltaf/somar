@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { createCategory } from "@/actions/categories";
+import { useCategoryMutations } from "@/hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
+import type { CategoryType } from "@somar/shared";
 
 const presetColors = [
   "oklch(0.65 0.2 30)",   // Orange
@@ -36,31 +37,34 @@ const presetColors = [
 ];
 
 export function CreateCategoryDialog() {
+  const { createCategory } = useCategoryMutations();
+
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
-  const [type, setType] = useState<"spending" | "income" | "transfer">("spending");
+  const [type, setType] = useState<CategoryType>("spending");
   const [color, setColor] = useState(presetColors[0]);
-  const [isLoading, setIsLoading] = useState(false);
 
-  const handleCreate = async () => {
+  const handleCreate = () => {
     if (!name.trim()) {
       toast.error("Please enter a category name");
       return;
     }
 
-    setIsLoading(true);
-    try {
-      await createCategory(name.trim(), type, color);
-      toast.success("Category created");
-      setOpen(false);
-      setName("");
-      setType("spending");
-      setColor(presetColors[Math.floor(Math.random() * presetColors.length)]);
-    } catch (error) {
-      toast.error("Failed to create category");
-    } finally {
-      setIsLoading(false);
-    }
+    createCategory.mutate(
+      { name: name.trim(), type, color },
+      {
+        onSuccess: () => {
+          toast.success("Category created");
+          setOpen(false);
+          setName("");
+          setType("spending");
+          setColor(presetColors[Math.floor(Math.random() * presetColors.length)]);
+        },
+        onError: () => {
+          toast.error("Failed to create category");
+        },
+      }
+    );
   };
 
   return (
@@ -90,7 +94,7 @@ export function CreateCategoryDialog() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="type">Type</Label>
-            <Select value={type} onValueChange={(value) => setType(value as "spending" | "income" | "transfer")}>
+            <Select value={type} onValueChange={(value) => setType(value as CategoryType)}>
               <SelectTrigger id="type">
                 <SelectValue />
               </SelectTrigger>
@@ -122,12 +126,11 @@ export function CreateCategoryDialog() {
           <Button variant="outline" onClick={() => setOpen(false)}>
             Cancel
           </Button>
-          <Button onClick={handleCreate} disabled={isLoading}>
-            {isLoading ? "Creating..." : "Create Category"}
+          <Button onClick={handleCreate} disabled={createCategory.isPending}>
+            {createCategory.isPending ? "Creating..." : "Create Category"}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
-

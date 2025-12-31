@@ -1,7 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createUpdateModeLinkToken } from "@/actions/plaid";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+import { createUpdateModeLinkToken } from "@/lib/plaid";
 
 export async function POST(request: NextRequest) {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (!session?.user?.id) {
+    return NextResponse.json(
+      { error: "Not authenticated" },
+      { status: 401 }
+    );
+  }
+
   try {
     const body = await request.json();
     const { plaidItemId } = body;
@@ -13,7 +26,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await createUpdateModeLinkToken(plaidItemId);
+    const result = await createUpdateModeLinkToken(session.user.id, plaidItemId);
 
     if ("error" in result) {
       return NextResponse.json({ error: result.error }, { status: 400 });

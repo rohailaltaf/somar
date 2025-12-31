@@ -10,10 +10,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { 
-  LineChart, 
-  Line, 
   XAxis, 
   YAxis, 
   CartesianGrid, 
@@ -21,8 +19,9 @@ import {
   Legend, 
   ResponsiveContainer,
   Area,
-  AreaChart 
+  AreaChart,
 } from "recharts";
+import { formatMonth, formatCurrency } from "@/lib/utils";
 
 interface SpendingTransaction {
   id: string;
@@ -82,6 +81,64 @@ interface SpendingOverviewClientProps {
   yearTransactions: SpendingTransaction[];
 }
 
+// Utility functions defined at module level (not recreated on render)
+const formatYAxis = (value: number) => {
+  if (value >= 1000) {
+    return `$${(value / 1000).toFixed(1)}k`;
+  }
+  return `$${value}`;
+};
+
+// Custom tooltip component for the area chart
+interface SpendingTooltipProps {
+  active?: boolean;
+  payload?: Array<{
+    value?: number;
+    color?: string;
+    name?: string;
+  }>;
+  label?: number | string;
+}
+
+function SpendingTooltip({ active, payload, label }: SpendingTooltipProps) {
+  if (!active || !payload || payload.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl p-4">
+      <p className="font-semibold text-sm mb-3 text-gray-900 dark:text-gray-100">
+        Day {label}
+      </p>
+      <div className="space-y-2">
+        {payload.map((entry, index) => (
+          <div key={index} className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <div 
+                className="w-3 h-3 rounded-full" 
+                style={{ backgroundColor: entry.color || "#8b5cf6" }}
+              />
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                {entry.name || "Spending"}
+              </span>
+            </div>
+            <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              {typeof entry.value === "number" ? formatCurrency(entry.value) : "$0"}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+interface ChartDataPoint {
+  day?: number;
+  month?: number;
+  thisMonth?: number;
+  lastMonth?: number;
+}
+
 export function SpendingOverviewClient({
   currentMonth,
   lastMonth,
@@ -101,29 +158,6 @@ export function SpendingOverviewClient({
 }: SpendingOverviewClientProps) {
   const [selectedMonth, setSelectedMonth] = useState<"current" | "last" | "year">("current");
   const [isExpanded, setIsExpanded] = useState(false);
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  const formatYAxis = (value: number) => {
-    if (value >= 1000) {
-      return `$${(value / 1000).toFixed(1)}k`;
-    }
-    return `$${value}`;
-  };
-
-  const formatMonth = (monthStr: string) => {
-    const [year, month] = monthStr.split("-");
-    return new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString("en-US", {
-      month: "long",
-      year: "numeric",
-    });
-  };
 
   // Determine which data to display based on selected period
   const displayMonth = selectedMonth === "current" ? currentMonth : selectedMonth === "last" ? lastMonth : `${currentYear}`;
@@ -139,36 +173,8 @@ export function SpendingOverviewClient({
     return date.toLocaleDateString("en-US", { 
       month: "short", 
       day: "numeric",
-      ...(selectedMonth === "year" ? { year: "2-digit" } : {})
+      ...(selectedMonth === "year" ? { year: "2-digit" as const } : {})
     });
-  };
-
-  const spendingChange = currentTotal - lastTotal;
-
-  const renderChangeIndicator = () => {
-    if (spendingChange === 0) {
-      return (
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Minus className="w-5 h-5" />
-          <span className="text-lg">No change from last month</span>
-        </div>
-      );
-    }
-
-    const isIncrease = spendingChange > 0;
-    return (
-      <div
-        className={`flex items-center gap-2 ${
-          isIncrease ? "text-red-600" : "text-green-600"
-        }`}
-      >
-        {isIncrease ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
-        <span className="text-lg font-medium">
-          {isIncrease ? "+" : ""}
-          {formatCurrency(spendingChange)} vs last month
-        </span>
-      </div>
-    );
   };
 
   // Prepare data for burn-up chart based on selected period
@@ -178,7 +184,7 @@ export function SpendingOverviewClient({
   const currentDay = isCurrentMonth ? now.getDate() : currentDailyData.length;
   
   // Determine which data to show in chart based on selection
-  const chartData = [];
+  const chartData: ChartDataPoint[] = [];
   const xAxisKey = selectedMonth === "year" ? "month" : "day";
   
   if (selectedMonth === "current") {
@@ -186,7 +192,7 @@ export function SpendingOverviewClient({
     const maxDays = Math.max(lastDailyData.length, currentDay);
     
     for (let day = 1; day <= maxDays; day++) {
-      const dataPoint: any = { day };
+      const dataPoint: ChartDataPoint = { day };
       
       // Add this month's data only up to current day
       if (day <= currentDay && currentDailyData[day - 1]) {
@@ -203,7 +209,7 @@ export function SpendingOverviewClient({
   } else if (selectedMonth === "last") {
     // Show last month only (all days)
     for (let day = 1; day <= lastDailyData.length; day++) {
-      const dataPoint: any = { day };
+      const dataPoint: ChartDataPoint = { day };
       
       if (lastDailyData[day - 1]) {
         dataPoint.thisMonth = lastDailyData[day - 1].cumulative;
@@ -221,36 +227,6 @@ export function SpendingOverviewClient({
     });
   }
 
-  // Custom tooltip for chart
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl p-4">
-          <p className="font-semibold text-sm mb-3 text-gray-900 dark:text-gray-100">Day {label}</p>
-          <div className="space-y-2">
-            {payload.map((entry: any, index: number) => (
-              <div key={index} className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-2">
-                  <div 
-                    className="w-3 h-3 rounded-full" 
-                    style={{ backgroundColor: entry.color }}
-                  />
-                  <span className="text-sm text-gray-600 dark:text-gray-400">
-                    {entry.name}
-                  </span>
-                </div>
-                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {formatCurrency(entry.value)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      );
-    }
-    return null;
-  };
-
   return (
     <div className="space-y-8">
       {/* Total Spending with Period Selector */}
@@ -260,7 +236,7 @@ export function SpendingOverviewClient({
             <CardTitle>Total Spending</CardTitle>
             <CardDescription className="mt-1.5">{displayLabel}</CardDescription>
           </div>
-          <Select value={selectedMonth} onValueChange={(value: any) => {
+          <Select value={selectedMonth} onValueChange={(value: "current" | "last" | "year") => {
             setSelectedMonth(value);
             setIsExpanded(false);
           }}>
@@ -315,7 +291,7 @@ export function SpendingOverviewClient({
                         </div>
                       </div>
                       <span className="text-sm font-medium text-red-600 flex-shrink-0 ml-3">
-                        -{formatCurrency(txn.amount)}
+                        -{formatCurrency(Math.abs(txn.amount))}
                       </span>
                     </div>
                   ))}
@@ -406,7 +382,7 @@ export function SpendingOverviewClient({
                   tickLine={false}
                   axisLine={{ stroke: '#e2e8f0' }}
                 />
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip content={<SpendingTooltip />} />
                 {selectedMonth === "current" && (
                   <Legend 
                     wrapperStyle={{ paddingTop: '20px' }}
@@ -448,4 +424,3 @@ export function SpendingOverviewClient({
     </div>
   );
 }
-

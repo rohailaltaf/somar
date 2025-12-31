@@ -2,25 +2,16 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
-import { Transaction, Category } from "@prisma/client";
-import { confirmTransaction, toggleExcluded, uncategorizeTransaction } from "@/actions/transactions";
+import { useTransactionMutations } from "@/hooks";
+import type { Category, TransactionWithRelations } from "@somar/shared";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   ChevronLeft,
   ChevronRight,
@@ -35,23 +26,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
-
-// Define account type with Plaid fields (optional since they may be null)
-interface AccountForTagger {
-  id: string;
-  name: string;
-  type: string;
-  createdAt: string;
-  plaidItemId?: string | null;
-  plaidAccountId?: string | null;
-}
-
-interface TransactionWithRelations extends Omit<Transaction, 'plaidTransactionId'> {
-  category: Category | null;
-  account: AccountForTagger;
-  plaidTransactionId?: string | null;
-}
+import { cn, formatCurrency } from "@/lib/utils";
 
 interface TaggerInterfaceProps {
   initialTransactions: TransactionWithRelations[];
@@ -64,9 +39,12 @@ export function TaggerInterface({
   categories,
   totalCount,
 }: TaggerInterfaceProps) {
+  const { confirmTransaction, toggleExcluded, uncategorize } = useTransactionMutations();
+  
   const [transactions, setTransactions] = useState(initialTransactions);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedCategoryOverride, setSelectedCategoryOverride] = useState<string | null>(null);
+  const [lastTransactionId, setLastTransactionId] = useState<string | null>(null);
   const [direction, setDirection] = useState<"left" | "right" | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const [undoStack, setUndoStack] = useState<Array<{ transaction: TransactionWithRelations; index: number }>>([]);
@@ -74,6 +52,20 @@ export function TaggerInterface({
   const currentTransaction = transactions[currentIndex];
   const progress = ((totalCount - transactions.length + currentIndex) / totalCount) * 100;
   const remaining = transactions.length - currentIndex;
+
+  // Reset category override when transaction changes
+  const currentTransactionId = currentTransaction?.id;
+  if (currentTransactionId !== lastTransactionId) {
+    setLastTransactionId(currentTransactionId ?? null);
+    setSelectedCategoryOverride(null);
+  }
+
+  // Derive selected category: override if user changed it, otherwise from transaction
+  const selectedCategory = selectedCategoryOverride ?? currentTransaction?.categoryId ?? null;
+  
+  const setSelectedCategory = (categoryId: string | null) => {
+    setSelectedCategoryOverride(categoryId);
+  };
 
   // Generate keyboard shortcuts for categories (1-9, then A-Z)
   const categoryShortcuts = categories.reduce((acc, category, index) => {
@@ -91,16 +83,7 @@ export function TaggerInterface({
     return Object.keys(categoryShortcuts).find(key => categoryShortcuts[key] === categoryId)?.toUpperCase();
   };
 
-  // Set initial category suggestion
-  useEffect(() => {
-    if (currentTransaction?.categoryId) {
-      setSelectedCategory(currentTransaction.categoryId);
-    } else {
-      setSelectedCategory(null);
-    }
-  }, [currentTransaction]);
-
-  const handleConfirm = useCallback(async (categoryId?: string) => {
+  const handleConfirm = useCallback((categoryId?: string) => {
     const categoryToConfirm = categoryId || selectedCategory;
     if (!currentTransaction || !categoryToConfirm || isAnimating) return;
 
@@ -110,37 +93,19 @@ export function TaggerInterface({
     // Add to undo stack
     setUndoStack((prev) => [...prev, { transaction: currentTransaction, index: currentIndex }]);
 
-    // Pass visible transaction IDs for immediate recategorization
-    // Background job will handle the rest after response
-    const visibleIds = transactions.map(t => t.id);
-    const result = await confirmTransaction(currentTransaction.id, categoryToConfirm, visibleIds);
-    
-    // Update other transactions that were auto-categorized (but not confirmed)
-    if (result?.updatedTransactions && result.updatedTransactions.length > 0) {
-      setTransactions((prev) => {
-        return prev.map((txn) => {
-          const update = result.updatedTransactions.find((u) => u.id === txn.id);
-          if (update) {
-            // Find the category object
-            const category = categories.find((c) => c.id === update.categoryId);
-            return {
-              ...txn,
-              categoryId: update.categoryId,
-              category: category || txn.category,
-            };
+    confirmTransaction.mutate(
+      { transactionId: currentTransaction.id, categoryId: categoryToConfirm },
+      {
+        onSuccess: (result) => {
+          const autoTaggedCount = result?.autoTaggedCount || 0;
+          if (autoTaggedCount > 0) {
+            toast.success(`Transaction categorized. ${autoTaggedCount} similar transaction${autoTaggedCount > 1 ? 's' : ''} auto-tagged.`);
+          } else {
+            toast.success("Transaction categorized");
           }
-          return txn;
-        });
-      });
-    }
-
-    // Show feedback about auto-tagging
-    const autoTaggedCount = result?.updatedTransactions?.length || 0;
-    if (autoTaggedCount > 0) {
-      toast.success(`Transaction categorized. ${autoTaggedCount} similar transaction${autoTaggedCount > 1 ? 's' : ''} auto-tagged.`);
-    } else {
-      toast.success("Transaction categorized");
-    }
+        },
+      }
+    );
 
     setTimeout(() => {
       if (currentIndex < transactions.length - 1) {
@@ -155,7 +120,7 @@ export function TaggerInterface({
       setDirection(null);
       setIsAnimating(false);
     }, 300);
-  }, [currentTransaction, selectedCategory, currentIndex, transactions, isAnimating, categories]);
+  }, [currentTransaction, selectedCategory, currentIndex, transactions, isAnimating, confirmTransaction]);
 
   const handleSkip = useCallback(() => {
     if (isAnimating || currentIndex >= transactions.length - 1) return;
@@ -170,14 +135,25 @@ export function TaggerInterface({
     }, 300);
   }, [currentIndex, transactions.length, isAnimating]);
 
-  const handleExclude = useCallback(async () => {
+  const handleExclude = useCallback(() => {
     if (!currentTransaction || isAnimating) return;
 
     setIsAnimating(true);
     setDirection("left");
 
-    await toggleExcluded(currentTransaction.id);
-    await confirmTransaction(currentTransaction.id, currentTransaction.categoryId || categories[0]?.id || "");
+    toggleExcluded.mutate(currentTransaction.id, {
+      onSuccess: () => {
+        toast.success("Transaction excluded");
+      },
+    });
+
+    // Also confirm it so it doesn't appear again
+    if (currentTransaction.categoryId || categories[0]?.id) {
+      confirmTransaction.mutate({
+        transactionId: currentTransaction.id,
+        categoryId: currentTransaction.categoryId || categories[0]?.id || "",
+      });
+    }
 
     setTimeout(() => {
       setTransactions((prev) => prev.filter((_, i) => i !== currentIndex));
@@ -187,11 +163,9 @@ export function TaggerInterface({
       setDirection(null);
       setIsAnimating(false);
     }, 300);
+  }, [currentTransaction, currentIndex, transactions.length, categories, isAnimating, toggleExcluded, confirmTransaction]);
 
-    toast.success("Transaction excluded");
-  }, [currentTransaction, currentIndex, transactions.length, categories, isAnimating]);
-
-  const handleUndo = useCallback(async () => {
+  const handleUndo = useCallback(() => {
     if (undoStack.length === 0 || isAnimating) return;
 
     const lastAction = undoStack[undoStack.length - 1];
@@ -200,7 +174,11 @@ export function TaggerInterface({
     setIsAnimating(true);
     setDirection("left");
 
-    await uncategorizeTransaction(lastAction.transaction.id);
+    uncategorize.mutate(lastAction.transaction.id, {
+      onSuccess: () => {
+        toast.success("Undone");
+      },
+    });
 
     // Add the transaction back to the list at its original position
     setTimeout(() => {
@@ -213,9 +191,7 @@ export function TaggerInterface({
       setDirection(null);
       setIsAnimating(false);
     }, 300);
-
-    toast.success("Undone");
-  }, [undoStack, isAnimating]);
+  }, [undoStack, isAnimating, uncategorize]);
 
   const handleCategoryPillClick = useCallback((categoryId: string) => {
     setSelectedCategory(categoryId);
@@ -284,13 +260,6 @@ export function TaggerInterface({
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(Math.abs(amount));
-  };
-
   const formatDate = (dateStr: string) => {
     // Parse YYYY-MM-DD without timezone conversion
     const [year, month, day] = dateStr.split("-").map(Number);
@@ -357,7 +326,7 @@ export function TaggerInterface({
                     )}
                   >
                     {currentTransaction.amount < 0 ? "-" : "+"}
-                    {formatCurrency(currentTransaction.amount)}
+                    {formatCurrency(Math.abs(currentTransaction.amount), true)}
                   </span>
                 </div>
 
@@ -510,4 +479,3 @@ export function TaggerInterface({
     </div>
   );
 }
-

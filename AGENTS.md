@@ -1,5 +1,14 @@
 # AGENTS.md - AI Agent Guide for Personal Finance Tracker
 
+## Agent Guidelines
+
+**DO NOT do more than what is asked.** If in doubt, confirm with the user before implementing additional features, helpers, or conveniences. Stick to the specific request.
+
+**Check shared packages before implementing inline types.** Before defining new types inline (especially union types like account types or category types), check if they already exist in `packages/shared/src/`. Shared types should be imported from `@somar/shared`:
+```typescript
+import type { AccountType, CategoryType } from "@somar/shared";
+```
+
 ## Project Overview
 
 A personal finance web app for **tracking spending and income**. Users can import bank/credit card CSV exports, auto-categorize transactions, and track spending against category budgets.
@@ -9,6 +18,9 @@ A personal finance web app for **tracking spending and income**. Users can impor
 2. Smart CSV import with column inference
 3. Learning categorization - the system learns from user corrections
 4. Plaid integration for connecting financial institutions (Chase, Amex, Fidelity, Robinhood, etc.)
+5. **End-to-end encryption (E2EE)** - server cannot read user financial data
+
+> **Architecture Documentation:** For detailed technical architecture including the E2EE model, database design, and security considerations, see [docs/architecture.md](docs/architecture.md).
 
 ## Monorepo Architecture
 
@@ -51,7 +63,6 @@ pnpm test         # Run all tests
 ```bash
 pnpm --filter web dev         # Start web dev server
 pnpm --filter web db:reset    # Reset web database
-pnpm --filter web demo        # Run demo mode
 ```
 
 **Mobile app commands:**
@@ -90,11 +101,6 @@ somar/
 │   │   │   │   ├── tagger/         # Tinder-style categorization UI
 │   │   │   │   ├── upload/         # CSV import wizard
 │   │   │   │   └── api/            # API routes
-│   │   │   ├── actions/            # Server Actions
-│   │   │   │   ├── accounts.ts     # Account CRUD
-│   │   │   │   ├── categories.ts   # Category + budget operations
-│   │   │   │   ├── transactions.ts # Transaction CRUD + analytics
-│   │   │   │   └── plaid.ts        # Plaid operations
 │   │   │   ├── components/
 │   │   │   │   ├── ui/             # shadcn components
 │   │   │   │   ├── nav.tsx         # Navigation bar
@@ -105,7 +111,7 @@ somar/
 │   │   │       ├── db/
 │   │   │       │   ├── index.ts    # Prisma client connection
 │   │   │       │   └── seed.ts     # Seed categories + preset rules
-│   │   │       ├── dedup/          # Transaction deduplication
+│   │   │       ├── dedup/          # LLM verifier (Tier 2) - llm-verifier.ts only
 │   │   │       ├── plaid.ts        # Plaid client configuration
 │   │   │       ├── categorizer.ts  # Auto-categorization logic
 │   │   │       ├── csv-parser.ts   # CSV parsing + column inference
@@ -129,7 +135,15 @@ somar/
 │       └── tsconfig.json           # Extends expo/tsconfig.base
 ├── packages/
 │   └── shared/
-│       ├── src/index.ts            # Shared exports (minimal for now)
+│       ├── src/
+│       │   ├── index.ts            # Shared exports
+│       │   └── dedup/              # Transaction deduplication (Tier 1 - client-side)
+│       │       ├── index.ts        # Public exports
+│       │       ├── types.ts        # Shared type definitions
+│       │       ├── tier1.ts        # Deterministic matching logic
+│       │       ├── merchant-extractor.ts  # Extracts merchant names
+│       │       ├── jaro-winkler.ts # String similarity algorithms
+│       │       └── batch-utils.ts  # Batching utilities
 │       ├── package.json
 │       └── tsconfig.json           # Extends ../../tsconfig.base.json
 ├── docs/                           # Documentation
@@ -139,7 +153,6 @@ somar/
 ├── tsconfig.base.json              # Base TypeScript config
 ├── AGENTS.md                       # This file
 ├── README.md                       # Project README
-├── DEMO.md                         # Demo mode documentation
 └── LICENSE
 ```
 
@@ -249,61 +262,90 @@ return { updatedTransactions: updates };
   - App convention: **negative = expense (money out), positive = income (money in)**
   - User can toggle "Flip all amount signs" checkbox if their bank uses opposite convention
 - **AI-powered duplicate detection** - See [docs/deduplication.md](docs/deduplication.md) for full documentation
-  - 2-tier system: Deterministic → LLM verification (for uncertain cases)
+  - 2-tier system: Tier 1 (deterministic, client-side) → Tier 2 (LLM API for uncertain cases)
+  - Tier 1 runs in browser using `@somar/shared/dedup`, only uncertain pairs call `/api/dedup/verify`
   - Catches duplicates even when descriptions differ (e.g., "AplPay CHIPOTLE 1249" vs "Chipotle Mexican Grill")
 - Final amounts: negative = expense, positive = income
 
-### 4. Plaid Integration (`apps/web/src/app/accounts/`, `apps/web/src/actions/plaid.ts`)
+### 4. Plaid Integration (`apps/web/src/app/accounts/`, `apps/web/src/hooks/use-plaid-sync.ts`)
 
 Connect financial institutions directly for automatic transaction syncing. **Plaid connection is integrated directly into the Accounts page** - no separate connect page.
 
 **Supported Institutions:** Chase, Amex, Fidelity, Robinhood, and 12,000+ others
 
+**E2EE Architecture - Server Proxy Pattern:**
+With E2EE, transactions are stored in the user's encrypted SQLite database. The server acts as a proxy:
+1. Server calls Plaid API (has access token)
+2. Server returns raw transactions to client
+3. Client runs deduplication, inserts transactions, encrypts and saves
+
 **Connection Flow:**
 1. User clicks "Connect Bank" button on `/accounts` page
 2. Plaid Link widget opens (handled by `react-plaid-link`)
 3. User authenticates with their bank
-4. Backend exchanges public token for access token
-5. Creates PlaidItem + Account records
-6. Immediately syncs transactions
+4. Backend exchanges public token for access token (stored in central DB)
+5. Creates accounts in user's local encrypted SQLite
+6. Auto-sync starts with retry logic
 
 **Accounts Page Features:**
 - **Add Manual Account:** For CSV imports
 - **Connect Bank:** Opens Plaid Link for automatic syncing
 - **Connected Institutions Section:** Shows all Plaid connections with sync/disconnect buttons
-- **Manage Accounts:** Opens Plaid Link in update mode to add/remove accounts from existing connection (e.g., add Chase savings to existing Chase checking connection)
+- **Manage Accounts:** Opens Plaid Link in update mode to add/remove accounts from existing connection
 - **Manual Accounts Section:** Shows manually created accounts
 
 **Sync Behavior:**
-- **Auto-sync:** On dashboard load, items not synced in 1+ hour are synced automatically
+- **Auto-sync on connect:** After connecting, waits for Plaid to fetch historical data with retry logic
+- **Auto-sync on login:** Items not synced in 1+ hour are synced automatically via `AutoSync` component
 - **Manual sync:** "Sync" button per institution on `/accounts` page
-- Uses Plaid's cursor-based sync (`/transactions/sync`) for efficiency
-- New transactions are auto-categorized using existing rules
+- **Client-side cursor:** Stored in `plaid_sync_state` table in user's encrypted DB (not on server)
+- **Deduplication:** 2-tier system (Tier 1 client-side via `@somar/shared/dedup`, Tier 2 via `/api/dedup/verify`)
+- **Skip pending:** Pending transactions are not imported - synced when posted
 - All synced transactions start as `isConfirmed: false`
 
-**Key Functions** (in `apps/web/src/actions/plaid.ts`):
-```typescript
-createLinkToken()              // Generate token for Plaid Link
-createUpdateModeLinkToken(id)  // Generate token for update mode (manage accounts)
-exchangePublicToken(...)       // Exchange for access_token, create accounts
-updatePlaidItemAccounts(id)    // Sync account list, add new accounts after update mode
-syncTransactionsForItem(id)    // Sync transactions for specific item
-syncAllTransactions()          // Sync all connected items
-getItemsNeedingSync()          // Get items not synced in 1+ hour
-disconnectInstitution(id)      // Remove connection (optionally delete transactions)
+**Initial Sync Retry Logic:**
+Plaid needs time to fetch and enrich historical data after initial connection. The server endpoint retries:
+- Up to 8 retries with exponential backoff (2s, 4s, 8s, 16s, 32s, 64s, 128s, 256s)
+- Checks for enrichment (transactions have `authorized_date`)
+- Also retries if no transactions returned yet
+
+**Historical Transaction Limits:**
+- We request **730 days (2 years)** of history via `transactions.days_requested`
+- Default without this setting is only 90 days!
+- **Cannot extend history for existing connections** - must disconnect and reconnect
+- Actual history depends on what the bank provides (some only give 90 days)
+
+**Key Files:**
+```
+apps/web/src/hooks/use-plaid-sync.ts      # Client-side sync hook (runs Tier 1 dedup locally)
+apps/web/src/app/api/plaid/sync/route.ts  # Server proxy with retry logic
+apps/web/src/app/api/dedup/verify/route.ts # LLM-only dedup verification (Tier 2)
+apps/web/src/components/auto-sync.tsx     # Auto-sync on page load
+packages/shared/src/dedup/                # Tier 1 dedup (client-side, used by web + mobile)
 ```
 
 **API Routes:**
 - `POST /api/plaid/create-link-token` - Generate link token
-- `POST /api/plaid/update-link-token` - Generate link token for update mode (manage accounts)
-- `POST /api/plaid/exchange-token` - Exchange public token
-- `POST /api/plaid/sync` - Manual sync trigger
+- `POST /api/plaid/update-link-token` - Generate link token for update mode
+- `POST /api/plaid/exchange-token` - Exchange public token, create accounts
+- `POST /api/plaid/sync` - Server proxy for transactionsSync (with retry logic)
+- `POST /api/dedup/verify` - LLM verification for uncertain pairs (max 100 pairs per request)
+
+**Client-Side Sync Hook** (`usePlaidSync`):
+```typescript
+const { syncItem, syncAllItems, isSyncing, syncStatus } = usePlaidSync();
+
+// Sync a single Plaid item
+const result = await syncItem(plaidItemId);
+// Returns: { added, modified, removed, upgraded, errors, requiresReauth }
+```
 
 **Environment Variables:**
 ```
 PLAID_CLIENT_ID=your_client_id
 PLAID_SECRET=your_sandbox_secret
 PLAID_ENV=sandbox  # or production
+OPENAI_API_KEY=your_key  # For LLM deduplication (optional)
 ```
 
 **Testing:**
@@ -343,7 +385,7 @@ PLAID_ENV=sandbox  # or production
 2. **Burn-up Chart**: Line chart showing cumulative daily spending (this month vs last month)
 3. **Category Progress Bars**: Spending vs budget for each category (reuses BudgetProgress component)
 
-**Analytics Functions** (in `apps/web/src/actions/transactions.ts`):
+**Analytics Functions** (in `apps/web/src/services/transactions.ts`):
 ```typescript
 // Get daily cumulative spending for a month (for burn-up chart)
 getDailyCumulativeSpending(month: string)
@@ -381,8 +423,9 @@ const date = new Date(year, month - 1, day);
 - **Positive = income/credit (money in)** - displayed in green
 - This is enforced throughout the codebase (`amount < 0` filters for expenses)
 
-### Server Actions
-- All mutations use Next.js Server Actions in `apps/web/src/actions/`
+### API Routes Pattern
+- Business logic lives in `apps/web/src/lib/` (e.g., `lib/plaid.ts`, `lib/dedup/`)
+- API routes in `apps/web/src/app/api/` handle HTTP concerns and call lib functions
 - Call `revalidatePath()` after mutations to refresh data
 
 ### Current Month Calculation
@@ -400,7 +443,6 @@ The project supports separate development and production environments with diffe
 Environment files live in `apps/web/`:
 - `.env.development` - Development configuration (uses `finance-dev.db`)
 - `.env.production` - Production configuration (uses `finance-prod.db`)
-- `.env.demo` - Demo configuration (uses `finance-demo.db`) - for testing with realistic data
 - `.env.example` - Template for environment configuration (committed to git)
 
 ### Running in Different Environments
@@ -409,9 +451,6 @@ Environment files live in `apps/web/`:
 # Development (uses .env.development)
 pnpm dev                    # Start all apps (web + mobile)
 pnpm dev:web                # Start web only
-
-# Demo (uses .env.demo)
-pnpm --filter web demo      # Reset demo DB + start dev server with finance-demo.db
 
 # Production (uses .env.production)
 pnpm build                  # Build for production
@@ -425,100 +464,31 @@ All database commands are web-specific and use the `--filter web` syntax:
 ```bash
 # Development database (default)
 pnpm --filter web db:push          # Push schema changes to dev DB
-pnpm --filter web db:seed          # Seed dev DB
-pnpm --filter web db:reset         # Reset dev DB (delete + recreate + seed)
+pnpm --filter web db:reset         # Reset dev DB (delete + recreate)
 pnpm --filter web db:studio        # Open Prisma Studio with dev DB
-
-# Demo database (with realistic sample data)
-pnpm --filter web demo             # Reset demo DB + start dev server
-pnpm --filter web db:reset:demo    # Reset demo DB only (no server start)
-pnpm --filter web db:push:demo     # Push schema changes to demo DB
-pnpm --filter web db:seed:demo     # Seed demo DB with realistic data
 
 # Production database (explicit :prod suffix)
 pnpm --filter web db:push:prod     # Push schema changes to prod DB
-pnpm --filter web db:seed:prod     # Seed prod DB
-pnpm --filter web db:reset:prod    # Reset prod DB (delete + recreate + seed)
+pnpm --filter web db:reset:prod    # Reset prod DB (delete + recreate)
 pnpm --filter web db:studio:prod   # Open Prisma Studio with prod DB
 ```
-
-## Demo Mode
-
-Demo mode provides a separate database with realistic sample data for testing and demonstrations without affecting development or production data.
-
-### Running Demo Mode
-
-```bash
-pnpm --filter web demo
-```
-
-This command:
-1. Deletes any existing demo database
-2. Creates fresh schema
-3. Seeds with realistic sample data (see below)
-4. Starts the Next.js dev server with demo database
-
-### Demo Data Generated
-
-The demo seed script (`apps/web/src/lib/db/seed-demo.ts`) creates:
-
-**Accounts (6 total):**
-- 2x Checking accounts (one Plaid-connected: Chase, one manual)
-- 2x Credit cards (one Plaid-connected: Amex, one manual)
-- 1x Investment account (Plaid-connected: Fidelity)
-- 1x Savings account (manual)
-
-**Mock Plaid Items (3 total):**
-- Chase (checking account)
-- American Express (credit card)
-- Fidelity Investments (401k)
-- *Note: These use fake tokens and won't actually sync from Plaid APIs*
-
-**Transactions (680+ over 12 months):**
-- **Income**: Bi-monthly paychecks ($4,250 each on 7th and 22nd) + occasional freelance income
-- **Recurring expenses**: 
-  - Rent ($2,400/month on 1st)
-  - Subscriptions (Netflix, Spotify, Adobe, etc. - 12 total)
-  - Utilities (PG&E, Comcast)
-- **Variable expenses**:
-  - Groceries: 8-12 transactions/month ($25-250 each)
-  - Restaurants: 10-15 transactions/month ($8-75 each)
-  - Shopping: 3-8 transactions/month ($15-350 each)
-  - Car/Gas: 4-6 transactions/month ($35-85 each)
-  - Entertainment: 2-4 transactions/month ($12-65 each)
-  - Travel: Occasional ($15-450 each)
-- **Credit card payments**: Monthly payments on 25th ($1,500-3,500)
-- **Mix**: ~80% confirmed, ~20% unconfirmed (for testing tagger)
-- **Realistic descriptions**: Match real bank formats (e.g., "POS CHIPOTLE #1249 SAN FRANCISCO CA")
-
-**Budgets:**
-- Set for all spending categories (restaurant: $500, grocery: $600, house: $2,000, etc.)
-- Start date: 12 months ago for historical tracking
-
-### Demo Database Location
-
-- File: `apps/web/finance-demo.db`
-- Config: `apps/web/.env.demo`
-- Completely separate from `finance-dev.db` and `finance-prod.db`
-
-### Use Cases
-
-- Testing features without polluting development data
-- Demonstrating the app to others
-- Verifying reports with realistic data patterns
-- Testing tagger with unconfirmed transactions
-- Benchmarking performance with substantial data
-
-**See [DEMO.md](DEMO.md) for complete demo mode documentation.**
 
 ## Common Tasks
 
 ### Reset Database
 ```bash
-pnpm --filter web db:reset         # Reset development database
-pnpm --filter web db:reset:prod    # Reset production database
+# RECOMMENDED: Safe reset (disconnects Plaid, then resets)
+pnpm --filter web db:safe-reset       # Safe reset development database
+pnpm --filter web db:safe-reset:prod  # Safe reset production database
+
+# UNSAFE: Reset without disconnecting Plaid (not recommended if you have connections!)
+pnpm --filter web db:reset            # Reset dev database (doesn't disconnect Plaid!)
+pnpm --filter web db:reset:prod       # Reset prod database (doesn't disconnect Plaid!)
 ```
-Deletes DB files, recreates schema, seeds categories + preset rules.
+
+**Safe reset** disconnects all Plaid items, deletes the central DB file, and recreates the Prisma schema.
+
+**⚠️ Important:** Always use `db:safe-reset` instead of `db:reset` if you have Plaid connections, otherwise you'll be billed for orphaned items!
 
 ### Add New Category
 
@@ -567,7 +537,7 @@ Add to `presetRules` array in `apps/web/src/lib/db/seed.ts`:
 </Link>
 ```
 
-**Step 2:** Create analytics function in `apps/web/src/actions/transactions.ts`
+**Step 2:** Create analytics function in `apps/web/src/services/transactions.ts`
 ```typescript
 export async function getYourData() {
   const result = await db
@@ -611,28 +581,20 @@ pnpm test             # Run all tests
 pnpm --filter web dev           # Start dev server with finance-dev.db
 pnpm --filter web db:push       # Push schema to dev DB
 pnpm --filter web db:studio     # Open Prisma Studio (dev DB)
-pnpm --filter web db:seed       # Seed dev DB
+pnpm --filter web db:safe-reset # Safe reset (disconnect Plaid + reset) - RECOMMENDED
 pnpm --filter web db:reset      # Reset dev DB (WARNING: doesn't disconnect Plaid!)
-pnpm --filter web db:safe-reset # Disconnect Plaid items, then reset dev DB (RECOMMENDED)
-
-# Demo (uses .env.demo - realistic sample data)
-pnpm --filter web demo          # Reset demo DB + start dev server
-pnpm --filter web db:reset:demo # Reset demo DB only (no server start)
-pnpm --filter web db:push:demo  # Push schema to demo DB
-pnpm --filter web db:seed:demo  # Seed demo DB with realistic data
 
 # Production (uses .env.production)
-pnpm --filter web build         # Build for production
-pnpm --filter web start         # Start production server
-pnpm --filter web db:push:prod  # Push schema to prod DB
-pnpm --filter web db:studio:prod # Open Prisma Studio (prod DB)
-pnpm --filter web db:seed:prod  # Seed prod DB
-pnpm --filter web db:reset:prod # Reset prod DB (WARNING: doesn't disconnect Plaid!)
-pnpm --filter web db:safe-reset:prod # Disconnect Plaid items, then reset prod DB (RECOMMENDED)
+pnpm --filter web build              # Build for production
+pnpm --filter web start              # Start production server
+pnpm --filter web db:push:prod       # Push schema to prod DB
+pnpm --filter web db:studio:prod     # Open Prisma Studio (prod DB)
+pnpm --filter web db:safe-reset:prod # Safe reset (disconnect Plaid + reset) - RECOMMENDED
+pnpm --filter web db:reset:prod      # Reset prod DB (WARNING: doesn't disconnect Plaid!)
 
 # Plaid Management
-pnpm --filter web db:disconnect-plaid      # Disconnect all Plaid items (dev)
-pnpm --filter web db:disconnect-plaid:prod # Disconnect all Plaid items (prod)
+pnpm --filter web plaid:status       # Check Plaid connection status (dev)
+pnpm --filter web plaid:status:prod  # Check Plaid connection status (prod)
 
 # Testing
 pnpm --filter web test          # Run tests
@@ -646,7 +608,6 @@ pnpm --filter web lint          # Run ESLint
 ## Files to Ignore
 
 - `apps/web/finance-dev.db`, `apps/web/finance-dev.db-wal`, `apps/web/finance-dev.db-shm` - Development SQLite database
-- `apps/web/finance-demo.db`, `apps/web/finance-demo.db-wal`, `apps/web/finance-demo.db-shm` - Demo SQLite database
 - `apps/web/finance-prod.db`, `apps/web/finance-prod.db-wal`, `apps/web/finance-prod.db-shm` - Production SQLite database
 - `apps/web/.next/` - Next.js build cache
 - `.turbo/` - Turborepo cache
@@ -767,7 +728,7 @@ With 10,000+ transactions, performance remains the same due to server-side pagin
 11. **Category types**: When querying categories for budget management, use `getCategoriesWithBudgets()` which only returns spending categories. Use `getCategories("income")` for income categories, and `getCategories("transfer")` for transfer categories. Transfer transactions are automatically excluded from all spending and income reports.
 12. **Pattern extraction too specific**: If auto-tagging isn't working, check if the extracted pattern is too specific. Transaction descriptions from same merchant often have different suffixes (PAYROLL vs DIR DEP vs ACH). The pattern should extract just the merchant identifier, not the full description.
 13. **Always use `confirmTransaction()` for category changes**: The transactions page dropdown and tagger both use `confirmTransaction()` which learns patterns and auto-tags. Don't use `updateTransaction()` directly for category changes or patterns won't be learned.
-14. **Plaid orphan items = wasted money**: If you reset the database without calling `itemRemove()` on Plaid, those items remain active and you'll be billed! Always use `pnpm --filter web db:safe-reset` instead of `pnpm --filter web db:reset` when you have Plaid connections. To find orphans, check dashboard.plaid.com or call `GET /api/plaid/status`.
+14. **Plaid orphan items = wasted money**: If you reset the database without calling `itemRemove()` on Plaid, those items remain active and you'll be billed! Always use `pnpm --filter web db:safe-reset` instead of `pnpm --filter web db:reset` when you have Plaid connections. The safe reset automatically disconnects Plaid items before resetting. To check for orphans, use `pnpm --filter web plaid:status` or visit dashboard.plaid.com.
 15. **Monorepo commands**: Remember to use `pnpm --filter web` for web-specific commands. Root `pnpm dev` runs all apps.
 16. **React version mismatch**: Web uses React ^19.1.4 (patched), Mobile uses React 19.1.0 (must match react-native-renderer). Each app has its own node_modules, so they run together without conflicts.
 17. **Mobile needs explicit @expo/metro-runtime**: Due to pnpm's symlink structure, `@expo/metro-runtime` must be listed as an explicit dependency in mobile's package.json.

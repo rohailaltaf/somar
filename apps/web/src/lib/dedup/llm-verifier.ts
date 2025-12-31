@@ -100,7 +100,7 @@ export async function verifyMatchesBatch(
   const results: VerificationResult[] = [];
 
   // Process in batches of 20
-  const batchSize = 20;
+  const batchSize = 50;
 
   for (let i = 0; i < pairs.length; i += batchSize) {
     const batch = pairs.slice(i, i + batchSize);
@@ -146,26 +146,26 @@ EXAMPLES OF NON-MATCHES:
 Analyze each pair carefully and call the report_transaction_matches function with your findings.`;
 
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-5-mini",
-      messages: [
-        {
-          role: "system",
-          content: systemPrompt,
-        },
-        {
-          role: "user",
-          content: `Analyze these transaction pairs and determine if each pair refers to the same merchant:\n\n${pairDescriptions}`,
-        },
-      ],
-      tools: [transactionMatchTool],
-      tool_choice: {
-        type: "function",
-        function: { name: "report_transaction_matches" },
-      },
-      // Note: gpt-5-mini only supports temperature: 1 (default)
-    });
-
+    const response = await openai.chat.completions.create(
+      {
+        model: "gpt-5-mini",
+        messages: [
+          {
+            role: "system",
+            content: systemPrompt,
+          },
+          {
+            role: "user",
+            content: `Analyze these transaction pairs and determine if each pair refers to the same merchant:\n\n${pairDescriptions}`,
+          },
+        ],
+        tools: [transactionMatchTool],
+        tool_choice: {
+          type: "function",
+          function: { name: "report_transaction_matches" },
+        }
+      }
+    );
     // Extract the function call response
     const toolCall = response.choices[0]?.message?.tool_calls?.[0];
 
