@@ -1,15 +1,9 @@
-import { Text, View } from "react-native";
+import { Redirect, type Href } from "expo-router";
 
+/**
+ * Root index redirects to tabs.
+ * AuthGuard in _layout.tsx handles auth redirects.
+ */
 export default function Index() {
-  return (
-    <View
-      style={{
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
-      <Text>Edit app/index.tsx to edit this screen.</Text>
-    </View>
-  );
+  return <Redirect href={"/(tabs)" as Href} />;
 }
