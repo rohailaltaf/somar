@@ -1,10 +1,13 @@
+import { pbkdf2 } from "@noble/hashes/pbkdf2";
+import { sha256 } from "@noble/hashes/sha256";
+
 /**
  * Derive an encryption key from a password.
  * This key is used to encrypt/decrypt the user's database.
  * The key derivation happens CLIENT-SIDE only - the server never sees it.
  *
- * Uses PBKDF2 via Web Crypto API for cross-platform compatibility
- * (works in browser, Node.js, and React Native).
+ * Uses PBKDF2 via @noble/hashes for cross-platform compatibility
+ * (works in browser, Node.js, React Native/Expo Go).
  *
  * @param password - The user's password
  * @param salt - Random per-user salt (generated server-side, stored in DB)
@@ -19,34 +22,19 @@ export async function deriveEncryptionKey(
 }
 
 /**
- * PBKDF2 key derivation using Web Crypto API.
+ * PBKDF2 key derivation using @noble/hashes.
  * 100,000 iterations with SHA-256.
  */
 async function pbkdf2Derive(password: string, salt: string): Promise<string> {
   const encoder = new TextEncoder();
 
-  // Import password as a key
-  const keyMaterial = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(password),
-    "PBKDF2",
-    false,
-    ["deriveBits"]
-  );
+  // Derive 32 bytes (256 bits) using PBKDF2-SHA256
+  const derivedKey = pbkdf2(sha256, encoder.encode(password), encoder.encode(salt), {
+    c: 100000, // iterations
+    dkLen: 32, // 256 bits
+  });
 
-  // Derive 256 bits using PBKDF2
-  const derivedBits = await crypto.subtle.deriveBits(
-    {
-      name: "PBKDF2",
-      salt: encoder.encode(salt),
-      iterations: 100000,
-      hash: "SHA-256",
-    },
-    keyMaterial,
-    256 // 32 bytes
-  );
-
-  return bytesToHex(new Uint8Array(derivedBits));
+  return bytesToHex(derivedKey);
 }
 
 /**

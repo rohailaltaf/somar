@@ -1,10 +1,12 @@
+import { gcm } from "@noble/ciphers/aes";
 import { hexToBytes } from "./derive";
 
 /**
  * Decrypt data that was encrypted with AES-256-GCM.
- * Works in both browser (Web Crypto API) and Node.js environments.
+ * Uses @noble/ciphers for cross-platform compatibility
+ * (works in browser, Node.js, React Native/Expo Go).
  *
- * Expected input format: IV (12 bytes) + Ciphertext + AuthTag
+ * Expected input format: IV (12 bytes) + Ciphertext + AuthTag (16 bytes)
  *
  * @param encrypted - The encrypted data (IV + ciphertext + authTag)
  * @param keyHex - The 256-bit encryption key as a hex string
@@ -14,30 +16,17 @@ export async function decrypt(
   encrypted: Uint8Array,
   keyHex: string
 ): Promise<Uint8Array> {
-  // Create fresh Uint8Array to ensure ArrayBuffer backing (not SharedArrayBuffer)
-  const keyBytes = new Uint8Array(hexToBytes(keyHex));
+  const keyBytes = hexToBytes(keyHex);
 
   // Extract IV (first 12 bytes) and ciphertext+authTag
-  const iv = new Uint8Array(encrypted.slice(0, 12));
-  const ciphertext = new Uint8Array(encrypted.slice(12));
+  const iv = encrypted.slice(0, 12);
+  const ciphertext = encrypted.slice(12);
 
-  // Import the key
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    keyBytes.buffer as ArrayBuffer,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["decrypt"]
-  );
+  // Create AES-GCM cipher and decrypt
+  const aes = gcm(keyBytes, iv);
+  const decrypted = aes.decrypt(ciphertext);
 
-  // Decrypt the data (GCM verifies and strips auth tag automatically)
-  const decrypted = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: iv.buffer as ArrayBuffer },
-    cryptoKey,
-    ciphertext.buffer as ArrayBuffer
-  );
-
-  return new Uint8Array(decrypted);
+  return decrypted;
 }
 
 /**

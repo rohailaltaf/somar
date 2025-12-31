@@ -1,46 +1,55 @@
+import { gcm } from "@noble/ciphers/aes";
 import { hexToBytes } from "./derive";
+
+/** Function type for generating random bytes */
+export type RandomBytesFunc = (length: number) => Uint8Array;
+
+/**
+ * Default random bytes using Web Crypto API.
+ * Works in browsers and modern Node.js.
+ */
+function defaultRandomBytes(length: number): Uint8Array {
+  const array = new Uint8Array(length);
+  if (globalThis.crypto?.getRandomValues) {
+    globalThis.crypto.getRandomValues(array);
+    return array;
+  }
+  throw new Error(
+    "No crypto.getRandomValues available. " +
+      "Pass a getRandomBytes function (e.g., from expo-crypto)."
+  );
+}
 
 /**
  * Encrypt data using AES-256-GCM.
- * Works in both browser (Web Crypto API) and Node.js environments.
+ * Uses @noble/ciphers for cross-platform compatibility.
  *
- * Output format: IV (12 bytes) + Ciphertext + AuthTag (appended by GCM)
+ * Output format: IV (12 bytes) + Ciphertext + AuthTag (16 bytes)
  *
  * @param data - The data to encrypt (as a Uint8Array)
  * @param keyHex - The 256-bit encryption key as a hex string
+ * @param getRandomBytes - Optional function to generate random bytes (for React Native, pass expo-crypto.getRandomBytes)
  * @returns The encrypted data as a Uint8Array
  */
 export async function encrypt(
   data: Uint8Array,
-  keyHex: string
+  keyHex: string,
+  getRandomBytes: RandomBytesFunc = defaultRandomBytes
 ): Promise<Uint8Array> {
-  // Create fresh Uint8Array to ensure ArrayBuffer backing (not SharedArrayBuffer)
-  const keyBytes = new Uint8Array(hexToBytes(keyHex));
+  const keyBytes = hexToBytes(keyHex);
   const inputData = new Uint8Array(data);
 
   // Generate a random 12-byte IV for GCM
-  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const iv = getRandomBytes(12);
 
-  // Import the key
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    keyBytes.buffer as ArrayBuffer,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["encrypt"]
-  );
-
-  // Encrypt the data (GCM appends auth tag automatically)
-  const encrypted = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv: iv.buffer as ArrayBuffer },
-    cryptoKey,
-    inputData.buffer as ArrayBuffer
-  );
+  // Create AES-GCM cipher and encrypt
+  const aes = gcm(keyBytes, iv);
+  const encrypted = aes.encrypt(inputData);
 
   // Prepend IV to ciphertext+authTag
-  const combined = new Uint8Array(iv.length + encrypted.byteLength);
+  const combined = new Uint8Array(iv.length + encrypted.length);
   combined.set(iv, 0);
-  combined.set(new Uint8Array(encrypted), iv.length);
+  combined.set(encrypted, iv.length);
 
   return combined;
 }
