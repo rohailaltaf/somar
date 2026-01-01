@@ -18,6 +18,9 @@ export interface DatabaseContextValue {
   /** True when the database is ready for queries */
   isReady: boolean;
 
+  /** Error that occurred during initialization (null if no error) */
+  error: Error | null;
+
   /** Current database version (for optimistic locking) */
   version: number;
 
