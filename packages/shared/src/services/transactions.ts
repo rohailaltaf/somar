@@ -110,6 +110,23 @@ export function getUnconfirmedTransactions(db: DatabaseAdapter): TransactionWith
   return rows.map(mapTransactionRow);
 }
 
+export function getRecentTransactions(db: DatabaseAdapter, limit = 5): TransactionWithRelations[] {
+  const rows = db.all<RawTransaction>(
+    `SELECT
+       t.*,
+       c.id as cat_id, c.name as cat_name, c.type as cat_type, c.color as cat_color, c.created_at as cat_created_at,
+       a.id as acc_id, a.name as acc_name, a.type as acc_type, a.created_at as acc_created_at
+     FROM transactions t
+     LEFT JOIN categories c ON t.category_id = c.id
+     LEFT JOIN accounts a ON t.account_id = a.id
+     ORDER BY t.date DESC, t.created_at DESC
+     LIMIT ?`,
+    [limit]
+  );
+
+  return rows.map(mapTransactionRow);
+}
+
 export function getUnconfirmedCount(db: DatabaseAdapter): number {
   const result = db.get<{ count: number }>(
     "SELECT COUNT(*) as count FROM transactions WHERE is_confirmed = 0"

@@ -14,6 +14,7 @@ export {
 export {
   useTransactions,
   useUnconfirmedTransactions,
+  useRecentTransactions,
   useUnconfirmedCount,
   useTotalSpending,
   useSpendingByCategory,

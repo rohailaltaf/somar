@@ -52,6 +52,23 @@ export function useUnconfirmedTransactions() {
 }
 
 /**
+ * Hook for getting recent transactions with a limit (optimized for dashboards).
+ * Uses database-level LIMIT for O(1) performance regardless of total transaction count.
+ */
+export function useRecentTransactions(limit = 5) {
+  const { adapter, isReady } = useDatabaseAdapter();
+
+  return useQuery({
+    queryKey: ["transactions", "recent", limit],
+    queryFn: () => {
+      if (!adapter) return [];
+      return TransactionService.getRecentTransactions(adapter, limit);
+    },
+    enabled: isReady,
+  });
+}
+
+/**
  * Hook for getting unconfirmed count (for dashboard badge).
  */
 export function useUnconfirmedCount() {
