@@ -264,7 +264,7 @@ export function usePlaidSync() {
           const tier1Result = runTier1Dedup(plaidForDedup, existingForDedup);
 
           // Step 2: If uncertain pairs exist, call API for LLM verification (with batching)
-          let allDuplicates: DuplicateMatch[] = [...tier1Result.definiteMatches];
+          const allDuplicates: DuplicateMatch[] = [...tier1Result.definiteMatches];
 
           if (tier1Result.uncertainPairs.length > 0) {
             // Batch API calls to respect the 100 pair limit

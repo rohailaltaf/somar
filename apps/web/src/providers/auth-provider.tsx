@@ -78,8 +78,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [encryptionKey]);
 
   // Clear encryption key if session expires/invalidates
+  // This handles external session expiration (not through our logout function)
   useEffect(() => {
     if (!isLoading && !session && encryptionKey) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: sync key state with session
       setEncryptionKey(null);
     }
   }, [session, isLoading, encryptionKey]);

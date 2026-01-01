@@ -197,8 +197,8 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
       const tier1Result = runTier1Dedup(newForDedup, existingForDedup);
 
       // Step 2: If uncertain pairs exist, call API for LLM verification (with batching)
-      let finalDuplicates: DuplicateMatch[] = [...tier1Result.definiteMatches];
-      let finalUnique: TransactionForDedup[] = [...tier1Result.unique];
+      const finalDuplicates: DuplicateMatch[] = [...tier1Result.definiteMatches];
+      const finalUnique: TransactionForDedup[] = [...tier1Result.unique];
       let tier2Matches = 0;
 
       if (tier1Result.uncertainPairs.length > 0) {

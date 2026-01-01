@@ -10,7 +10,6 @@ import type {
   AccountType,
   CategoryType,
   CreateTransactionInput,
-  Transaction,
   TransactionWithRelations,
 } from "../types";
 

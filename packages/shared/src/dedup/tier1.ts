@@ -235,8 +235,6 @@ export function runTier1Dedup(
 
     // Try Tier 1 matching
     let foundMatch = false;
-    let bestScore = 0;
-    let bestCandidate: TransactionForDedup | null = null;
 
     for (const candidate of candidates) {
       const result = tier1Match(tx, candidate);
@@ -249,11 +247,6 @@ export function runTier1Dedup(
         });
         foundMatch = true;
         break;
-      }
-      // Track best score for uncertain pairs
-      if (result.score > bestScore) {
-        bestScore = result.score;
-        bestCandidate = candidate;
       }
     }
 
