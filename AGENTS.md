@@ -750,6 +750,7 @@ With 10,000+ transactions, performance remains the same due to server-side pagin
 15. **React version mismatch**: Web uses React ^19.1.4 (patched), Mobile uses React 19.1.0 (must match react-native-renderer). Each app has its own node_modules, so they run together without conflicts.
 16. **Mobile needs explicit @expo/metro-runtime**: Due to pnpm's symlink structure, `@expo/metro-runtime` must be listed as an explicit dependency in mobile's package.json.
 17. **Encryption key from password**: The encryption key is derived from the user's password. If password is forgotten, data is unrecoverable (by design).
+18. **Mobile theme colors for native components**: Some React Native components (`ActivityIndicator`, `Ionicons`, `RefreshControl`) don't accept `className` and need raw color strings. Use `themeColors` from `apps/mobile/src/lib/theme.ts` with `useColorScheme()` from NativeWind. If you add colors to `global.css`, also add them to `theme.ts`. See `apps/mobile/README.md` for details.
 
 ## Additional Documentation
 
