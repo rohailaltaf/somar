@@ -11,22 +11,13 @@ import * as Crypto from "expo-crypto";
 import { decrypt, encrypt } from "@somar/shared";
 import { DatabaseContext, type DatabaseContextValue } from "@somar/shared/hooks";
 import { ExpoSqliteAdapter } from "../lib/storage/expo-sqlite-adapter";
-import { authClient } from "../lib/auth-client";
+import { fetchWithAuth } from "../lib/api";
 
 // Auto-save debounce time in milliseconds
 const AUTO_SAVE_DELAY = 3000;
 
 // Database file path
 const DB_FILENAME = "somar.db";
-
-function getApiUrl(): string {
-  if (!process.env.EXPO_PUBLIC_API_URL) {
-    throw new Error("EXPO_PUBLIC_API_URL environment variable is required");
-  }
-  return process.env.EXPO_PUBLIC_API_URL;
-}
-
-const API_URL = getApiUrl();
 
 interface DatabaseProviderProps {
   children: ReactNode;
@@ -57,20 +48,15 @@ async function saveDatabase(
     Crypto.getRandomBytes
   );
 
-  // Get auth cookies for authenticated request
-  const cookies = await authClient.getCookie();
-
   // Upload to server (convert to plain ArrayBuffer for fetch)
   const encryptedCopy = new Uint8Array(encrypted);
-  const response = await fetch(`${API_URL}/api/db/upload`, {
+  const response = await fetchWithAuth("/api/db/upload", {
     method: "POST",
     body: encryptedCopy.buffer as ArrayBuffer,
     headers: {
       "Content-Type": "application/octet-stream",
       "X-Expected-Version": expectedVersion.toString(),
-      Cookie: cookies,
     },
-    credentials: "omit",
   });
 
   if (!response.ok) {
@@ -134,14 +120,8 @@ export function DatabaseProvider({
         const dbFile = new File(sqliteDir, DB_FILENAME);
         dbFileRef.current = dbFile;
 
-        // Get auth cookies for authenticated requests
-        const cookies = await authClient.getCookie();
-
         // Try to download existing database
-        const response = await fetch(`${API_URL}/api/db/download`, {
-          headers: { Cookie: cookies },
-          credentials: "omit",
-        });
+        const response = await fetchWithAuth("/api/db/download");
 
         let initialVersion = 0;
 
@@ -166,19 +146,14 @@ export function DatabaseProvider({
           initialVersion = versionHeader ? parseInt(versionHeader, 10) : 1;
         } else if (response.status === 404) {
           // New user - fetch initial database from server
-          const initResponse = await fetch(`${API_URL}/api/db/init`, {
+          const initResponse = await fetchWithAuth("/api/db/init", {
             method: "POST",
-            headers: { Cookie: cookies },
-            credentials: "omit",
           });
 
           if (!initResponse.ok) {
             if (initResponse.status === 409) {
               // Retry download - database was created by another device
-              const retryResponse = await fetch(`${API_URL}/api/db/download`, {
-                headers: { Cookie: cookies },
-                credentials: "omit",
-              });
+              const retryResponse = await fetchWithAuth("/api/db/download");
               if (retryResponse.ok) {
                 const encryptedBlob = await retryResponse.arrayBuffer();
                 const decrypted = await decrypt(
