@@ -36,21 +36,13 @@ function formatSectionDate(dateStr: string): { primary: string; secondary?: stri
     return { primary: "Yesterday", secondary: monthDay };
   }
 
-  // Within the last week, show day name
-  const oneWeekAgo = new Date(today);
-  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-  if (transactionDate > oneWeekAgo) {
-    return { primary: dayOfWeek, secondary: monthDay };
-  }
+  // All other dates: weekday + month/day (with year if different)
+  const isDifferentYear = year !== today.getFullYear();
+  const secondary = isDifferentYear
+    ? date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+    : monthDay;
 
-  // Older dates
-  const fullDate = date.toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: year !== today.getFullYear() ? "numeric" : undefined,
-  });
-  return { primary: fullDate };
+  return { primary: dayOfWeek, secondary };
 }
 
 export function DateSectionHeader({ date, dayTotal }: DateSectionHeaderProps) {
