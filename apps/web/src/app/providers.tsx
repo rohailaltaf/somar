@@ -2,8 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
-import { AuthProvider, useAuth } from "@/contexts/auth-context";
-import { DatabaseProvider } from "@/providers/database-provider";
+import { AuthProvider, useAuth, DatabaseProvider } from "@/providers";
 import { useDatabaseAdapter } from "@somar/shared/hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

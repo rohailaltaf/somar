@@ -40,7 +40,7 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
-  
+
   // Unlock with password (for new tab scenario - derives key without re-authenticating)
   unlock: (password: string) => Promise<void>;
 }
