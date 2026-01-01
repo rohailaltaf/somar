@@ -78,13 +78,81 @@ pnpm --filter mobile android   # Start Android emulator
 - **Web:** Next.js 16 with App Router
 - **Mobile:** React Native with Expo + Expo Router
 - **Central Database:** PostgreSQL via Prisma (auth, Plaid tokens)
-- **User Database:** SQLite via sql.js (encrypted, runs in browser)
+- **User Database:** SQLite via sql.js (web) / expo-sqlite (mobile), encrypted
 - **UI (Web):** shadcn/ui components + Tailwind CSS v4
+- **UI (Mobile):** NativeWind (Tailwind for React Native)
 - **Font:** Lato (Google Fonts)
 - **Animations:** Framer Motion (for tagger swipe)
 - **Charts:** Recharts (for reports/analytics)
 - **Financial Data:** Plaid (for bank connections)
 - **Language:** TypeScript
+
+## Shared Package (`@somar/shared`)
+
+The shared package contains platform-agnostic code used by both web and mobile apps.
+
+### Subpath Exports
+
+The package uses subpath exports for tree-shaking and clean imports:
+
+```typescript
+// Main exports (types, crypto, schema, dedup, storage utils)
+import { type AccountType, type CategoryType, type DatabaseAdapter } from "@somar/shared";
+
+// Services (data access layer) - via subpath
+import { getAllTransactions, confirmTransaction } from "@somar/shared/services";
+
+// Hooks (React hooks) - via subpath
+import { useTransactions, useAccounts, useCategories } from "@somar/shared/hooks";
+```
+
+### DatabaseAdapter Abstraction
+
+Both web and mobile implement the same `DatabaseAdapter` interface:
+
+```typescript
+// packages/shared/src/storage/types.ts
+export interface DatabaseAdapter {
+  all<T>(sql: string, params?: SqlParam[]): T[];      // SELECT queries
+  get<T>(sql: string, params?: SqlParam[]): T | undefined;  // Single row
+  run(sql: string, params?: SqlParam[]): void;        // INSERT/UPDATE/DELETE
+  exec(sql: string): void;                            // Raw SQL (schema creation)
+}
+```
+
+**Platform Implementations:**
+- **Web:** `apps/web/src/lib/storage/sql-js-adapter.ts` - wraps sql.js
+- **Mobile:** `apps/mobile/src/lib/storage/expo-sqlite-adapter.ts` - wraps expo-sqlite
+
+### Services Layer
+
+Services are pure functions that take a `DatabaseAdapter` and perform database operations:
+
+```typescript
+// Example usage in a component
+import { useDatabaseAdapter } from "@somar/shared/hooks";
+import { getAllTransactions } from "@somar/shared/services";
+
+function MyComponent() {
+  const db = useDatabaseAdapter();
+  const transactions = getAllTransactions(db);
+  // ...
+}
+```
+
+### Shared Hooks
+
+React hooks that work on any platform with a `DatabaseProvider`:
+
+```typescript
+import { useTransactions, useAccounts, useCategories } from "@somar/shared/hooks";
+
+function Dashboard() {
+  const { data: transactions } = useTransactions();
+  const { data: accounts } = useAccounts();
+  // ...
+}
+```
 
 ## Project Structure
 
@@ -107,14 +175,12 @@ somar/
 │   │   │   │       ├── db/         # Blob upload/download/init
 │   │   │   │       ├── plaid/      # Plaid integration
 │   │   │   │       └── dedup/      # LLM dedup verification
-│   │   │   ├── services/           # Data access layer (raw SQL queries)
-│   │   │   │   ├── transactions.ts # Transaction queries + categorization
-│   │   │   │   ├── accounts.ts     # Account queries
-│   │   │   │   └── categories.ts   # Category queries
-│   │   │   ├── hooks/
-│   │   │   │   ├── use-database.tsx    # sql.js database provider
+│   │   │   ├── providers/          # React context providers
+│   │   │   │   ├── auth-provider.tsx      # Auth context (wraps Better Auth)
+│   │   │   │   └── database-provider.tsx  # sql.js database + encryption
+│   │   │   ├── hooks/              # Web-specific hooks
 │   │   │   │   ├── use-plaid-sync.ts   # Plaid sync with dedup
-│   │   │   │   └── use-transactions.ts # Transaction hooks
+│   │   │   │   └── use-plaid-items.ts  # Plaid items query
 │   │   │   ├── components/
 │   │   │   │   ├── ui/             # shadcn components
 │   │   │   │   ├── nav.tsx         # Navigation bar
@@ -122,11 +188,11 @@ somar/
 │   │   │   └── lib/
 │   │   │       ├── db/index.ts     # Prisma client for central DB
 │   │   │       ├── dedup/          # LLM verifier (Tier 2)
-│   │   │       ├── storage/        # Blob storage (filesystem)
+│   │   │       ├── storage/        # Storage adapters
+│   │   │       │   └── sql-js-adapter.ts  # sql.js → DatabaseAdapter
 │   │   │       ├── auth.ts         # Better Auth config
 │   │   │       ├── plaid.ts        # Plaid client configuration
-│   │   │       ├── csv-parser.ts   # CSV parsing + column inference
-│   │   │       └── utils.ts        # Utility functions
+│   │   │       └── csv-parser.ts   # CSV parsing + column inference
 │   │   ├── prisma/
 │   │   │   └── central-schema.prisma  # Central DB schema (PostgreSQL)
 │   │   ├── scripts/                # Utility scripts
@@ -136,11 +202,23 @@ somar/
 │   │   └── tsconfig.json           # Extends ../../tsconfig.base.json
 │   └── mobile/                     # React Native/Expo app
 │       ├── app/                    # Expo Router pages
-│       │   ├── _layout.tsx         # Root layout
-│       │   └── (tabs)/             # Tab navigation
-│       ├── components/             # React Native components
-│       ├── hooks/                  # Custom hooks
-│       ├── constants/              # Theme and constants
+│       │   ├── _layout.tsx         # Root layout (providers + font loading)
+│       │   ├── index.tsx           # Entry point (redirects based on auth)
+│       │   ├── (auth)/             # Auth screens (login, register)
+│       │   └── (tabs)/             # Tab navigation (dashboard, transactions)
+│       ├── src/
+│       │   ├── components/ui/      # Shared UI components
+│       │   ├── providers/          # React context providers
+│       │   │   ├── auth-provider.tsx      # Auth context
+│       │   │   └── database-provider.tsx  # expo-sqlite + encryption
+│       │   └── lib/
+│       │       ├── storage/        # Storage adapters
+│       │       │   └── expo-sqlite-adapter.ts  # expo-sqlite → DatabaseAdapter
+│       │       ├── auth-client.ts  # Better Auth client
+│       │       ├── api.ts          # API helpers
+│       │       └── theme.ts        # Theme colors for native components
+│       ├── global.css              # NativeWind theme variables
+│       ├── tailwind.config.js      # Tailwind/NativeWind config
 │       ├── app.json                # Expo config
 │       ├── metro.config.js         # Metro bundler config for pnpm
 │       ├── package.json            # Mobile app dependencies
@@ -148,10 +226,27 @@ somar/
 ├── packages/
 │   └── shared/
 │       ├── src/
-│       │   ├── index.ts            # Shared exports
+│       │   ├── index.ts            # Shared exports (crypto, schema, types, dedup, storage)
 │       │   ├── crypto/             # Encryption utilities (AES-256-GCM)
 │       │   ├── schema/             # SQLite schema DDL + default categories
 │       │   ├── types/              # Shared TypeScript types
+│       │   ├── storage/            # Database adapter abstraction
+│       │   │   ├── index.ts        # Exports
+│       │   │   └── types.ts        # DatabaseAdapter interface
+│       │   ├── utils/              # Shared utilities
+│       │   │   ├── index.ts        # Exports
+│       │   │   └── date.ts         # Date formatting utilities
+│       │   ├── services/           # Data access layer (platform-agnostic)
+│       │   │   ├── index.ts        # Exports all services
+│       │   │   ├── transactions.ts # Transaction queries + categorization
+│       │   │   ├── accounts.ts     # Account queries
+│       │   │   └── categories.ts   # Category queries
+│       │   ├── hooks/              # Shared React hooks
+│       │   │   ├── index.ts        # Exports all hooks
+│       │   │   ├── database-context.tsx   # DatabaseAdapter context
+│       │   │   ├── use-transactions.ts    # Transaction hooks
+│       │   │   ├── use-accounts.ts        # Account hooks
+│       │   │   └── use-categories.ts      # Category hooks
 │       │   └── dedup/              # Transaction deduplication (Tier 1 - client-side)
 │       │       ├── index.ts        # Public exports
 │       │       ├── types.ts        # Shared type definitions
@@ -222,7 +317,7 @@ Each user has an encrypted SQLite database that runs **entirely in the browser**
 
 ## Key Features
 
-### 1. Auto-Categorization (`apps/web/src/services/transactions.ts`)
+### 1. Auto-Categorization (`packages/shared/src/services/transactions.ts`)
 
 - Matches transaction descriptions against stored patterns
 - Priority: learned rules > preset rules
@@ -342,11 +437,12 @@ Plaid needs time to fetch and enrich historical data after initial connection. T
 
 **Key Files:**
 ```
-apps/web/src/hooks/use-plaid-sync.ts      # Client-side sync hook (runs Tier 1 dedup locally)
-apps/web/src/app/api/plaid/sync/route.ts  # Server proxy with retry logic
+apps/web/src/hooks/use-plaid-sync.ts       # Client-side sync hook (runs Tier 1 dedup locally)
+apps/web/src/app/api/plaid/sync/route.ts   # Server proxy with retry logic
 apps/web/src/app/api/dedup/verify/route.ts # LLM-only dedup verification (Tier 2)
-apps/web/src/components/auto-sync.tsx     # Auto-sync on page load
-packages/shared/src/dedup/                # Tier 1 dedup (client-side, used by web + mobile)
+apps/web/src/components/auto-sync.tsx      # Auto-sync on page load
+packages/shared/src/dedup/                 # Tier 1 dedup (client-side, used by web + mobile)
+packages/shared/src/services/transactions.ts # Transaction service (shared between web + mobile)
 ```
 
 **API Routes:**
@@ -410,15 +506,15 @@ OPENAI_API_KEY=your_key  # For LLM deduplication (optional)
 2. **Burn-up Chart**: Line chart showing cumulative daily spending (this month vs last month)
 3. **Category Progress Bars**: Spending vs budget for each category (reuses BudgetProgress component)
 
-**Analytics Functions** (in `apps/web/src/services/transactions.ts`):
+**Analytics Functions** (in `packages/shared/src/services/transactions.ts`, imported via `@somar/shared/services`):
 ```typescript
 // Get daily cumulative spending for a month (for burn-up chart)
-getDailyCumulativeSpending(month: string)
+getDailyCumulativeSpending(db: DatabaseAdapter, month: string)
 // Returns: [{ day: 1, date: "2024-01", cumulative: 150 }, ...]
 
 // Existing functions used:
-getTotalSpending(month: string)
-getSpendingByCategory(month: string)
+getTotalSpending(db: DatabaseAdapter, month: string)
+getSpendingByCategory(db: DatabaseAdapter, month: string)
 ```
 
 **Chart Library: Recharts**
@@ -574,11 +670,10 @@ Users can also add custom categories via the Categories page in the app.
 </Link>
 ```
 
-**Step 2:** Create analytics function in `apps/web/src/services/transactions.ts`
+**Step 2:** Create analytics function in `packages/shared/src/services/transactions.ts`
 ```typescript
-export function getYourData(db: Database): YourDataType[] {
-  return queryAll<YourDataType>(
-    db,
+export function getYourData(db: DatabaseAdapter): YourDataType[] {
+  return db.all<YourDataType>(
     `SELECT /* your fields */
      FROM transactions
      WHERE /* your conditions */
@@ -694,9 +789,8 @@ const response = await fetch(`/api/transactions?page=1&limit=50`);
 
 **USE:** SQL JOINs to fetch related data in a single query:
 ```typescript
-// Optimized - single query with joins
-const rows = queryAll<TransactionRow>(
-  db,
+// Optimized - single query with joins (uses DatabaseAdapter)
+const rows = db.all<TransactionRow>(
   `SELECT
      t.*,
      c.id as cat_id, c.name as cat_name, c.color as cat_color,

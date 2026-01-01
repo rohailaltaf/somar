@@ -64,13 +64,13 @@ somar/
 | App | Description | Status |
 |-----|-------------|--------|
 | `@somar/web` | Next.js web application | ✅ Active |
-| `@somar/mobile` | React Native/Expo mobile app | 🚧 In Development |
+| `@somar/mobile` | React Native/Expo mobile app | 🚧 In Development (auth + basic screens) |
 
 ### Packages
 
 | Package | Description |
 |---------|-------------|
-| `@somar/shared` | Shared TypeScript types and utilities |
+| `@somar/shared` | Shared types, crypto, services, hooks, and deduplication |
 
 ## Features
 
@@ -181,8 +181,9 @@ PLAID_ENV=sandbox
 - **Web:** [Next.js 16](https://nextjs.org) with App Router
 - **Mobile:** [React Native](https://reactnative.dev) with [Expo](https://expo.dev) and Expo Router
 - **Central Database:** PostgreSQL via [Prisma](https://prisma.io) (auth, Plaid tokens)
-- **User Database:** SQLite via [sql.js](https://sql.js.org) (encrypted, runs in browser)
-- **UI:** [shadcn/ui](https://ui.shadcn.com) + [Tailwind CSS](https://tailwindcss.com)
+- **User Database:** SQLite via [sql.js](https://sql.js.org) (web) / [expo-sqlite](https://docs.expo.dev/versions/latest/sdk/sqlite/) (mobile), encrypted
+- **UI (Web):** [shadcn/ui](https://ui.shadcn.com) + [Tailwind CSS](https://tailwindcss.com)
+- **UI (Mobile):** [NativeWind](https://www.nativewind.dev/) (Tailwind for React Native)
 - **Animations:** [Framer Motion](https://www.framer.com/motion/)
 - **Charts:** [Recharts](https://recharts.org)
 - **Bank Connections:** [Plaid](https://plaid.com)
@@ -196,18 +197,26 @@ somar/
 │   │   ├── src/
 │   │   │   ├── app/            # Next.js App Router pages
 │   │   │   ├── components/     # React components
-│   │   │   ├── hooks/          # React hooks (database, sync)
-│   │   │   ├── lib/            # Utilities & business logic
-│   │   │   └── services/       # Data access layer (raw SQL)
+│   │   │   ├── providers/      # Auth + Database providers
+│   │   │   ├── hooks/          # Web-specific hooks (Plaid sync)
+│   │   │   └── lib/            # Utilities (storage adapters, Plaid, etc.)
 │   │   ├── prisma/             # Central database schema (PostgreSQL)
 │   │   └── public/             # Static assets
 │   └── mobile/                 # React Native/Expo app
 │       ├── app/                # Expo Router pages
-│       ├── components/         # React Native components
-│       ├── hooks/              # Custom hooks
+│       │   ├── (auth)/         # Login/register screens
+│       │   └── (tabs)/         # Dashboard, transactions
+│       ├── src/
+│       │   ├── components/     # React Native components
+│       │   ├── providers/      # Auth + Database providers
+│       │   └── lib/            # Storage adapters, theme, API helpers
 │       └── metro.config.js     # Metro bundler config for pnpm
 ├── packages/
 │   └── shared/                 # Shared code (crypto, schema, types, dedup)
+│       └── src/
+│           ├── services/       # Data access layer (platform-agnostic)
+│           ├── hooks/          # Shared React hooks
+│           └── storage/        # DatabaseAdapter interface
 ├── docs/                       # Documentation
 └── turbo.json                  # Turborepo config
 ```

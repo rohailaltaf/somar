@@ -122,7 +122,7 @@ sequenceDiagram
 | Database | Type | Location | Purpose |
 |----------|------|----------|---------|
 | **Central DB** | PostgreSQL | Server | Auth, sessions, Plaid tokens |
-| **User Data** | SQLite | Browser (sql.js) | Transactions, accounts, budgets |
+| **User Data** | SQLite | Client (sql.js on web, expo-sqlite on mobile) | Transactions, accounts, budgets |
 
 ### What Runs Where
 
@@ -130,8 +130,8 @@ sequenceDiagram
 |-----------|---------|-------|
 | Authentication | Server | Better Auth handles sessions |
 | Plaid sync | Server | Plaid requires server-side tokens |
-| User queries | **Browser** | Raw SQL queries run in sql.js |
-| Encryption | **Browser** | Key derivation and crypto |
+| User queries | **Client** | Raw SQL via DatabaseAdapter (sql.js or expo-sqlite) |
+| Encryption | **Client** | Key derivation and crypto |
 | Data storage | Server | Encrypted blobs only |
 
 ### Central Database Schema (Server)
@@ -242,18 +242,26 @@ sequenceDiagram
 
 ## Client-Side Tech Stack
 
+### Shared Code (`@somar/shared`)
+
+Both web and mobile use the same business logic via the shared package:
+
+- **Services** - Platform-agnostic data access layer (`@somar/shared/services`)
+- **Hooks** - Shared React hooks (`@somar/shared/hooks`)
+- **DatabaseAdapter** - Common interface for SQL operations
+
 ### Web (Browser)
 
 - **sql.js** - SQLite compiled to WebAssembly (self-hosted WASM to avoid CDN risks)
-- **Raw SQL** - Direct SQL queries via sql.js (no ORM for user data)
-- **@tanstack/react-query** - Data fetching and caching
+- **SqlJsAdapter** - Wraps sql.js to implement DatabaseAdapter
 - **Web Crypto API** - AES-256-GCM and PBKDF2
 
 ### Mobile
 
 - **expo-sqlite** - Native SQLite
-- **Raw SQL** - Same query patterns as web
+- **ExpoSqliteAdapter** - Wraps expo-sqlite to implement DatabaseAdapter
 - **expo-secure-store** - Key storage
+- **NativeWind** - Tailwind CSS for React Native
 
 ## Project Structure
 
@@ -271,21 +279,27 @@ somar/
 │   │   │   │       ├── db/              # Blob upload/download/init
 │   │   │   │       ├── plaid/           # Plaid integration
 │   │   │   │       └── dedup/           # LLM dedup verification
-│   │   │   ├── services/                # Data access layer (raw SQL)
-│   │   │   │   ├── transactions.ts
-│   │   │   │   ├── accounts.ts
-│   │   │   │   └── categories.ts
-│   │   │   ├── lib/
-│   │   │   │   ├── auth.ts              # Better Auth config
-│   │   │   │   ├── db/index.ts          # Central DB Prisma client
-│   │   │   │   └── storage/             # Blob storage (filesystem)
-│   │   │   └── hooks/
-│   │   │       ├── use-database.tsx     # sql.js + React Query
-│   │   │       └── use-plaid-sync.ts    # Plaid sync with dedup
+│   │   │   ├── providers/               # Auth + Database providers
+│   │   │   │   ├── auth-provider.tsx    # Auth context
+│   │   │   │   └── database-provider.tsx # sql.js + encryption
+│   │   │   ├── hooks/
+│   │   │   │   └── use-plaid-sync.ts    # Plaid sync with dedup
+│   │   │   └── lib/
+│   │   │       ├── auth.ts              # Better Auth config
+│   │   │       ├── db/index.ts          # Central DB Prisma client
+│   │   │       └── storage/             # Blob storage + SqlJsAdapter
 │   │   └── data/                        # Encrypted blobs (gitignored)
 │   │
 │   └── mobile/
-│       └── (similar structure)
+│       ├── app/                         # Expo Router pages
+│       │   ├── (auth)/                  # Login, register screens
+│       │   └── (tabs)/                  # Dashboard, transactions
+│       └── src/
+│           ├── providers/               # Auth + Database providers
+│           │   ├── auth-provider.tsx
+│           │   └── database-provider.tsx # expo-sqlite + encryption
+│           └── lib/
+│               └── storage/             # ExpoSqliteAdapter
 │
 └── packages/
     └── shared/
@@ -293,6 +307,9 @@ somar/
             ├── crypto/                  # Encryption utilities
             ├── schema/                  # SQLite schema DDL + default categories
             ├── types/                   # Shared TypeScript types
+            ├── storage/                 # DatabaseAdapter interface
+            ├── services/                # Data access layer (platform-agnostic)
+            ├── hooks/                   # Shared React hooks
             └── dedup/                   # Tier 1 deduplication (client-side)
 ```
 
