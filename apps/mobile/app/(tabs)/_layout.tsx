@@ -1,0 +1,189 @@
+import { Tabs } from "expo-router";
+import { useColorScheme, View, Text, ActivityIndicator, Pressable, Alert } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useState } from "react";
+import { useAuth, DatabaseProvider } from "../../src/providers";
+
+/**
+ * Sign out button for header.
+ */
+function SignOutButton() {
+  const { logout } = useAuth();
+
+  const handleSignOut = () => {
+    Alert.alert(
+      "Sign Out",
+      "Are you sure you want to sign out?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Sign Out",
+          style: "destructive",
+          onPress: logout,
+        },
+      ]
+    );
+  };
+
+  return (
+    <Pressable onPress={handleSignOut} className="mr-4 p-2">
+      <Ionicons name="log-out-outline" size={22} color="#64748b" />
+    </Pressable>
+  );
+}
+
+// Navigation options require color strings (can't use className)
+// These match the CSS variables in global.css
+const navColors = {
+  light: {
+    background: "#ffffff",
+    card: "#ffffff",
+    text: "#0f172a",
+    border: "#e2e8f0",
+    accent: "#6366f1",
+    muted: "#94a3b8",
+  },
+  dark: {
+    background: "#020617",
+    card: "#0f172a",
+    text: "#f8fafc",
+    border: "#334155",
+    accent: "#818cf8",
+    muted: "#64748b",
+  },
+};
+
+/**
+ * Loading screen shown while database is initializing.
+ */
+function LoadingScreen() {
+  return (
+    <View className="flex-1 items-center justify-center bg-background">
+      <View className="w-16 h-16 rounded-2xl bg-primary/10 items-center justify-center mb-4">
+        <ActivityIndicator size="large" color="#6366f1" />
+      </View>
+      <Text className="text-base font-medium text-foreground mb-1">
+        Loading your data
+      </Text>
+      <Text className="text-sm text-muted-foreground">
+        Decrypting your finances...
+      </Text>
+    </View>
+  );
+}
+
+/**
+ * Wraps tab content with DatabaseProvider.
+ * Only renders when encryption key is available.
+ */
+function DatabaseGate({ children }: { children: React.ReactNode }) {
+  const { encryptionKey, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+
+  if (!encryptionKey) {
+    // This shouldn't happen - AuthGuard should redirect to login
+    return <LoadingScreen />;
+  }
+
+  return (
+    <DatabaseProvider encryptionKey={encryptionKey}>
+      {children}
+    </DatabaseProvider>
+  );
+}
+
+/**
+ * Tab navigator content with icons and styling.
+ */
+function TabNavigator() {
+  const colorScheme = useColorScheme();
+  const colors = colorScheme === "dark" ? navColors.dark : navColors.light;
+
+  return (
+    <DatabaseGate>
+      <Tabs
+        screenOptions={{
+          headerShown: true,
+          headerStyle: {
+            backgroundColor: colors.background,
+            shadowColor: "transparent",
+            elevation: 0,
+          },
+          headerTitleStyle: {
+            fontWeight: "600",
+            fontSize: 17,
+          },
+          headerTintColor: colors.text,
+          tabBarStyle: {
+            backgroundColor: colors.card,
+            borderTopColor: colors.border,
+            paddingTop: 8,
+            height: 88,
+          },
+          tabBarLabelStyle: {
+            fontSize: 11,
+            fontWeight: "500",
+            marginTop: 4,
+          },
+          tabBarActiveTintColor: colors.accent,
+          tabBarInactiveTintColor: colors.muted,
+        }}
+      >
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: "Dashboard",
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons
+                name={focused ? "grid" : "grid-outline"}
+                size={24}
+                color={color}
+              />
+            ),
+            headerRight: () => <SignOutButton />,
+          }}
+        />
+        <Tabs.Screen
+          name="transactions"
+          options={{
+            title: "Transactions",
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons
+                name={focused ? "receipt" : "receipt-outline"}
+                size={24}
+                color={color}
+              />
+            ),
+          }}
+        />
+      </Tabs>
+    </DatabaseGate>
+  );
+}
+
+/**
+ * Tab layout with providers.
+ */
+export default function TabLayout() {
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: 60 * 1000, // 1 minute
+            refetchOnWindowFocus: false,
+          },
+        },
+      })
+  );
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TabNavigator />
+    </QueryClientProvider>
+  );
+}
