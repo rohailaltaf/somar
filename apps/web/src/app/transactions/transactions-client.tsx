@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { useTransactions } from "@/hooks";
+import { useTransactions } from "@somar/shared/hooks";
 import { TransactionsList } from "./transactions-list";
 import type { Account, Category } from "@somar/shared";
 import { Button } from "@/components/ui/button";

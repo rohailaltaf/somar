@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, memo } from "react";
-import { useTransactionMutations } from "@/hooks";
+import { useTransactionMutations } from "@somar/shared/hooks";
 import type { Category, TransactionWithRelations } from "@somar/shared";
 import {
   Table,
@@ -43,7 +43,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { formatCurrency } from "@somar/shared";
 
 interface TransactionsListProps {
   transactions: TransactionWithRelations[];

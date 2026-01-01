@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useCategoryMutations } from "@/hooks";
+import { useCategoryMutations } from "@somar/shared/hooks";
 import type { CategoryType, CategoryWithBudget } from "@somar/shared";
 import {
   Card,
@@ -39,7 +39,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency } from "@somar/shared";
 
 interface CategoriesListProps {
   categories: CategoryWithBudget[];

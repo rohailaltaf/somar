@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { useDatabase } from "@/hooks/use-database";
+import { useDatabaseAdapter } from "@somar/shared/hooks";
 import { usePlaidSync } from "@/hooks/use-plaid-sync";
 
 interface AutoSyncProps {
@@ -10,7 +10,7 @@ interface AutoSyncProps {
 }
 
 export function AutoSync({ itemsNeedingSync }: AutoSyncProps) {
-  const { isReady } = useDatabase();
+  const { isReady } = useDatabaseAdapter();
   const { syncAllItems } = usePlaidSync();
   const hasSynced = useRef(false);
 

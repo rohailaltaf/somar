@@ -21,7 +21,7 @@ import {
   Area,
   AreaChart,
 } from "recharts";
-import { formatMonth, formatCurrency } from "@/lib/utils";
+import { formatMonth, formatCurrency } from "@somar/shared";
 
 interface SpendingTransaction {
   id: string;

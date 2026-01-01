@@ -1,7 +1,8 @@
 "use client";
 
 import { Progress } from "@/components/ui/progress";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { formatCurrency } from "@somar/shared";
 
 interface BudgetProgressProps {
   spent: number;

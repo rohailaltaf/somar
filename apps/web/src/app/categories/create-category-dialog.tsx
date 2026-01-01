@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useCategoryMutations } from "@/hooks";
+import { useCategoryMutations } from "@somar/shared/hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

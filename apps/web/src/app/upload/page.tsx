@@ -1,6 +1,6 @@
 "use client";
 
-import { useAccounts } from "@/hooks";
+import { useAccounts } from "@somar/shared/hooks";
 import { Nav } from "@/components/nav";
 import { PageHeader } from "@/components/page-header";
 import { UploadInterface } from "./upload-interface";

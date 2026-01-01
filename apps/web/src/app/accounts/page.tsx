@@ -1,6 +1,7 @@
 "use client";
 
-import { useAccounts, usePlaidItems } from "@/hooks";
+import { useAccounts } from "@somar/shared/hooks";
+import { usePlaidItems } from "@/hooks/use-plaid-items";
 import { Nav } from "@/components/nav";
 import { PageHeader } from "@/components/page-header";
 import { AccountsInterface } from "./accounts-interface";

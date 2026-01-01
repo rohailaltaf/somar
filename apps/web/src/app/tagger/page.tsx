@@ -1,6 +1,6 @@
 "use client";
 
-import { useCategories, useUnconfirmedTransactions } from "@/hooks";
+import { useCategories, useUnconfirmedTransactions } from "@somar/shared/hooks";
 import { Nav } from "@/components/nav";
 import { PageHeader } from "@/components/page-header";
 import { TaggerInterface } from "./tagger-interface";

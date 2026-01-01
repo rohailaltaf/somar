@@ -4,10 +4,10 @@ import { useMemo } from "react";
 import { Nav } from "@/components/nav";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { useDatabase } from "@/hooks/use-database";
+import { useDatabaseAdapter } from "@somar/shared/hooks";
 import { SpendingOverviewClient } from "./spending-overview-client";
-import * as TransactionService from "@/services/transactions";
-import { getCurrentMonth, getPreviousMonth } from "@/lib/utils";
+import * as TransactionService from "@somar/shared/services";
+import { getCurrentMonth, getPreviousMonth } from "@somar/shared";
 
 export default function SpendingOverviewPage() {
   return (
@@ -27,30 +27,30 @@ export default function SpendingOverviewPage() {
 }
 
 function SpendingOverviewContent() {
-  const { db } = useDatabase();
-  
+  const { adapter } = useDatabaseAdapter();
+
   const currentMonth = useMemo(() => getCurrentMonth(), []);
   const lastMonth = useMemo(() => getPreviousMonth(currentMonth), [currentMonth]);
   const currentYear = useMemo(() => new Date().getFullYear(), []);
 
   const data = useMemo(() => {
-    if (!db) return null;
+    if (!adapter) return null;
 
     return {
-      currentTotal: TransactionService.getTotalSpending(db, currentMonth),
-      lastTotal: TransactionService.getTotalSpending(db, lastMonth),
-      currentCategorySpending: TransactionService.getSpendingByCategory(db, currentMonth),
-      lastCategorySpending: TransactionService.getSpendingByCategory(db, lastMonth),
-      currentDailyData: TransactionService.getDailyCumulativeSpending(db, currentMonth),
-      lastDailyData: TransactionService.getDailyCumulativeSpending(db, lastMonth),
-      yearTotal: TransactionService.getYearToDateSpending(db, currentYear),
-      yearCategorySpending: TransactionService.getYearToDateCategorySpending(db, currentYear),
-      yearMonthlyData: TransactionService.getMonthlyCumulativeSpending(db, currentYear),
-      currentTransactions: TransactionService.getSpendingTransactions(db, currentMonth),
-      lastTransactions: TransactionService.getSpendingTransactions(db, lastMonth),
-      yearTransactions: TransactionService.getYearSpendingTransactions(db, currentYear),
+      currentTotal: TransactionService.getTotalSpending(adapter, currentMonth),
+      lastTotal: TransactionService.getTotalSpending(adapter, lastMonth),
+      currentCategorySpending: TransactionService.getSpendingByCategory(adapter, currentMonth),
+      lastCategorySpending: TransactionService.getSpendingByCategory(adapter, lastMonth),
+      currentDailyData: TransactionService.getDailyCumulativeSpending(adapter, currentMonth),
+      lastDailyData: TransactionService.getDailyCumulativeSpending(adapter, lastMonth),
+      yearTotal: TransactionService.getYearToDateSpending(adapter, currentYear),
+      yearCategorySpending: TransactionService.getYearToDateCategorySpending(adapter, currentYear),
+      yearMonthlyData: TransactionService.getMonthlyCumulativeSpending(adapter, currentYear),
+      currentTransactions: TransactionService.getSpendingTransactions(adapter, currentMonth),
+      lastTransactions: TransactionService.getSpendingTransactions(adapter, lastMonth),
+      yearTransactions: TransactionService.getYearSpendingTransactions(adapter, currentYear),
     };
-  }, [db, currentMonth, lastMonth, currentYear]);
+  }, [adapter, currentMonth, lastMonth, currentYear]);
 
   if (!data) {
     return <SpendingOverviewSkeleton />;

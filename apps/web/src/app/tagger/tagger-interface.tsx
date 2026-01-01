@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
-import { useTransactionMutations } from "@/hooks";
+import { useTransactionMutations } from "@somar/shared/hooks";
 import type { Category, TransactionWithRelations } from "@somar/shared";
 import {
   Card,
@@ -26,7 +26,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { formatCurrency } from "@somar/shared";
 
 interface TaggerInterfaceProps {
   initialTransactions: TransactionWithRelations[];
