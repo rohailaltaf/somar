@@ -1,0 +1,72 @@
+/**
+ * Date utilities shared across web and mobile apps.
+ * All month strings use YYYY-MM format.
+ * All date strings use YYYY-MM-DD format.
+ */
+
+/**
+ * Get current month in YYYY-MM format.
+ */
+export function getCurrentMonth(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+/**
+ * Get previous month in YYYY-MM format.
+ * @param month - Optional month string (YYYY-MM). If not provided, uses current month.
+ */
+export function getPreviousMonth(month?: string): string {
+  if (month) {
+    const [year, monthNum] = month.split("-").map(Number);
+    const date = new Date(year, monthNum - 2, 1);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+  }
+  const now = new Date();
+  now.setMonth(now.getMonth() - 1);
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+/**
+ * Format month string for display (e.g., "January 2024").
+ * Uses local time to avoid timezone issues.
+ */
+export function formatMonth(month: string): string {
+  // Append T00:00:00 to force local time interpretation (date-only strings are UTC)
+  return new Date(`${month}-01T00:00:00`).toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
+}
+
+/**
+ * Calculate percentage change between two values.
+ * @returns Percentage change rounded to nearest integer, or null if previous is 0.
+ */
+export function getPercentageChange(current: number, previous: number): number | null {
+  if (previous === 0) return null;
+  return Math.round(((current - previous) / previous) * 100);
+}
+
+/**
+ * Get date N days ago in YYYY-MM-DD format.
+ */
+export function getDaysAgo(days: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() - days);
+  return date.toISOString().split("T")[0];
+}
+
+/**
+ * Format currency for display.
+ * @param amount - The amount to format
+ * @param showCents - Whether to show decimal places (default: false)
+ */
+export function formatCurrency(amount: number, showCents: boolean = false): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: showCents ? 2 : 0,
+    maximumFractionDigits: showCents ? 2 : 0,
+  }).format(amount);
+}
