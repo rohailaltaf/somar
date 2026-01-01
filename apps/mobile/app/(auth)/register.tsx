@@ -8,16 +8,20 @@ import {
   Platform,
   ScrollView,
 } from "react-native";
-import { useRouter, type Href } from "expo-router";
+import { useRouter } from "expo-router";
+import { useColorScheme } from "nativewind";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "../../src/providers";
 import { signIn } from "../../src/lib/auth-client";
 import { FormTextInput } from "../../src/components/ui";
 import { registerSchema, type RegisterFormData } from "../../src/lib/validation";
+import { themeColors } from "../../src/lib/theme";
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const { colorScheme } = useColorScheme();
+  const colors = themeColors[colorScheme ?? "light"];
   const { register } = useAuth();
   const [isOAuthLoading, setIsOAuthLoading] = useState(false);
 
@@ -52,7 +56,7 @@ export default function RegisterScreen() {
     setIsOAuthLoading(true);
     try {
       await signIn.social({ provider: "google" });
-      router.replace("/(tabs)" as Href);
+      router.replace("/(tabs)");
     } catch (error) {
       setError("root", { message: "Failed to sign up with Google" });
       console.error(error);
@@ -144,7 +148,7 @@ export default function RegisterScreen() {
             disabled={isDisabled}
           >
             {isSubmitting ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={colors.primaryForeground} />
             ) : (
               <Text className="text-primary-foreground text-base font-semibold">
                 Create account

@@ -8,16 +8,20 @@ import {
   Platform,
   ScrollView,
 } from "react-native";
-import { useRouter, type Href } from "expo-router";
+import { useRouter } from "expo-router";
+import { useColorScheme } from "nativewind";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "../../src/providers";
 import { signIn } from "../../src/lib/auth-client";
 import { FormTextInput } from "../../src/components/ui";
 import { loginSchema, type LoginFormData } from "../../src/lib/validation";
+import { themeColors } from "../../src/lib/theme";
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { colorScheme } = useColorScheme();
+  const colors = themeColors[colorScheme ?? "light"];
   const { login } = useAuth();
   const [isOAuthLoading, setIsOAuthLoading] = useState(false);
 
@@ -50,7 +54,7 @@ export default function LoginScreen() {
     setIsOAuthLoading(true);
     try {
       await signIn.social({ provider: "google" });
-      router.replace("/(tabs)" as Href);
+      router.replace("/(tabs)");
     } catch (error) {
       setError("root", { message: "Failed to sign in with Google" });
       console.error(error);
@@ -126,7 +130,7 @@ export default function LoginScreen() {
             disabled={isDisabled}
           >
             {isSubmitting ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={colors.primaryForeground} />
             ) : (
               <Text className="text-primary-foreground text-base font-semibold">
                 Sign in

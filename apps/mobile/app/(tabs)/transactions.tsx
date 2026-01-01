@@ -7,6 +7,7 @@ import {
   TextInput,
   Pressable,
 } from "react-native";
+import { useColorScheme } from "nativewind";
 import { Ionicons } from "@expo/vector-icons";
 import { useTransactions, useTotalSpending } from "@somar/shared/hooks";
 import type { TransactionWithRelations } from "@somar/shared";
@@ -18,6 +19,7 @@ import {
   DateSectionHeader,
   TransactionRow,
 } from "../../src/components/ui";
+import { themeColors } from "../../src/lib/theme";
 
 interface TransactionSection {
   date: string;
@@ -46,6 +48,9 @@ function groupTransactionsByDate(
 }
 
 export default function Transactions() {
+  const { colorScheme } = useColorScheme();
+  const colors = themeColors[colorScheme ?? "light"];
+
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchVisible, setSearchVisible] = useState(false);
@@ -115,7 +120,7 @@ export default function Transactions() {
             <Ionicons
               name={searchVisible ? "close" : "search"}
               size={20}
-              color="#64748b"
+              color={colors.mutedForeground}
             />
           </Pressable>
         </View>
@@ -127,7 +132,7 @@ export default function Transactions() {
               ref={searchInputRef}
               className="bg-muted rounded-xl px-4 py-3 text-base text-foreground"
               placeholder="Search transactions..."
-              placeholderTextColor="#64748b"
+              placeholderTextColor={colors.mutedForeground}
               value={searchQuery}
               onChangeText={setSearchQuery}
               returnKeyType="search"
@@ -164,7 +169,7 @@ export default function Transactions() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#6366f1"
+            tintColor={colors.primary}
           />
         }
         contentContainerStyle={
