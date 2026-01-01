@@ -103,6 +103,7 @@ export function DatabaseProvider({
   const pendingSaveRef = useRef(false);
   const versionRef = useRef(0);
   const dbFileRef = useRef<File | null>(null);
+  const dbRef = useRef<SQLite.SQLiteDatabase | null>(null);
 
   // Initialize database on mount
   useEffect(() => {
@@ -194,6 +195,7 @@ export function DatabaseProvider({
         const database = await SQLite.openDatabaseAsync(DB_FILENAME);
 
         if (mounted) {
+          dbRef.current = database;
           setDb(database);
           setAdapter(new ExpoSqliteAdapter(database));
           versionRef.current = initialVersion;
@@ -215,6 +217,13 @@ export function DatabaseProvider({
       mounted = false;
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
+      }
+      // Close database connection to prevent memory leak
+      if (dbRef.current) {
+        dbRef.current.closeAsync().catch((err) => {
+          console.error("[DB] Error closing database:", err);
+        });
+        dbRef.current = null;
       }
     };
   }, [encryptionKey]);
