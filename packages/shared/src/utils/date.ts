@@ -70,3 +70,64 @@ export function formatCurrency(amount: number, showCents: boolean = false): stri
     maximumFractionDigits: showCents ? 2 : 0,
   }).format(amount);
 }
+
+export interface FormatDateOptions {
+  /** Include weekday (e.g., "Mon, Dec 15") */
+  weekday?: boolean;
+  /** Show relative labels ("Today", "Yesterday") when applicable */
+  relative?: boolean;
+  /** Control year display: "auto" shows year if different from current, "always"/"never" force behavior */
+  showYear?: "auto" | "always" | "never";
+}
+
+/**
+ * Format a YYYY-MM-DD date string for display.
+ * Uses timezone-safe parsing to avoid day shifts.
+ */
+export function formatDate(dateStr: string, options: FormatDateOptions = {}): string {
+  const { weekday = false, relative = false, showYear = "auto" } = options;
+
+  // Parse YYYY-MM-DD without timezone conversion
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Handle relative dates
+  if (relative) {
+    const transactionDate = new Date(year, month - 1, day);
+    transactionDate.setHours(0, 0, 0, 0);
+
+    if (transactionDate.getTime() === today.getTime()) {
+      return "Today";
+    }
+
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (transactionDate.getTime() === yesterday.getTime()) {
+      return "Yesterday";
+    }
+  }
+
+  // Determine if year should be shown
+  const includeYear =
+    showYear === "always" ||
+    (showYear === "auto" && year !== today.getFullYear());
+
+  // Build format options
+  const formatOptions: Intl.DateTimeFormatOptions = {
+    month: "short",
+    day: "numeric",
+  };
+
+  if (weekday) {
+    formatOptions.weekday = "short";
+  }
+
+  if (includeYear) {
+    formatOptions.year = "numeric";
+  }
+
+  return date.toLocaleDateString("en-US", formatOptions);
+}
