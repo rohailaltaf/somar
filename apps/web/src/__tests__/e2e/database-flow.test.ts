@@ -114,6 +114,32 @@ vi.mock("@/lib/db", () => ({
             }
             return { count: 0 };
           },
+          upsert: async ({
+            where,
+            create,
+            update,
+          }: {
+            where: { userId: string };
+            create: { userId: string; version: number; sizeBytes: number };
+            update: { version: bigint; sizeBytes: number; updatedAt: Date };
+          }) => {
+            const existing = mockEncryptedDatabases.get(where.userId);
+            if (existing) {
+              // Update existing record
+              existing.version = update.version;
+              existing.sizeBytes = update.sizeBytes;
+              return cloneRecord(existing);
+            } else {
+              // Create new record
+              const record = {
+                userId: create.userId,
+                version: BigInt(create.version),
+                sizeBytes: create.sizeBytes,
+              };
+              mockEncryptedDatabases.set(create.userId, record);
+              return cloneRecord(record);
+            }
+          },
         },
       };
       return fn(mockTx);
