@@ -16,6 +16,9 @@ export * from "./dedup";
 // Storage abstraction layer
 export * from "./storage";
 
+// Shared utilities (date, currency formatting, etc.)
+export * from "./utils";
+
 // Note: Services and hooks are exported via subpath exports:
 // - import { ... } from "@somar/shared/services"
 // - import { ... } from "@somar/shared/hooks"
