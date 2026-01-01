@@ -1,72 +1,50 @@
 import { View, Text, Pressable } from "react-native";
-import { useMemo } from "react";
-import { formatDate, type TransactionWithRelations } from "@somar/shared";
+import type { TransactionWithRelations } from "@somar/shared";
 import { AmountDisplay } from "./amount-display";
 
 interface TransactionRowProps {
   transaction: TransactionWithRelations;
   onPress?: () => void;
-  /** Show full date instead of relative */
-  showFullDate?: boolean;
 }
 
-export function TransactionRow({
-  transaction,
-  onPress,
-  showFullDate = false,
-}: TransactionRowProps) {
-  const dateLabel = useMemo(
-    () =>
-      formatDate(transaction.date, {
-        relative: !showFullDate,
-        showYear: showFullDate ? "auto" : "never",
-      }),
-    [transaction.date, showFullDate]
-  );
-
+export function TransactionRow({ transaction, onPress }: TransactionRowProps) {
   const category = transaction.category;
   const isUnconfirmed = !transaction.isConfirmed;
 
   return (
     <Pressable
-      className="flex-row items-center px-5 py-4 active:bg-muted/50"
+      className="flex-row items-center bg-card mx-4 mb-2 rounded-xl overflow-hidden active:opacity-90"
       onPress={onPress}
     >
-      {/* Details */}
-      <View className="flex-1 mr-4">
-        <View className="flex-row items-center">
-          <Text
-            className="text-base font-medium text-foreground"
-            numberOfLines={1}
-          >
-            {transaction.description}
-          </Text>
-          {isUnconfirmed && (
-            <View className="ml-2 w-1.5 h-1.5 rounded-full bg-primary" />
-          )}
-        </View>
+      {/* Category accent bar */}
+      <View
+        className="w-1 self-stretch"
+        style={{ backgroundColor: category?.color || "#64748b" }}
+      />
 
-        <View className="flex-row items-center mt-1">
-          {category ? (
+      <View className="flex-1 flex-row items-center px-4 py-4">
+        <View className="flex-1 mr-3">
+          <View className="flex-row items-center">
             <Text
-              className="text-sm"
-              style={{ color: category.color }}
+              className="text-base font-medium text-foreground flex-shrink"
               numberOfLines={1}
             >
-              {category.name}
+              {transaction.description}
             </Text>
-          ) : (
-            <Text className="text-sm text-muted-foreground">
-              Uncategorized
-            </Text>
-          )}
-          <Text className="text-sm text-muted-foreground mx-1.5">·</Text>
-          <Text className="text-sm text-muted-foreground">{dateLabel}</Text>
+            {isUnconfirmed && (
+              <View className="ml-2 w-1.5 h-1.5 rounded-full bg-primary" />
+            )}
+          </View>
+          <Text
+            className="text-sm text-muted-foreground mt-0.5"
+            numberOfLines={1}
+          >
+            {category?.name || "Uncategorized"}
+          </Text>
         </View>
-      </View>
 
-      {/* Amount */}
-      <AmountDisplay amount={transaction.amount} size="md" />
+        <AmountDisplay amount={transaction.amount} size="md" />
+      </View>
     </Pressable>
   );
 }
