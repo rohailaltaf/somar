@@ -7,7 +7,11 @@
   "exports": {
     ".": "./src/index.ts",
     "./crypto": "./src/crypto/index.ts",
-    "./dedup": "./src/dedup/index.ts"
+    "./dedup": "./src/dedup/index.ts",
+    "./storage": "./src/storage/index.ts",
+    "./services": "./src/services/index.ts",
+    "./hooks": "./src/hooks/index.ts",
+    "./utils": "./src/utils/index.ts"
   },
   "scripts": {
     "lint": "eslint src/",
@@ -17,9 +21,25 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
+    "@types/react": "^19.0.0",
     "eslint": "^9.0.0",
     "typescript-eslint": "^8.0.0",
     "vitest": "^2.1.8"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@noble/ciphers": "^1.2.1",
+    "@noble/hashes": "^1.7.1"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": "^5.0.0",
+    "react": "^18.0.0 || ^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "@tanstack/react-query": {
+      "optional": true
+    }
+  }
 }

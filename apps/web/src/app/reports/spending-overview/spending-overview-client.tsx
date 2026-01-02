@@ -21,7 +21,7 @@ import {
   Area,
   AreaChart,
 } from "recharts";
-import { formatMonth, formatCurrency } from "@/lib/utils";
+import { formatMonth, formatCurrency, formatDate } from "@somar/shared";
 
 interface SpendingTransaction {
   id: string;
@@ -167,16 +167,6 @@ export function SpendingOverviewClient({
   
   const displayLabel = selectedMonth === "year" ? `${currentYear}` : formatMonth(displayMonth);
 
-  const formatDate = (dateStr: string) => {
-    const [year, month, day] = dateStr.split("-").map(Number);
-    const date = new Date(year, month - 1, day);
-    return date.toLocaleDateString("en-US", { 
-      month: "short", 
-      day: "numeric",
-      ...(selectedMonth === "year" ? { year: "2-digit" as const } : {})
-    });
-  };
-
   // Prepare data for burn-up chart based on selected period
   const now = new Date();
   const [currentYearNum, currentMonthNum] = currentMonth.split("-").map(Number);
@@ -285,7 +275,7 @@ export function SpendingOverviewClient({
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium truncate">{txn.description}</p>
                           <p className="text-xs text-muted-foreground">
-                            {formatDate(txn.date)}
+                            {formatDate(txn.date, { showYear: selectedMonth === "year" ? "always" : "never" })}
                             {txn.categoryName && ` · ${txn.categoryName}`}
                           </p>
                         </div>

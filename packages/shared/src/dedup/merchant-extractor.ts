@@ -260,7 +260,7 @@ export function extractMerchantName(description: string): string {
 
   // Step 8: Normalize slashes and special characters
   // "CVS/PHARMACY" -> "CVS PHARMACY"
-  clean = clean.replace(/[*#\/]+/g, " ");
+  clean = clean.replace(/[*#/]+/g, " ");
   clean = clean.replace(/\s+/g, " ");
   clean = clean.trim();
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, memo } from "react";
-import { useTransactionMutations } from "@/hooks";
+import { useTransactionMutations } from "@somar/shared/hooks";
 import type { Category, TransactionWithRelations } from "@somar/shared";
 import {
   Table,
@@ -43,7 +43,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@somar/shared";
 
 interface TransactionsListProps {
   transactions: TransactionWithRelations[];
@@ -132,17 +133,6 @@ export function TransactionsList({
     });
   };
 
-  const formatDate = (dateStr: string) => {
-    // Parse YYYY-MM-DD without timezone conversion
-    const [year, month, day] = dateStr.split("-").map(Number);
-    const date = new Date(year, month - 1, day);
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
-
   if (transactions.length === 0) {
     return (
       <Card>
@@ -178,7 +168,7 @@ export function TransactionsList({
                 className={cn(transaction.excluded && "opacity-50")}
               >
                 <TableCell className="font-medium">
-                  {formatDate(transaction.date)}
+                  {formatDate(transaction.date, { showYear: "always" })}
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">

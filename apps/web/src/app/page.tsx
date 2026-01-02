@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { useSpendingByCategory, useTotalSpending, useUnconfirmedCount } from "@/hooks";
+import { useSpendingByCategory, useTotalSpending, useUnconfirmedCount } from "@somar/shared/hooks";
 import { Nav } from "@/components/nav";
 import { PageHeader } from "@/components/page-header";
 import { BudgetProgress } from "@/components/budget-progress";
@@ -23,7 +23,7 @@ import {
   AlertTriangle,
   Zap,
 } from "lucide-react";
-import { getCurrentMonth, formatMonth, formatCurrency } from "@/lib/utils";
+import { getCurrentMonth, formatMonth, formatCurrency } from "@somar/shared";
 
 export default function DashboardPage() {
   return (

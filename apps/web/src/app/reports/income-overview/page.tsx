@@ -4,10 +4,10 @@ import { useMemo } from "react";
 import { Nav } from "@/components/nav";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { useDatabase } from "@/hooks/use-database";
+import { useDatabaseAdapter } from "@somar/shared/hooks";
 import { IncomeOverviewClient } from "./income-overview-client";
-import * as TransactionService from "@/services/transactions";
-import { getCurrentMonth, getPreviousMonth } from "@/lib/utils";
+import * as TransactionService from "@somar/shared/services";
+import { getCurrentMonth, getPreviousMonth } from "@somar/shared";
 
 export default function IncomeOverviewPage() {
   return (
@@ -27,25 +27,25 @@ export default function IncomeOverviewPage() {
 }
 
 function IncomeOverviewContent() {
-  const { db } = useDatabase();
-  
+  const { adapter } = useDatabaseAdapter();
+
   const currentMonth = useMemo(() => getCurrentMonth(), []);
   const lastMonth = useMemo(() => getPreviousMonth(currentMonth), [currentMonth]);
   const currentYear = useMemo(() => new Date().getFullYear(), []);
 
   const data = useMemo(() => {
-    if (!db) return null;
+    if (!adapter) return null;
 
     return {
-      currentTotal: TransactionService.getTotalIncome(db, currentMonth),
-      lastTotal: TransactionService.getTotalIncome(db, lastMonth),
-      currentCategoryIncome: TransactionService.getIncomeByCategory(db, currentMonth),
-      lastCategoryIncome: TransactionService.getIncomeByCategory(db, lastMonth),
-      yearTotal: TransactionService.getYearToDateIncome(db, currentYear),
-      yearCategoryIncome: TransactionService.getYearToDateCategoryIncome(db, currentYear),
-      yearMonthlyData: TransactionService.getMonthlyIncome(db, currentYear),
+      currentTotal: TransactionService.getTotalIncome(adapter, currentMonth),
+      lastTotal: TransactionService.getTotalIncome(adapter, lastMonth),
+      currentCategoryIncome: TransactionService.getIncomeByCategory(adapter, currentMonth),
+      lastCategoryIncome: TransactionService.getIncomeByCategory(adapter, lastMonth),
+      yearTotal: TransactionService.getYearToDateIncome(adapter, currentYear),
+      yearCategoryIncome: TransactionService.getYearToDateCategoryIncome(adapter, currentYear),
+      yearMonthlyData: TransactionService.getMonthlyIncome(adapter, currentYear),
     };
-  }, [db, currentMonth, lastMonth, currentYear]);
+  }, [adapter, currentMonth, lastMonth, currentYear]);
 
   if (!data) {
     return <IncomeOverviewSkeleton />;

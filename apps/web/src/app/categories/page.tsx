@@ -1,14 +1,14 @@
 "use client";
 
 import { useMemo } from "react";
-import { useCategories, useCategoriesWithBudgets } from "@/hooks";
+import { useCategories, useCategoriesWithBudgets } from "@somar/shared/hooks";
 import { Nav } from "@/components/nav";
 import { PageHeader } from "@/components/page-header";
 import { CategoriesList } from "./categories-list";
 import { CreateCategoryDialog } from "./create-category-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2 } from "lucide-react";
-import { getCurrentMonth } from "@/lib/utils";
+import { getCurrentMonth } from "@somar/shared";
 
 export default function CategoriesPage() {
   return (

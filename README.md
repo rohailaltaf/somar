@@ -64,13 +64,13 @@ somar/
 | App | Description | Status |
 |-----|-------------|--------|
 | `@somar/web` | Next.js web application | ✅ Active |
-| `@somar/mobile` | React Native/Expo mobile app | 🚧 In Development |
+| `@somar/mobile` | React Native/Expo mobile app | 🚧 In Development (auth + basic screens) |
 
 ### Packages
 
 | Package | Description |
 |---------|-------------|
-| `@somar/shared` | Shared TypeScript types and utilities |
+| `@somar/shared` | Shared types, crypto, services, hooks, and deduplication |
 
 ## Features
 
@@ -129,9 +129,12 @@ cd somar
 # Install dependencies
 pnpm install
 
-# Set up the database
+# Set up environment variables
+cp apps/web/.env.example apps/web/.env.development
+# Edit apps/web/.env.development with your database URL and secrets
+
+# Set up the central database (PostgreSQL)
 pnpm --filter web db:push
-pnpm --filter web db:seed
 
 # Start the development server
 pnpm dev
@@ -177,8 +180,10 @@ PLAID_ENV=sandbox
 - **Monorepo:** [Turborepo](https://turbo.build) with pnpm workspaces
 - **Web:** [Next.js 16](https://nextjs.org) with App Router
 - **Mobile:** [React Native](https://reactnative.dev) with [Expo](https://expo.dev) and Expo Router
-- **Database:** SQLite via [Prisma](https://prisma.io) (runs locally, no server needed)
-- **UI:** [shadcn/ui](https://ui.shadcn.com) + [Tailwind CSS](https://tailwindcss.com)
+- **Central Database:** PostgreSQL via [Prisma](https://prisma.io) (auth, Plaid tokens)
+- **User Database:** SQLite via [sql.js](https://sql.js.org) (web) / [expo-sqlite](https://docs.expo.dev/versions/latest/sdk/sqlite/) (mobile), encrypted
+- **UI (Web):** [shadcn/ui](https://ui.shadcn.com) + [Tailwind CSS](https://tailwindcss.com)
+- **UI (Mobile):** [NativeWind](https://www.nativewind.dev/) (Tailwind for React Native)
 - **Animations:** [Framer Motion](https://www.framer.com/motion/)
 - **Charts:** [Recharts](https://recharts.org)
 - **Bank Connections:** [Plaid](https://plaid.com)
@@ -192,17 +197,26 @@ somar/
 │   │   ├── src/
 │   │   │   ├── app/            # Next.js App Router pages
 │   │   │   ├── components/     # React components
-│   │   │   ├── lib/            # Utilities & business logic
-│   │   │   └── services/       # Data access layer
-│   │   ├── prisma/             # Database schema
+│   │   │   ├── providers/      # Auth + Database providers
+│   │   │   ├── hooks/          # Web-specific hooks (Plaid sync)
+│   │   │   └── lib/            # Utilities (storage adapters, Plaid, etc.)
+│   │   ├── prisma/             # Central database schema (PostgreSQL)
 │   │   └── public/             # Static assets
 │   └── mobile/                 # React Native/Expo app
 │       ├── app/                # Expo Router pages
-│       ├── components/         # React Native components
-│       ├── hooks/              # Custom hooks
+│       │   ├── (auth)/         # Login/register screens
+│       │   └── (tabs)/         # Dashboard, transactions
+│       ├── src/
+│       │   ├── components/     # React Native components
+│       │   ├── providers/      # Auth + Database providers
+│       │   └── lib/            # Storage adapters, theme, API helpers
 │       └── metro.config.js     # Metro bundler config for pnpm
 ├── packages/
-│   └── shared/                 # Shared code
+│   └── shared/                 # Shared code (crypto, schema, types, dedup)
+│       └── src/
+│           ├── services/       # Data access layer (platform-agnostic)
+│           ├── hooks/          # Shared React hooks
+│           └── storage/        # DatabaseAdapter interface
 ├── docs/                       # Documentation
 └── turbo.json                  # Turborepo config
 ```
@@ -224,16 +238,14 @@ pnpm test         # Run tests
 ```bash
 # Development
 pnpm --filter web dev           # Start dev server
-pnpm --filter web db:push       # Apply schema changes
-pnpm --filter web db:seed       # Seed default categories
-pnpm --filter web db:reset      # Reset database (WARNING: deletes all data)
-pnpm --filter web db:studio     # Open Prisma Studio GUI
+pnpm --filter web db:push       # Push central DB schema changes
+pnpm --filter web db:studio     # Open Prisma Studio for central DB
+pnpm --filter web db:safe-reset # Reset central DB (disconnects Plaid first)
 
 # Production
 pnpm --filter web build         # Build for production
-pnpm --filter web db:push:prod  # Push schema to prod DB
-pnpm --filter web db:reset:prod # Reset prod DB
-pnpm --filter web db:studio:prod # Open Prisma Studio (prod DB)
+pnpm --filter web db:push:prod  # Push schema to prod central DB
+pnpm --filter web db:studio:prod # Open Prisma Studio (prod)
 ```
 
 ### Mobile App Commands
@@ -249,14 +261,16 @@ pnpm --filter mobile web       # Start web version
 
 ## Environment Configuration
 
-The app supports separate development and production databases:
+The app uses a two-database architecture:
 
-| Environment | Database File | Config File | Purpose |
-|-------------|---------------|-------------|---------|
-| Development | `finance-dev.db` | `.env.development` | Your personal development data |
-| Production | `finance-prod.db` | `.env.production` | Production data |
+| Database | Type | Location | Purpose |
+|----------|------|----------|---------|
+| Central DB | PostgreSQL | Server | Auth, Plaid tokens, blob metadata |
+| User Data | SQLite | Browser (encrypted) | Transactions, accounts, budgets |
 
-Note: Environment files live in `apps/web/`.
+Environment files live in `apps/web/`:
+- `.env.development` - Development configuration
+- `.env.production` - Production configuration
 
 ## Contributing
 

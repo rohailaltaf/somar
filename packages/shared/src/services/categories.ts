@@ -1,58 +1,56 @@
 /**
  * Category service - encapsulates all category-related database operations.
  * This is a pure data layer with NO React/UI dependencies.
+ *
+ * Uses DatabaseAdapter interface for platform-agnostic database access.
  */
 
-import type { Database } from "sql.js";
+import type { DatabaseAdapter } from "../storage";
 import type {
   Category,
   CategoryBudget,
   CategoryType,
   CategoryWithBudget,
   CreateCategoryInput,
-} from "@somar/shared";
+} from "../types";
 
 // ============ Queries ============
 
-export function getAllCategories(db: Database): Category[] {
-  return queryAll<RawCategory>(
-    db,
+export function getAllCategories(db: DatabaseAdapter): Category[] {
+  return db.all<RawCategory>(
     "SELECT * FROM categories ORDER BY name"
   ).map(mapCategoryRow);
 }
 
 export function getCategoriesByType(
-  db: Database,
+  db: DatabaseAdapter,
   type: CategoryType
 ): Category[] {
-  return queryAll<RawCategory>(
-    db,
+  return db.all<RawCategory>(
     "SELECT * FROM categories WHERE type = ? ORDER BY name",
     [type]
   ).map(mapCategoryRow);
 }
 
 export function getCategoriesWithBudgets(
-  db: Database,
+  db: DatabaseAdapter,
   currentMonth: string
 ): CategoryWithBudget[] {
   const categories = getCategoriesByType(db, "spending");
-  
+
   return categories.map(cat => {
-    const allBudgets = queryAll<RawBudget>(
-      db,
+    const allBudgets = db.all<RawBudget>(
       `SELECT * FROM category_budgets WHERE category_id = ? ORDER BY start_month DESC`,
       [cat.id]
     ).map(mapBudgetRow);
-    
-    const currentBudget = queryOne<RawBudget>(
-      db,
-      `SELECT * FROM category_budgets 
+
+    const currentBudget = db.get<RawBudget>(
+      `SELECT * FROM category_budgets
        WHERE category_id = ? AND start_month <= ?
        ORDER BY start_month DESC LIMIT 1`,
       [cat.id, currentMonth]
     );
-    
+
     return {
       ...cat,
       currentBudget: currentBudget ? mapBudgetRow(currentBudget) : null,
@@ -61,9 +59,8 @@ export function getCategoriesWithBudgets(
   });
 }
 
-export function getCategoryById(db: Database, id: string): Category | null {
-  const row = queryOne<RawCategory>(
-    db,
+export function getCategoryById(db: DatabaseAdapter, id: string): Category | null {
+  const row = db.get<RawCategory>(
     "SELECT * FROM categories WHERE id = ?",
     [id]
   );
@@ -72,7 +69,7 @@ export function getCategoryById(db: Database, id: string): Category | null {
 
 // ============ Mutations ============
 
-export function createCategory(db: Database, input: CreateCategoryInput): string {
+export function createCategory(db: DatabaseAdapter, input: CreateCategoryInput): string {
   const id = crypto.randomUUID();
   db.run(
     `INSERT INTO categories (id, name, type, color, created_at)
@@ -83,7 +80,7 @@ export function createCategory(db: Database, input: CreateCategoryInput): string
 }
 
 export function updateCategory(
-  db: Database,
+  db: DatabaseAdapter,
   id: string,
   name: string,
   type: CategoryType,
@@ -95,13 +92,13 @@ export function updateCategory(
   );
 }
 
-export function deleteCategory(db: Database, id: string): void {
+export function deleteCategory(db: DatabaseAdapter, id: string): void {
   // Transactions with this category will have category_id set to NULL (ON DELETE SET NULL)
   db.run("DELETE FROM categories WHERE id = ?", [id]);
 }
 
 export function setBudget(
-  db: Database,
+  db: DatabaseAdapter,
   categoryId: string,
   amount: number,
   startMonth: string
@@ -115,7 +112,7 @@ export function setBudget(
   return id;
 }
 
-export function deleteBudget(db: Database, budgetId: string): void {
+export function deleteBudget(db: DatabaseAdapter, budgetId: string): void {
   db.run("DELETE FROM category_budgets WHERE id = ?", [budgetId]);
 }
 
@@ -156,42 +153,3 @@ function mapBudgetRow(row: RawBudget): CategoryBudget {
     createdAt: row.created_at,
   };
 }
-
-// ============ Database Query Helpers ============
-
-type SqlParam = string | number | null | Uint8Array;
-
-function queryOne<T>(db: Database, sql: string, params?: SqlParam[]): T | undefined {
-  const stmt = db.prepare(sql);
-  if (params) stmt.bind(params as (string | number | null | Uint8Array)[]);
-  if (stmt.step()) {
-    const columns = stmt.getColumnNames();
-    const values = stmt.get();
-    const row: Record<string, unknown> = {};
-    columns.forEach((col, i) => {
-      row[col] = values[i];
-    });
-    stmt.free();
-    return row as T;
-  }
-  stmt.free();
-  return undefined;
-}
-
-function queryAll<T>(db: Database, sql: string, params?: SqlParam[]): T[] {
-  const stmt = db.prepare(sql);
-  if (params) stmt.bind(params as (string | number | null | Uint8Array)[]);
-  const columns = stmt.getColumnNames();
-  const results: T[] = [];
-  while (stmt.step()) {
-    const values = stmt.get();
-    const row: Record<string, unknown> = {};
-    columns.forEach((col, i) => {
-      row[col] = values[i];
-    });
-    results.push(row as T);
-  }
-  stmt.free();
-  return results;
-}
-

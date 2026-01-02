@@ -1,16 +1,15 @@
 "use client";
 
 import {
-  createContext,
-  useContext,
   useEffect,
   useState,
   useCallback,
   useRef,
   type ReactNode,
 } from "react";
-import type { Database, BindParams } from "sql.js";
+import type { Database } from "sql.js";
 import { decrypt, encrypt } from "@somar/shared";
+import { DatabaseContext, type DatabaseContextValue } from "@somar/shared/hooks";
 import {
   Dialog,
   DialogContent,
@@ -21,31 +20,10 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
+import { SqlJsAdapter } from "@/lib/storage/sql-js-adapter";
 
 // Auto-save debounce time in milliseconds
 const AUTO_SAVE_DELAY = 3000;
-
-interface DatabaseContextValue {
-  db: Database | null;
-  isLoading: boolean;
-  error: Error | null;
-  isReady: boolean;
-  version: number;
-
-  // Query helpers
-  exec: (sql: string, params?: BindParams) => unknown[][];
-  run: (sql: string, params?: BindParams) => void;
-  get: <T>(sql: string, params?: BindParams) => T | undefined;
-  all: <T>(sql: string, params?: BindParams) => T[];
-
-  // Manual save (auto-save also runs)
-  save: () => Promise<void>;
-
-  // Run VACUUM to reclaim space after deleting many rows
-  vacuum: () => Promise<void>;
-}
-
-const DatabaseContext = createContext<DatabaseContextValue | null>(null);
 
 interface DatabaseProviderProps {
   children: ReactNode;
@@ -70,6 +48,7 @@ export function DatabaseProvider({
   encryptionKey,
 }: DatabaseProviderProps) {
   const [db, setDb] = useState<Database | null>(null);
+  const [adapter, setAdapter] = useState<SqlJsAdapter | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [version, setVersion] = useState(0);
@@ -182,6 +161,7 @@ export function DatabaseProvider({
 
         if (mounted) {
           setDb(database);
+          setAdapter(new SqlJsAdapter(database));
           versionRef.current = initialVersion;
           setVersion(initialVersion);
           setIsLoading(false);
@@ -248,109 +228,32 @@ export function DatabaseProvider({
     }
   }, [db, encryptionKey]);
 
-  // Schedule auto-save
-  const scheduleAutoSave = useCallback(() => {
+  // Run VACUUM to reclaim disk space after deletions
+  const vacuum = useCallback(() => {
+    if (!db) throw new Error("Database not ready");
+    db.run("VACUUM");
+    // Schedule auto-save after vacuum
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
     saveTimeoutRef.current = setTimeout(() => {
       save();
     }, AUTO_SAVE_DELAY);
-  }, [save]);
-
-  // Execute SQL and return results (for SELECT)
-  const exec = useCallback(
-    (sql: string, params?: BindParams) => {
-      if (!db) throw new Error("Database not ready");
-      const stmt = db.prepare(sql);
-      if (params) stmt.bind(params);
-      const results: unknown[][] = [];
-      while (stmt.step()) {
-        results.push(stmt.get());
-      }
-      stmt.free();
-      return results;
-    },
-    [db]
-  );
-
-  // Run SQL without returning results (for INSERT/UPDATE/DELETE)
-  const run = useCallback(
-    (sql: string, params?: BindParams) => {
-      if (!db) throw new Error("Database not ready");
-      db.run(sql, params);
-      scheduleAutoSave();
-    },
-    [db, scheduleAutoSave]
-  );
-
-  // Get single row as object
-  const get = useCallback(
-    <T,>(sql: string, params?: BindParams): T | undefined => {
-      if (!db) throw new Error("Database not ready");
-      const stmt = db.prepare(sql);
-      if (params) stmt.bind(params);
-      if (stmt.step()) {
-        const columns = stmt.getColumnNames();
-        const values = stmt.get();
-        const row: Record<string, unknown> = {};
-        columns.forEach((col, i) => {
-          row[col] = values[i];
-        });
-        stmt.free();
-        return row as T;
-      }
-      stmt.free();
-      return undefined;
-    },
-    [db]
-  );
-
-  // Get all rows as array of objects
-  const all = useCallback(
-    <T,>(sql: string, params?: BindParams): T[] => {
-      if (!db) throw new Error("Database not ready");
-      const stmt = db.prepare(sql);
-      if (params) stmt.bind(params);
-      const columns = stmt.getColumnNames();
-      const results: T[] = [];
-      while (stmt.step()) {
-        const values = stmt.get();
-        const row: Record<string, unknown> = {};
-        columns.forEach((col, i) => {
-          row[col] = values[i];
-        });
-        results.push(row as T);
-      }
-      stmt.free();
-      return results;
-    },
-    [db]
-  );
-
-  // Run VACUUM to reclaim disk space after deletions
-  const vacuum = useCallback(async () => {
-    if (!db) throw new Error("Database not ready");
-    db.run("VACUUM");
-    await save();
   }, [db, save]);
 
-  const value: DatabaseContextValue = {
-    db,
+  // Context value for shared hooks (uses DatabaseAdapter interface)
+  const contextValue: DatabaseContextValue = {
+    adapter,
     isLoading,
+    isReady: !!adapter && !isLoading && !error,
     error,
-    isReady: !!db && !isLoading && !error,
     version,
-    exec,
-    run,
-    get,
-    all,
     save,
     vacuum,
   };
 
   return (
-    <DatabaseContext.Provider value={value}>
+    <DatabaseContext.Provider value={contextValue}>
       {children}
 
       {/* Version conflict modal - shown when another tab updated the database */}
@@ -373,36 +276,6 @@ export function DatabaseProvider({
       </Dialog>
     </DatabaseContext.Provider>
   );
-}
-
-// Stable fallback for when database context is not available
-// Defined outside the hook to prevent new object creation on every render
-const DATABASE_NOT_AVAILABLE: DatabaseContextValue = {
-  db: null,
-  isLoading: true,
-  error: null,
-  isReady: false,
-  version: 0,
-  exec: () => { throw new Error("Database not available"); },
-  run: () => { throw new Error("Database not available"); },
-  get: () => undefined,
-  all: () => [],
-  save: async () => {},
-  vacuum: async () => {},
-};
-
-/**
- * Hook to access the client-side database.
- */
-export function useDatabase() {
-  const context = useContext(DatabaseContext);
-  
-  // Return a stable "not ready" state when context is unavailable (SSR or unauthenticated)
-  if (!context) {
-    return DATABASE_NOT_AVAILABLE;
-  }
-  
-  return context;
 }
 
 type SaveDatabaseResult =
@@ -447,4 +320,3 @@ async function saveDatabase(
   const result = await response.json();
   return { ok: true, version: parseInt(result.version, 10) };
 }
-

@@ -1,23 +1,23 @@
 /**
  * Transaction service - encapsulates all transaction-related database operations.
  * This is a pure data layer with NO React/UI dependencies.
+ *
+ * Uses DatabaseAdapter interface for platform-agnostic database access.
  */
 
-import type { Database } from "sql.js";
+import type { DatabaseAdapter } from "../storage";
 import type {
   AccountType,
   CategoryType,
   CreateTransactionInput,
-  Transaction,
   TransactionWithRelations,
-} from "@somar/shared";
+} from "../types";
 
 // ============ Queries ============
 
-export function getAllTransactions(db: Database): TransactionWithRelations[] {
-  const rows = queryAll<RawTransaction>(
-    db,
-    `SELECT 
+export function getAllTransactions(db: DatabaseAdapter): TransactionWithRelations[] {
+  const rows = db.all<RawTransaction>(
+    `SELECT
        t.*,
        c.id as cat_id, c.name as cat_name, c.type as cat_type, c.color as cat_color, c.created_at as cat_created_at,
        a.id as acc_id, a.name as acc_name, a.type as acc_type, a.created_at as acc_created_at
@@ -26,12 +26,12 @@ export function getAllTransactions(db: Database): TransactionWithRelations[] {
      LEFT JOIN accounts a ON t.account_id = a.id
      ORDER BY t.date DESC, t.created_at DESC`
   );
-  
+
   return rows.map(mapTransactionRow);
 }
 
 export function getTransactionsFiltered(
-  db: Database,
+  db: DatabaseAdapter,
   options: {
     accountId?: string;
     categoryId?: string | null;
@@ -43,43 +43,42 @@ export function getTransactionsFiltered(
 ): TransactionWithRelations[] {
   const conditions: string[] = [];
   const params: (string | number)[] = [];
-  
+
   if (options.accountId) {
     conditions.push("t.account_id = ?");
     params.push(options.accountId);
   }
-  
+
   if (options.categoryId === null) {
     conditions.push("t.category_id IS NULL");
   } else if (options.categoryId) {
     conditions.push("t.category_id = ?");
     params.push(options.categoryId);
   }
-  
+
   if (options.startDate) {
     conditions.push("t.date >= ?");
     params.push(options.startDate);
   }
-  
+
   if (options.endDate) {
     conditions.push("t.date <= ?");
     params.push(options.endDate);
   }
-  
+
   if (!options.showExcluded) {
     conditions.push("t.excluded = 0");
   }
-  
+
   if (options.search) {
     conditions.push("LOWER(t.description) LIKE LOWER(?)");
     params.push(`%${options.search}%`);
   }
-  
+
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
-  
-  const rows = queryAll<RawTransaction>(
-    db,
-    `SELECT 
+
+  const rows = db.all<RawTransaction>(
+    `SELECT
        t.*,
        c.id as cat_id, c.name as cat_name, c.type as cat_type, c.color as cat_color, c.created_at as cat_created_at,
        a.id as acc_id, a.name as acc_name, a.type as acc_type, a.created_at as acc_created_at
@@ -90,14 +89,13 @@ export function getTransactionsFiltered(
      ORDER BY t.date DESC, t.created_at DESC`,
     params
   );
-  
+
   return rows.map(mapTransactionRow);
 }
 
-export function getUnconfirmedTransactions(db: Database): TransactionWithRelations[] {
-  const rows = queryAll<RawTransaction>(
-    db,
-    `SELECT 
+export function getUnconfirmedTransactions(db: DatabaseAdapter): TransactionWithRelations[] {
+  const rows = db.all<RawTransaction>(
+    `SELECT
        t.*,
        c.id as cat_id, c.name as cat_name, c.type as cat_type, c.color as cat_color, c.created_at as cat_created_at,
        a.id as acc_id, a.name as acc_name, a.type as acc_type, a.created_at as acc_created_at
@@ -107,25 +105,40 @@ export function getUnconfirmedTransactions(db: Database): TransactionWithRelatio
      WHERE t.is_confirmed = 0
      ORDER BY t.date DESC, t.created_at DESC`
   );
-  
+
   return rows.map(mapTransactionRow);
 }
 
-export function getUnconfirmedCount(db: Database): number {
-  const result = queryOne<{ count: number }>(
-    db,
+export function getRecentTransactions(db: DatabaseAdapter, limit = 5): TransactionWithRelations[] {
+  const rows = db.all<RawTransaction>(
+    `SELECT
+       t.*,
+       c.id as cat_id, c.name as cat_name, c.type as cat_type, c.color as cat_color, c.created_at as cat_created_at,
+       a.id as acc_id, a.name as acc_name, a.type as acc_type, a.created_at as acc_created_at
+     FROM transactions t
+     LEFT JOIN categories c ON t.category_id = c.id
+     LEFT JOIN accounts a ON t.account_id = a.id
+     ORDER BY t.date DESC, t.created_at DESC
+     LIMIT ?`,
+    [limit]
+  );
+
+  return rows.map(mapTransactionRow);
+}
+
+export function getUnconfirmedCount(db: DatabaseAdapter): number {
+  const result = db.get<{ count: number }>(
     "SELECT COUNT(*) as count FROM transactions WHERE is_confirmed = 0"
   );
   return result?.count ?? 0;
 }
 
-export function getTotalSpending(db: Database, month: string): number {
-  const result = queryOne<{ total: number }>(
-    db,
-    `SELECT COALESCE(SUM(ABS(amount)), 0) as total 
-     FROM transactions 
-     WHERE amount < 0 
-       AND excluded = 0 
+export function getTotalSpending(db: DatabaseAdapter, month: string): number {
+  const result = db.get<{ total: number }>(
+    `SELECT COALESCE(SUM(ABS(amount)), 0) as total
+     FROM transactions
+     WHERE amount < 0
+       AND excluded = 0
        AND date LIKE ?`,
     [`${month}%`]
   );
@@ -133,34 +146,33 @@ export function getTotalSpending(db: Database, month: string): number {
 }
 
 export function getSpendingByCategory(
-  db: Database,
+  db: DatabaseAdapter,
   month: string
 ): Array<{ id: string; name: string; color: string; spent: number; budget: number | null }> {
-  const rows = queryAll<{
+  const rows = db.all<{
     id: string;
     name: string;
     color: string;
     spent: number;
     budget_amount: number | null;
   }>(
-    db,
-    `SELECT 
+    `SELECT
        c.id, c.name, c.color,
        COALESCE(SUM(ABS(t.amount)), 0) as spent,
-       (SELECT cb.amount FROM category_budgets cb 
+       (SELECT cb.amount FROM category_budgets cb
         WHERE cb.category_id = c.id AND cb.start_month <= ?
         ORDER BY cb.start_month DESC LIMIT 1) as budget_amount
      FROM categories c
-     LEFT JOIN transactions t ON t.category_id = c.id 
-       AND t.amount < 0 
-       AND t.excluded = 0 
+     LEFT JOIN transactions t ON t.category_id = c.id
+       AND t.amount < 0
+       AND t.excluded = 0
        AND t.date LIKE ?
      WHERE c.type = 'spending'
      GROUP BY c.id
      ORDER BY spent DESC`,
     [month, `${month}%`]
   );
-  
+
   return rows.map(r => ({
     id: r.id,
     name: r.name,
@@ -171,23 +183,22 @@ export function getSpendingByCategory(
 }
 
 export function getDailyCumulativeSpending(
-  db: Database,
+  db: DatabaseAdapter,
   month: string
 ): Array<{ day: number; date: string; cumulative: number }> {
-  const rows = queryAll<{ day: number; date: string; cumulative: number }>(
-    db,
+  const rows = db.all<{ day: number; date: string; cumulative: number }>(
     `WITH daily_spending AS (
-       SELECT 
+       SELECT
          CAST(SUBSTR(date, 9, 2) AS INTEGER) as day,
          date,
          SUM(ABS(amount)) as daily_total
        FROM transactions
-       WHERE amount < 0 
-         AND excluded = 0 
+       WHERE amount < 0
+         AND excluded = 0
          AND date LIKE ?
        GROUP BY date
      )
-     SELECT 
+     SELECT
        day,
        date,
        SUM(daily_total) OVER (ORDER BY date) as cumulative
@@ -198,13 +209,12 @@ export function getDailyCumulativeSpending(
   return rows;
 }
 
-export function getYearToDateSpending(db: Database, year: number): number {
-  const result = queryOne<{ total: number }>(
-    db,
-    `SELECT COALESCE(SUM(ABS(amount)), 0) as total 
-     FROM transactions 
-     WHERE amount < 0 
-       AND excluded = 0 
+export function getYearToDateSpending(db: DatabaseAdapter, year: number): number {
+  const result = db.get<{ total: number }>(
+    `SELECT COALESCE(SUM(ABS(amount)), 0) as total
+     FROM transactions
+     WHERE amount < 0
+       AND excluded = 0
        AND date LIKE ?`,
     [`${year}%`]
   );
@@ -212,35 +222,34 @@ export function getYearToDateSpending(db: Database, year: number): number {
 }
 
 export function getYearToDateCategorySpending(
-  db: Database,
+  db: DatabaseAdapter,
   year: number
 ): Array<{ id: string; name: string; color: string; spent: number; budget: number | null }> {
   const currentMonth = `${year}-12`;
-  const rows = queryAll<{
+  const rows = db.all<{
     id: string;
     name: string;
     color: string;
     spent: number;
     budget_amount: number | null;
   }>(
-    db,
-    `SELECT 
+    `SELECT
        c.id, c.name, c.color,
        COALESCE(SUM(ABS(t.amount)), 0) as spent,
-       (SELECT cb.amount FROM category_budgets cb 
+       (SELECT cb.amount FROM category_budgets cb
         WHERE cb.category_id = c.id AND cb.start_month <= ?
         ORDER BY cb.start_month DESC LIMIT 1) as budget_amount
      FROM categories c
-     LEFT JOIN transactions t ON t.category_id = c.id 
-       AND t.amount < 0 
-       AND t.excluded = 0 
+     LEFT JOIN transactions t ON t.category_id = c.id
+       AND t.amount < 0
+       AND t.excluded = 0
        AND t.date LIKE ?
      WHERE c.type = 'spending'
      GROUP BY c.id
      ORDER BY spent DESC`,
     [currentMonth, `${year}%`]
   );
-  
+
   return rows.map(r => ({
     id: r.id,
     name: r.name,
@@ -251,23 +260,22 @@ export function getYearToDateCategorySpending(
 }
 
 export function getMonthlyCumulativeSpending(
-  db: Database,
+  db: DatabaseAdapter,
   year: number
 ): Array<{ month: number; monthStr: string; cumulative: number }> {
-  const rows = queryAll<{ month: number; monthStr: string; cumulative: number }>(
-    db,
+  const rows = db.all<{ month: number; monthStr: string; cumulative: number }>(
     `WITH monthly_spending AS (
-       SELECT 
+       SELECT
          CAST(SUBSTR(date, 6, 2) AS INTEGER) as month,
          SUBSTR(date, 1, 7) as monthStr,
          SUM(ABS(amount)) as monthly_total
        FROM transactions
-       WHERE amount < 0 
-         AND excluded = 0 
+       WHERE amount < 0
+         AND excluded = 0
          AND date LIKE ?
        GROUP BY monthStr
      )
-     SELECT 
+     SELECT
        month,
        monthStr,
        SUM(monthly_total) OVER (ORDER BY monthStr) as cumulative
@@ -288,10 +296,9 @@ export interface SpendingTransaction {
   accountName: string | null;
 }
 
-export function getSpendingTransactions(db: Database, month: string): SpendingTransaction[] {
-  return queryAll<SpendingTransaction>(
-    db,
-    `SELECT 
+export function getSpendingTransactions(db: DatabaseAdapter, month: string): SpendingTransaction[] {
+  return db.all<SpendingTransaction>(
+    `SELECT
        t.id,
        t.description,
        ABS(t.amount) as amount,
@@ -302,18 +309,17 @@ export function getSpendingTransactions(db: Database, month: string): SpendingTr
      FROM transactions t
      LEFT JOIN categories c ON t.category_id = c.id
      LEFT JOIN accounts a ON t.account_id = a.id
-     WHERE t.amount < 0 
-       AND t.excluded = 0 
+     WHERE t.amount < 0
+       AND t.excluded = 0
        AND t.date LIKE ?
      ORDER BY t.date DESC`,
     [`${month}%`]
   );
 }
 
-export function getYearSpendingTransactions(db: Database, year: number): SpendingTransaction[] {
-  return queryAll<SpendingTransaction>(
-    db,
-    `SELECT 
+export function getYearSpendingTransactions(db: DatabaseAdapter, year: number): SpendingTransaction[] {
+  return db.all<SpendingTransaction>(
+    `SELECT
        t.id,
        t.description,
        ABS(t.amount) as amount,
@@ -324,21 +330,20 @@ export function getYearSpendingTransactions(db: Database, year: number): Spendin
      FROM transactions t
      LEFT JOIN categories c ON t.category_id = c.id
      LEFT JOIN accounts a ON t.account_id = a.id
-     WHERE t.amount < 0 
-       AND t.excluded = 0 
+     WHERE t.amount < 0
+       AND t.excluded = 0
        AND t.date LIKE ?
      ORDER BY t.date DESC`,
     [`${year}%`]
   );
 }
 
-export function getTotalIncome(db: Database, month: string): number {
-  const result = queryOne<{ total: number }>(
-    db,
-    `SELECT COALESCE(SUM(amount), 0) as total 
-     FROM transactions 
-     WHERE amount > 0 
-       AND excluded = 0 
+export function getTotalIncome(db: DatabaseAdapter, month: string): number {
+  const result = db.get<{ total: number }>(
+    `SELECT COALESCE(SUM(amount), 0) as total
+     FROM transactions
+     WHERE amount > 0
+       AND excluded = 0
        AND date LIKE ?`,
     [`${month}%`]
   );
@@ -346,40 +351,38 @@ export function getTotalIncome(db: Database, month: string): number {
 }
 
 export function getIncomeByCategory(
-  db: Database,
+  db: DatabaseAdapter,
   month: string
 ): Array<{ id: string; name: string; color: string; income: number }> {
-  const rows = queryAll<{
+  const rows = db.all<{
     id: string;
     name: string;
     color: string;
     income: number;
   }>(
-    db,
-    `SELECT 
+    `SELECT
        c.id, c.name, c.color,
        COALESCE(SUM(t.amount), 0) as income
      FROM categories c
-     LEFT JOIN transactions t ON t.category_id = c.id 
-       AND t.amount > 0 
-       AND t.excluded = 0 
+     LEFT JOIN transactions t ON t.category_id = c.id
+       AND t.amount > 0
+       AND t.excluded = 0
        AND t.date LIKE ?
      WHERE c.type = 'income'
      GROUP BY c.id
      ORDER BY income DESC`,
     [`${month}%`]
   );
-  
+
   return rows;
 }
 
-export function getYearToDateIncome(db: Database, year: number): number {
-  const result = queryOne<{ total: number }>(
-    db,
-    `SELECT COALESCE(SUM(amount), 0) as total 
-     FROM transactions 
-     WHERE amount > 0 
-       AND excluded = 0 
+export function getYearToDateIncome(db: DatabaseAdapter, year: number): number {
+  const result = db.get<{ total: number }>(
+    `SELECT COALESCE(SUM(amount), 0) as total
+     FROM transactions
+     WHERE amount > 0
+       AND excluded = 0
        AND date LIKE ?`,
     [`${year}%`]
   );
@@ -387,46 +390,44 @@ export function getYearToDateIncome(db: Database, year: number): number {
 }
 
 export function getYearToDateCategoryIncome(
-  db: Database,
+  db: DatabaseAdapter,
   year: number
 ): Array<{ id: string; name: string; color: string; income: number }> {
-  const rows = queryAll<{
+  const rows = db.all<{
     id: string;
     name: string;
     color: string;
     income: number;
   }>(
-    db,
-    `SELECT 
+    `SELECT
        c.id, c.name, c.color,
        COALESCE(SUM(t.amount), 0) as income
      FROM categories c
-     LEFT JOIN transactions t ON t.category_id = c.id 
-       AND t.amount > 0 
-       AND t.excluded = 0 
+     LEFT JOIN transactions t ON t.category_id = c.id
+       AND t.amount > 0
+       AND t.excluded = 0
        AND t.date LIKE ?
      WHERE c.type = 'income'
      GROUP BY c.id
      ORDER BY income DESC`,
     [`${year}%`]
   );
-  
+
   return rows;
 }
 
 export function getMonthlyIncome(
-  db: Database,
+  db: DatabaseAdapter,
   year: number
 ): Array<{ month: number; monthStr: string; amount: number }> {
-  const rows = queryAll<{ month: number; monthStr: string; amount: number }>(
-    db,
-    `SELECT 
+  const rows = db.all<{ month: number; monthStr: string; amount: number }>(
+    `SELECT
        CAST(SUBSTR(date, 6, 2) AS INTEGER) as month,
        SUBSTR(date, 1, 7) as monthStr,
        COALESCE(SUM(amount), 0) as amount
      FROM transactions
-     WHERE amount > 0 
-       AND excluded = 0 
+     WHERE amount > 0
+       AND excluded = 0
        AND date LIKE ?
      GROUP BY monthStr
      ORDER BY monthStr`,
@@ -437,7 +438,7 @@ export function getMonthlyIncome(
 
 // ============ Mutations ============
 
-export function createTransaction(db: Database, input: CreateTransactionInput): string {
+export function createTransaction(db: DatabaseAdapter, input: CreateTransactionInput): string {
   const id = crypto.randomUUID();
   db.run(
     `INSERT INTO transactions (id, account_id, category_id, description, amount, date, excluded, is_confirmed, created_at, plaid_transaction_id)
@@ -456,7 +457,7 @@ export function createTransaction(db: Database, input: CreateTransactionInput): 
   return id;
 }
 
-export function createManyTransactions(db: Database, inputs: CreateTransactionInput[]): string[] {
+export function createManyTransactions(db: DatabaseAdapter, inputs: CreateTransactionInput[]): string[] {
   const ids: string[] = [];
   for (const input of inputs) {
     ids.push(createTransaction(db, input));
@@ -465,7 +466,7 @@ export function createManyTransactions(db: Database, inputs: CreateTransactionIn
 }
 
 export function updateTransactionCategory(
-  db: Database,
+  db: DatabaseAdapter,
   transactionId: string,
   categoryId: string | null,
   isConfirmed: boolean = true
@@ -477,39 +478,37 @@ export function updateTransactionCategory(
 }
 
 export function confirmTransaction(
-  db: Database,
+  db: DatabaseAdapter,
   transactionId: string,
   categoryId: string
 ): { autoTaggedCount: number } {
   // Get the transaction
-  const transaction = queryOne<{ description: string }>(
-    db,
+  const transaction = db.get<{ description: string }>(
     "SELECT description FROM transactions WHERE id = ?",
     [transactionId]
   );
-  
+
   if (!transaction) {
     return { autoTaggedCount: 0 };
   }
-  
+
   // Update this transaction
   db.run(
     "UPDATE transactions SET category_id = ?, is_confirmed = 1 WHERE id = ?",
     [categoryId, transactionId]
   );
-  
+
   // Learn the pattern
   const pattern = extractMerchantPattern(transaction.description);
   let autoTaggedCount = 0;
-  
+
   if (pattern) {
     // Upsert the rule
-    const existingRule = queryOne<{ id: string }>(
-      db,
+    const existingRule = db.get<{ id: string }>(
       "SELECT id FROM categorization_rules WHERE pattern = ?",
       [pattern]
     );
-    
+
     if (existingRule) {
       db.run(
         "UPDATE categorization_rules SET category_id = ? WHERE pattern = ?",
@@ -522,14 +521,13 @@ export function confirmTransaction(
         [crypto.randomUUID(), pattern, categoryId, new Date().toISOString()]
       );
     }
-    
+
     // Auto-tag other unconfirmed transactions with similar pattern
-    const unconfirmed = queryAll<{ id: string; description: string }>(
-      db,
+    const unconfirmed = db.all<{ id: string; description: string }>(
       "SELECT id, description FROM transactions WHERE is_confirmed = 0 AND id != ?",
       [transactionId]
     );
-    
+
     for (const txn of unconfirmed) {
       const txnPattern = extractMerchantPattern(txn.description);
       if (txnPattern === pattern || txn.description.toUpperCase().includes(pattern)) {
@@ -541,22 +539,22 @@ export function confirmTransaction(
       }
     }
   }
-  
+
   return { autoTaggedCount };
 }
 
-export function toggleTransactionExcluded(db: Database, transactionId: string): void {
+export function toggleTransactionExcluded(db: DatabaseAdapter, transactionId: string): void {
   db.run(
     "UPDATE transactions SET excluded = CASE WHEN excluded = 0 THEN 1 ELSE 0 END WHERE id = ?",
     [transactionId]
   );
 }
 
-export function deleteTransaction(db: Database, transactionId: string): void {
+export function deleteTransaction(db: DatabaseAdapter, transactionId: string): void {
   db.run("DELETE FROM transactions WHERE id = ?", [transactionId]);
 }
 
-export function uncategorizeTransaction(db: Database, transactionId: string): void {
+export function uncategorizeTransaction(db: DatabaseAdapter, transactionId: string): void {
   db.run(
     "UPDATE transactions SET category_id = NULL, is_confirmed = 0 WHERE id = ?",
     [transactionId]
@@ -630,81 +628,42 @@ function mapTransactionRow(row: RawTransaction): TransactionWithRelations {
  */
 export function extractMerchantPattern(description: string): string {
   let pattern = description.toUpperCase();
-  
+
   // Remove common prefixes
   const prefixes = [
     "PURCHASE ", "POS ", "DEBIT ", "ACH ", "CHECKCARD ",
     "VISA ", "MASTERCARD ", "AMEX ", "RECURRING ", "PAYMENT ",
     "MOBILE ", "ONLINE ", "INTERNET ", "ELECTRONIC ",
   ];
-  
+
   for (const prefix of prefixes) {
     if (pattern.startsWith(prefix)) {
       pattern = pattern.substring(prefix.length);
     }
   }
-  
+
   // Remove common suffixes (transaction types)
   const suffixes = [
     " PAYROLL", " DIR DEP", " PPD", " WEB", " ACH",
     " DEBIT", " CREDIT", " PAYMENT", " TRANSFER",
   ];
-  
+
   for (const suffix of suffixes) {
     if (pattern.endsWith(suffix)) {
       pattern = pattern.substring(0, pattern.length - suffix.length);
     }
   }
-  
+
   // Remove trailing IDs, dates, reference numbers
   pattern = pattern.replace(/\s+[A-Z0-9]{6,}$/g, "");
   pattern = pattern.replace(/\s+#\d+$/g, "");
   pattern = pattern.replace(/\s+\d{2,}\/\d{2,}$/g, "");
-  
+
   // Truncate to first 3 words if still too long
   const words = pattern.trim().split(/\s+/);
   if (words.length > 3) {
     pattern = words.slice(0, 3).join(" ");
   }
-  
+
   return pattern.trim();
 }
-
-// ============ Database Query Helpers ============
-
-type SqlParam = string | number | null | Uint8Array;
-
-function queryOne<T>(db: Database, sql: string, params?: SqlParam[]): T | undefined {
-  const stmt = db.prepare(sql);
-  if (params) stmt.bind(params as (string | number | null | Uint8Array)[]);
-  if (stmt.step()) {
-    const columns = stmt.getColumnNames();
-    const values = stmt.get();
-    const row: Record<string, unknown> = {};
-    columns.forEach((col, i) => {
-      row[col] = values[i];
-    });
-    stmt.free();
-    return row as T;
-  }
-  stmt.free();
-  return undefined;
-}
-
-function queryAll<T>(db: Database, sql: string, params?: SqlParam[]): T[] {
-  const stmt = db.prepare(sql);
-  if (params) stmt.bind(params as (string | number | null | Uint8Array)[]);
-  const columns = stmt.getColumnNames();
-  const results: T[] = [];
-  while (stmt.step()) {
-    const values = stmt.get();
-    const row: Record<string, unknown> = {};
-    columns.forEach((col, i) => {
-      row[col] = values[i];
-    });
-    results.push(row as T);
-  }
-  stmt.free();
-  return results;
-}
-

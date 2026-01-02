@@ -1,6 +1,6 @@
 "use client";
 
-import { useAccounts, useCategories } from "@/hooks";
+import { useAccounts, useCategories } from "@somar/shared/hooks";
 import { Nav } from "@/components/nav";
 import { PageHeader } from "@/components/page-header";
 import { TransactionsClient } from "./transactions-client";

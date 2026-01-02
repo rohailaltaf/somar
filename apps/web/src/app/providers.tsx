@@ -2,8 +2,8 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
-import { AuthProvider, useAuth } from "@/contexts/auth-context";
-import { DatabaseProvider, useDatabase } from "@/hooks/use-database";
+import { AuthProvider, useAuth, DatabaseProvider } from "@/providers";
+import { useDatabaseAdapter } from "@somar/shared/hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -77,7 +77,7 @@ function DatabaseErrorScreen({ error }: { error: Error }) {
  * Shows a decrypting screen while loading, error screen on failure.
  */
 function DatabaseReadyGate({ children }: { children: ReactNode }) {
-  const { isLoading, error, isReady } = useDatabase();
+  const { isLoading, error, isReady } = useDatabaseAdapter();
 
   if (isLoading) {
     return <DecryptingScreen />;

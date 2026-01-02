@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { usePlaidLink, PlaidLinkOnSuccess } from "react-plaid-link";
-import { useAccountMutations } from "@/hooks";
+import { useAccountMutations } from "@somar/shared/hooks";
 import { usePlaidSync } from "@/hooks/use-plaid-sync";
 import type {
   Account,

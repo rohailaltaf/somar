@@ -55,7 +55,7 @@ export async function POST() {
 
   if (user?.encryptionSalt) {
     return NextResponse.json(
-      { error: "Encryption salt already set", salt: user.encryptionSalt },
+      { error: "Encryption salt already set. Use GET to retrieve it." },
       { status: 409 }
     );
   }

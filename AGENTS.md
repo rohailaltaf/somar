@@ -61,8 +61,8 @@ pnpm test         # Run all tests
 
 **Web app commands (use --filter):**
 ```bash
-pnpm --filter web dev         # Start web dev server
-pnpm --filter web db:reset    # Reset web database
+pnpm --filter web dev           # Start web dev server
+pnpm --filter web db:safe-reset # Reset database (disconnects Plaid first)
 ```
 
 **Mobile app commands:**
@@ -77,13 +77,82 @@ pnpm --filter mobile android   # Start Android emulator
 - **Monorepo:** Turborepo + pnpm workspaces
 - **Web:** Next.js 16 with App Router
 - **Mobile:** React Native with Expo + Expo Router
-- **Database:** SQLite via Prisma ORM
+- **Central Database:** PostgreSQL via Prisma (auth, Plaid tokens)
+- **User Database:** SQLite via sql.js (web) / expo-sqlite (mobile), encrypted
 - **UI (Web):** shadcn/ui components + Tailwind CSS v4
+- **UI (Mobile):** NativeWind (Tailwind for React Native)
 - **Font:** Lato (Google Fonts)
 - **Animations:** Framer Motion (for tagger swipe)
 - **Charts:** Recharts (for reports/analytics)
 - **Financial Data:** Plaid (for bank connections)
 - **Language:** TypeScript
+
+## Shared Package (`@somar/shared`)
+
+The shared package contains platform-agnostic code used by both web and mobile apps.
+
+### Subpath Exports
+
+The package uses subpath exports for tree-shaking and clean imports:
+
+```typescript
+// Main exports (types, crypto, schema, dedup, storage utils)
+import { type AccountType, type CategoryType, type DatabaseAdapter } from "@somar/shared";
+
+// Services (data access layer) - via subpath
+import { getAllTransactions, confirmTransaction } from "@somar/shared/services";
+
+// Hooks (React hooks) - via subpath
+import { useTransactions, useAccounts, useCategories } from "@somar/shared/hooks";
+```
+
+### DatabaseAdapter Abstraction
+
+Both web and mobile implement the same `DatabaseAdapter` interface:
+
+```typescript
+// packages/shared/src/storage/types.ts
+export interface DatabaseAdapter {
+  all<T>(sql: string, params?: SqlParam[]): T[];      // SELECT queries
+  get<T>(sql: string, params?: SqlParam[]): T | undefined;  // Single row
+  run(sql: string, params?: SqlParam[]): void;        // INSERT/UPDATE/DELETE
+  exec(sql: string): void;                            // Raw SQL (schema creation)
+}
+```
+
+**Platform Implementations:**
+- **Web:** `apps/web/src/lib/storage/sql-js-adapter.ts` - wraps sql.js
+- **Mobile:** `apps/mobile/src/lib/storage/expo-sqlite-adapter.ts` - wraps expo-sqlite
+
+### Services Layer
+
+Services are pure functions that take a `DatabaseAdapter` and perform database operations:
+
+```typescript
+// Example usage in a component
+import { useDatabaseAdapter } from "@somar/shared/hooks";
+import { getAllTransactions } from "@somar/shared/services";
+
+function MyComponent() {
+  const db = useDatabaseAdapter();
+  const transactions = getAllTransactions(db);
+  // ...
+}
+```
+
+### Shared Hooks
+
+React hooks that work on any platform with a `DatabaseProvider`:
+
+```typescript
+import { useTransactions, useAccounts, useCategories } from "@somar/shared/hooks";
+
+function Dashboard() {
+  const { data: transactions } = useTransactions();
+  const { data: accounts } = useAccounts();
+  // ...
+}
+```
 
 ## Project Structure
 
@@ -94,6 +163,7 @@ somar/
 │   │   ├── src/
 │   │   │   ├── app/                # Next.js App Router pages
 │   │   │   │   ├── page.tsx        # Dashboard - spending overview
+│   │   │   │   ├── (auth)/         # Login, register, signout
 │   │   │   │   ├── reports/        # Reports & analytics with charts
 │   │   │   │   ├── accounts/       # Account management + Plaid connection
 │   │   │   │   ├── categories/     # Category + budget management
@@ -101,34 +171,54 @@ somar/
 │   │   │   │   ├── tagger/         # Tinder-style categorization UI
 │   │   │   │   ├── upload/         # CSV import wizard
 │   │   │   │   └── api/            # API routes
+│   │   │   │       ├── auth/       # Better Auth endpoints
+│   │   │   │       ├── db/         # Blob upload/download/init
+│   │   │   │       ├── plaid/      # Plaid integration
+│   │   │   │       └── dedup/      # LLM dedup verification
+│   │   │   ├── providers/          # React context providers
+│   │   │   │   ├── auth-provider.tsx      # Auth context (wraps Better Auth)
+│   │   │   │   └── database-provider.tsx  # sql.js database + encryption
+│   │   │   ├── hooks/              # Web-specific hooks
+│   │   │   │   ├── use-plaid-sync.ts   # Plaid sync with dedup
+│   │   │   │   └── use-plaid-items.ts  # Plaid items query
 │   │   │   ├── components/
 │   │   │   │   ├── ui/             # shadcn components
 │   │   │   │   ├── nav.tsx         # Navigation bar
-│   │   │   │   ├── budget-progress.tsx
-│   │   │   │   ├── auto-sync.tsx
-│   │   │   │   └── page-header.tsx
+│   │   │   │   └── ...
 │   │   │   └── lib/
-│   │   │       ├── db/
-│   │   │       │   ├── index.ts    # Prisma client connection
-│   │   │       │   └── seed.ts     # Seed categories + preset rules
-│   │   │       ├── dedup/          # LLM verifier (Tier 2) - llm-verifier.ts only
+│   │   │       ├── db/index.ts     # Prisma client for central DB
+│   │   │       ├── dedup/          # LLM verifier (Tier 2)
+│   │   │       ├── storage/        # Storage adapters
+│   │   │       │   └── sql-js-adapter.ts  # sql.js → DatabaseAdapter
+│   │   │       ├── auth.ts         # Better Auth config
 │   │   │       ├── plaid.ts        # Plaid client configuration
-│   │   │       ├── categorizer.ts  # Auto-categorization logic
-│   │   │       ├── csv-parser.ts   # CSV parsing + column inference
-│   │   │       └── utils.ts        # Utility functions
+│   │   │       └── csv-parser.ts   # CSV parsing + column inference
 │   │   ├── prisma/
-│   │   │   └── schema.prisma       # Database schema
+│   │   │   └── central-schema.prisma  # Central DB schema (PostgreSQL)
 │   │   ├── scripts/                # Utility scripts
 │   │   ├── public/                 # Static assets
+│   │   ├── data/                   # Encrypted blobs (gitignored)
 │   │   ├── package.json            # Web app dependencies + scripts
 │   │   └── tsconfig.json           # Extends ../../tsconfig.base.json
 │   └── mobile/                     # React Native/Expo app
 │       ├── app/                    # Expo Router pages
-│       │   ├── _layout.tsx         # Root layout
-│       │   └── (tabs)/             # Tab navigation
-│       ├── components/             # React Native components
-│       ├── hooks/                  # Custom hooks
-│       ├── constants/              # Theme and constants
+│       │   ├── _layout.tsx         # Root layout (providers + font loading)
+│       │   ├── index.tsx           # Entry point (redirects based on auth)
+│       │   ├── (auth)/             # Auth screens (login, register)
+│       │   └── (tabs)/             # Tab navigation (dashboard, transactions)
+│       ├── src/
+│       │   ├── components/ui/      # Shared UI components
+│       │   ├── providers/          # React context providers
+│       │   │   ├── auth-provider.tsx      # Auth context
+│       │   │   └── database-provider.tsx  # expo-sqlite + encryption
+│       │   └── lib/
+│       │       ├── storage/        # Storage adapters
+│       │       │   └── expo-sqlite-adapter.ts  # expo-sqlite → DatabaseAdapter
+│       │       ├── auth-client.ts  # Better Auth client
+│       │       ├── api.ts          # API helpers
+│       │       └── theme.ts        # Theme colors for native components
+│       ├── global.css              # NativeWind theme variables
+│       ├── tailwind.config.js      # Tailwind/NativeWind config
 │       ├── app.json                # Expo config
 │       ├── metro.config.js         # Metro bundler config for pnpm
 │       ├── package.json            # Mobile app dependencies
@@ -136,7 +226,27 @@ somar/
 ├── packages/
 │   └── shared/
 │       ├── src/
-│       │   ├── index.ts            # Shared exports
+│       │   ├── index.ts            # Shared exports (crypto, schema, types, dedup, storage)
+│       │   ├── crypto/             # Encryption utilities (AES-256-GCM)
+│       │   ├── schema/             # SQLite schema DDL + default categories
+│       │   ├── types/              # Shared TypeScript types
+│       │   ├── storage/            # Database adapter abstraction
+│       │   │   ├── index.ts        # Exports
+│       │   │   └── types.ts        # DatabaseAdapter interface
+│       │   ├── utils/              # Shared utilities
+│       │   │   ├── index.ts        # Exports
+│       │   │   └── date.ts         # Date formatting utilities
+│       │   ├── services/           # Data access layer (platform-agnostic)
+│       │   │   ├── index.ts        # Exports all services
+│       │   │   ├── transactions.ts # Transaction queries + categorization
+│       │   │   ├── accounts.ts     # Account queries
+│       │   │   └── categories.ts   # Category queries
+│       │   ├── hooks/              # Shared React hooks
+│       │   │   ├── index.ts        # Exports all hooks
+│       │   │   ├── database-context.tsx   # DatabaseAdapter context
+│       │   │   ├── use-transactions.ts    # Transaction hooks
+│       │   │   ├── use-accounts.ts        # Account hooks
+│       │   │   └── use-categories.ts      # Category hooks
 │       │   └── dedup/              # Transaction deduplication (Tier 1 - client-side)
 │       │       ├── index.ts        # Public exports
 │       │       ├── types.ts        # Shared type definitions
@@ -158,46 +268,56 @@ somar/
 
 ## Database Schema
 
-### Tables
+The app uses a **two-database model** for E2EE:
 
-**plaid_items**
-- `id` (text, PK), `access_token`, `institution_id`, `institution_name`, `cursor` (for incremental sync), `last_synced_at`, `created_at`
-- Stores connected Plaid institutions
-- One-to-many relationship with accounts
+### Central Database (PostgreSQL - Server)
+
+Stores only what the server needs. Schema at `apps/web/prisma/central-schema.prisma`:
+
+- **users** - Email, name, encryption salt (Better Auth)
+- **sessions** - Active sessions with device tracking
+- **accounts** - OAuth accounts (Google, etc.)
+- **plaid_items** - Plaid connections with access tokens
+- **plaid_account_meta** - Minimal Plaid account info for syncing
+- **encrypted_databases** - Blob metadata (version, size)
+- **pending_plaid_syncs** - Queue for encrypted Plaid data
+
+### User Database (SQLite - Browser)
+
+Each user has an encrypted SQLite database that runs **entirely in the browser** via sql.js. Schema defined in `packages/shared/src/schema/index.ts`:
 
 **accounts**
-- `id` (text, PK), `name`, `type` (checking | credit_card | investment | loan), `created_at`, `plaid_item_id` (FK, nullable), `plaid_account_id` (nullable)
-- `plaid_item_id` and `plaid_account_id` link to Plaid for connected accounts
-- Manual accounts have null Plaid fields
+- `id` (text, PK), `name`, `type` (checking | credit_card | investment | loan), `created_at`, `plaid_account_id` (nullable)
 
 **categories**
 - `id` (text, PK), `name`, `type` (spending | income | transfer), `color` (oklch color), `created_at`
 - `type`: "spending" for expenses, "income" for income streams, "transfer" for money movements
-- Spending categories: personal, restaurant, work, house, entertainment, travel, shopping, car, grocery, subscriptions
-- Income categories: job income (users can add more income streams)
-- Transfer categories: transfers, credit card payments, reimbursed (excluded from spending/income reports by default)
+- Default categories defined in `packages/shared/src/schema/index.ts`
 
 **category_budgets**
 - `id`, `category_id` (FK), `amount` (real), `start_month` (YYYY-MM), `created_at`
 - Historical budget tracking - budgets apply from start_month onwards until changed
-- **Budgets only apply to spending categories** - income and transfer categories don't have budgets
+- **Budgets only apply to spending categories**
 
 **transactions**
 - `id`, `account_id` (FK), `category_id` (FK, nullable), `description`, `amount` (real), `date` (YYYY-MM-DD), `excluded` (boolean), `is_confirmed` (boolean), `created_at`, `plaid_transaction_id` (unique, nullable)
 - `amount`: **negative = expense (money out), positive = income/credit (money in)**
 - `excluded`: if true, not counted in spending calculations
 - `is_confirmed`: false until user confirms category in tagger
-- `plaid_transaction_id`: Plaid's transaction ID for deduplication (null for CSV imports)
+- Additional Plaid fields: `plaid_original_description`, `plaid_name`, `plaid_merchant_name`, `plaid_authorized_date`, `plaid_posted_date`
 
 **categorization_rules**
 - `id`, `pattern` (text), `category_id` (FK), `is_preset` (boolean), `created_at`
 - Stores merchant patterns for auto-categorization
-- `is_preset`: true for built-in rules, false for learned rules
 - Learned rules take priority over preset rules
+
+**plaid_sync_state**
+- `item_id` (PK), `cursor`, `last_synced_at`
+- Stores sync cursor client-side (not on server) for data integrity
 
 ## Key Features
 
-### 1. Auto-Categorization (`apps/web/src/lib/categorizer.ts`)
+### 1. Auto-Categorization (`packages/shared/src/services/transactions.ts`)
 
 - Matches transaction descriptions against stored patterns
 - Priority: learned rules > preset rules
@@ -317,11 +437,12 @@ Plaid needs time to fetch and enrich historical data after initial connection. T
 
 **Key Files:**
 ```
-apps/web/src/hooks/use-plaid-sync.ts      # Client-side sync hook (runs Tier 1 dedup locally)
-apps/web/src/app/api/plaid/sync/route.ts  # Server proxy with retry logic
+apps/web/src/hooks/use-plaid-sync.ts       # Client-side sync hook (runs Tier 1 dedup locally)
+apps/web/src/app/api/plaid/sync/route.ts   # Server proxy with retry logic
 apps/web/src/app/api/dedup/verify/route.ts # LLM-only dedup verification (Tier 2)
-apps/web/src/components/auto-sync.tsx     # Auto-sync on page load
-packages/shared/src/dedup/                # Tier 1 dedup (client-side, used by web + mobile)
+apps/web/src/components/auto-sync.tsx      # Auto-sync on page load
+packages/shared/src/dedup/                 # Tier 1 dedup (client-side, used by web + mobile)
+packages/shared/src/services/transactions.ts # Transaction service (shared between web + mobile)
 ```
 
 **API Routes:**
@@ -385,15 +506,15 @@ OPENAI_API_KEY=your_key  # For LLM deduplication (optional)
 2. **Burn-up Chart**: Line chart showing cumulative daily spending (this month vs last month)
 3. **Category Progress Bars**: Spending vs budget for each category (reuses BudgetProgress component)
 
-**Analytics Functions** (in `apps/web/src/services/transactions.ts`):
+**Analytics Functions** (in `packages/shared/src/services/transactions.ts`, imported via `@somar/shared/services`):
 ```typescript
 // Get daily cumulative spending for a month (for burn-up chart)
-getDailyCumulativeSpending(month: string)
+getDailyCumulativeSpending(db: DatabaseAdapter, month: string)
 // Returns: [{ day: 1, date: "2024-01", cumulative: 150 }, ...]
 
 // Existing functions used:
-getTotalSpending(month: string)
-getSpendingByCategory(month: string)
+getTotalSpending(db: DatabaseAdapter, month: string)
+getSpendingByCategory(db: DatabaseAdapter, month: string)
 ```
 
 **Chart Library: Recharts**
@@ -436,14 +557,33 @@ const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart
 
 ## Environment Configuration
 
-The project supports separate development and production environments with different databases and configuration.
+The project supports separate development and production environments.
 
 ### Environment Files
 
 Environment files live in `apps/web/`:
-- `.env.development` - Development configuration (uses `finance-dev.db`)
-- `.env.production` - Production configuration (uses `finance-prod.db`)
+- `.env.development` - Development configuration
+- `.env.production` - Production configuration
 - `.env.example` - Template for environment configuration (committed to git)
+
+Key variables:
+```bash
+# Central Database (PostgreSQL)
+CENTRAL_DATABASE_URL="postgresql://..."
+
+# Better Auth
+BETTER_AUTH_SECRET="..."
+BETTER_AUTH_URL="http://localhost:3000"
+
+# Plaid
+PLAID_CLIENT_ID="..."
+PLAID_SECRET="..."
+PLAID_ENV="sandbox"
+
+# Storage (for encrypted blobs)
+STORAGE_TYPE="filesystem"
+DATA_DIR="./data"
+```
 
 ### Running in Different Environments
 
@@ -454,23 +594,23 @@ pnpm dev:web                # Start web only
 
 # Production (uses .env.production)
 pnpm build                  # Build for production
-pnpm --filter web start     # Start production server with finance-prod.db
+pnpm --filter web start     # Start production server
 ```
 
 ### Database Commands
 
-All database commands are web-specific and use the `--filter web` syntax:
+All database commands are for the **central PostgreSQL database** (not user data, which is client-side):
 
 ```bash
-# Development database (default)
-pnpm --filter web db:push          # Push schema changes to dev DB
-pnpm --filter web db:reset         # Reset dev DB (delete + recreate)
-pnpm --filter web db:studio        # Open Prisma Studio with dev DB
+# Development
+pnpm --filter web db:push          # Push schema changes to central DB
+pnpm --filter web db:studio        # Open Prisma Studio for central DB
+pnpm --filter web db:safe-reset    # Disconnect Plaid + reset central DB
 
-# Production database (explicit :prod suffix)
-pnpm --filter web db:push:prod     # Push schema changes to prod DB
-pnpm --filter web db:reset:prod    # Reset prod DB (delete + recreate)
-pnpm --filter web db:studio:prod   # Open Prisma Studio with prod DB
+# Production
+pnpm --filter web db:push:prod     # Push schema changes to prod central DB
+pnpm --filter web db:studio:prod   # Open Prisma Studio (prod)
+pnpm --filter web db:safe-reset:prod # Safe reset prod
 ```
 
 ## Common Tasks
@@ -492,34 +632,27 @@ pnpm --filter web db:reset:prod       # Reset prod database (doesn't disconnect 
 
 ### Add New Category
 
-Add to `apps/web/src/lib/db/seed.ts` in `defaultCategories` array with type and color, then run `pnpm --filter web db:seed`.
+Default categories are defined in `packages/shared/src/schema/index.ts` in the `DEFAULT_CATEGORIES` array. These are seeded when a new user database is created client-side.
 
 Example:
 ```typescript
-const defaultCategories = [
-  { name: "restaurant", type: "spending" },
-  { name: "job income", type: "income" },
-  { name: "transfers", type: "transfer" },
+export const DEFAULT_CATEGORIES: DefaultCategory[] = [
+  { name: "restaurant", type: "spending", color: "oklch(0.65 0.2 30)" },
+  { name: "job income", type: "income", color: "oklch(0.7 0.2 140)" },
+  { name: "transfers", type: "transfer", color: "oklch(0.5 0.08 220)" },
   // ...
 ];
-
-const categoryColors: Record<string, string> = {
-  restaurant: "oklch(0.65 0.2 30)",
-  "job income": "oklch(0.7 0.2 140)",
-  transfers: "oklch(0.5 0.08 220)",
-  // ...
-};
 ```
 
-### Add Preset Categorization Rules
-Add to `presetRules` array in `apps/web/src/lib/db/seed.ts`:
-```typescript
-{ pattern: "MERCHANT NAME", category: "category_name" }
-```
+Users can also add custom categories via the Categories page in the app.
 
-### Modify Schema
-1. Edit `apps/web/prisma/schema.prisma`
-2. Run `pnpm --filter web db:push` to sync schema changes (or `pnpm --filter web db:reset` to recreate from scratch)
+### Modify User Data Schema
+1. Edit `packages/shared/src/schema/index.ts` (the `SCHEMA_SQL` constant)
+2. Note: Schema changes require users to create a new database (no migrations for client-side SQLite)
+
+### Modify Central Database Schema
+1. Edit `apps/web/prisma/central-schema.prisma`
+2. Run `pnpm --filter web db:push` to sync schema changes
 
 ### Add New Report
 
@@ -537,15 +670,15 @@ Add to `presetRules` array in `apps/web/src/lib/db/seed.ts`:
 </Link>
 ```
 
-**Step 2:** Create analytics function in `apps/web/src/services/transactions.ts`
+**Step 2:** Create analytics function in `packages/shared/src/services/transactions.ts`
 ```typescript
-export async function getYourData() {
-  const result = await db
-    .select({ /* your fields */ })
-    .from(transactions)
-    .where(/* your conditions */)
-    .groupBy(/* your grouping */);
-  return result;
+export function getYourData(db: DatabaseAdapter): YourDataType[] {
+  return db.all<YourDataType>(
+    `SELECT /* your fields */
+     FROM transactions
+     WHERE /* your conditions */
+     GROUP BY /* your grouping */`
+  );
 }
 ```
 
@@ -577,20 +710,18 @@ pnpm test             # Run all tests
 ### Web App Commands
 
 ```bash
-# Development (uses .env.development)
-pnpm --filter web dev           # Start dev server with finance-dev.db
-pnpm --filter web db:push       # Push schema to dev DB
-pnpm --filter web db:studio     # Open Prisma Studio (dev DB)
-pnpm --filter web db:safe-reset # Safe reset (disconnect Plaid + reset) - RECOMMENDED
-pnpm --filter web db:reset      # Reset dev DB (WARNING: doesn't disconnect Plaid!)
+# Development
+pnpm --filter web dev           # Start dev server
+pnpm --filter web db:push       # Push central DB schema
+pnpm --filter web db:studio     # Open Prisma Studio (central DB)
+pnpm --filter web db:safe-reset # Safe reset (disconnect Plaid + reset central DB)
 
-# Production (uses .env.production)
+# Production
 pnpm --filter web build              # Build for production
 pnpm --filter web start              # Start production server
-pnpm --filter web db:push:prod       # Push schema to prod DB
-pnpm --filter web db:studio:prod     # Open Prisma Studio (prod DB)
-pnpm --filter web db:safe-reset:prod # Safe reset (disconnect Plaid + reset) - RECOMMENDED
-pnpm --filter web db:reset:prod      # Reset prod DB (WARNING: doesn't disconnect Plaid!)
+pnpm --filter web db:push:prod       # Push schema to prod central DB
+pnpm --filter web db:studio:prod     # Open Prisma Studio (prod)
+pnpm --filter web db:safe-reset:prod # Safe reset prod
 
 # Plaid Management
 pnpm --filter web plaid:status       # Check Plaid connection status (dev)
@@ -601,18 +732,17 @@ pnpm --filter web test          # Run tests
 pnpm --filter web test:watch    # Run tests in watch mode
 
 # Other
-pnpm --filter web db:generate   # Generate Prisma Client
+pnpm --filter web db:generate   # Generate Prisma Client for central DB
 pnpm --filter web lint          # Run ESLint
 ```
 
 ## Files to Ignore
 
-- `apps/web/finance-dev.db`, `apps/web/finance-dev.db-wal`, `apps/web/finance-dev.db-shm` - Development SQLite database
-- `apps/web/finance-prod.db`, `apps/web/finance-prod.db-wal`, `apps/web/finance-prod.db-shm` - Production SQLite database
+- `apps/web/data/` - Encrypted user database blobs
 - `apps/web/.next/` - Next.js build cache
 - `.turbo/` - Turborepo cache
 - `node_modules/` - At all levels (root, apps, packages)
-- `node_modules/@prisma/` - Generated Prisma Client
+- `apps/web/node_modules/.prisma/` - Generated Prisma Client
 
 ## Performance Optimization
 
@@ -620,28 +750,15 @@ pnpm --filter web lint          # Run ESLint
 
 **The transactions table MUST have indexes** - without them, every query does a full table scan which is catastrophically slow even with just 1,000 transactions.
 
-**Required indexes:**
-```prisma
-// In apps/web/prisma/schema.prisma, Transaction model:
-@@index([date], name: "transactions_date_idx")
-@@index([accountId], name: "transactions_account_idx")
-@@index([categoryId], name: "transactions_category_idx")
-@@index([date, excluded], name: "transactions_date_excluded_idx")
-@@index([isConfirmed], name: "transactions_is_confirmed_idx")
+**Required indexes** (defined in `packages/shared/src/schema/index.ts`):
+```sql
+CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date);
+CREATE INDEX IF NOT EXISTS idx_transactions_account ON transactions(account_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions(category_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_confirmed ON transactions(is_confirmed);
 ```
 
 **Impact:** Query time from 500ms → 0.002ms (250x faster!)
-
-### SQLite Configuration
-
-The database connection in `apps/web/src/lib/db/index.ts` includes performance pragmas:
-```typescript
-sqlite.pragma("journal_mode = WAL");      // Write-Ahead Logging
-sqlite.pragma("synchronous = NORMAL");    // Faster writes (safe with WAL)
-sqlite.pragma("cache_size = -64000");     // 64MB cache
-sqlite.pragma("temp_store = MEMORY");     // Temp tables in RAM
-sqlite.pragma("mmap_size = 30000000000"); // Memory-mapped I/O
-```
 
 ### Server-Side Pagination
 
@@ -670,24 +787,19 @@ const response = await fetch(`/api/transactions?page=1&limit=50`);
 
 ### Query Optimization
 
-**USE:** Prisma's `include` or `select` for relations
+**USE:** SQL JOINs to fetch related data in a single query:
 ```typescript
-// Optimized - single query with joins
-db.transaction.findMany({
-  include: {
-    category: true,
-    account: true,
-  },
-});
-
-// Or use select for specific fields
-db.transaction.findMany({
-  select: {
-    id: true,
-    amount: true,
-    category: { select: { name: true, color: true } },
-  },
-});
+// Optimized - single query with joins (uses DatabaseAdapter)
+const rows = db.all<TransactionRow>(
+  `SELECT
+     t.*,
+     c.id as cat_id, c.name as cat_name, c.color as cat_color,
+     a.id as acc_id, a.name as acc_name, a.type as acc_type
+   FROM transactions t
+   LEFT JOIN categories c ON t.category_id = c.id
+   LEFT JOIN accounts a ON t.account_id = a.id
+   ORDER BY t.date DESC`
+);
 ```
 
 ### Transactions Page Architecture
@@ -716,22 +828,23 @@ With 10,000+ transactions, performance remains the same due to server-side pagin
 ## Gotchas
 
 1. **Timezone issues**: Always use local date construction, never `new Date(dateString).toISOString()`
-2. **SQLite connection caching**: Dev server may hold DB connection; restart after `db:reset`
+2. **Two databases**: Central DB (PostgreSQL) is server-side for auth/Plaid. User data is client-side SQLite via sql.js.
 3. **Amount signs**: Different banks use different sign conventions. The upload wizard includes a sign confirmation step where users can flip signs if needed. App convention: **negative = expense (money out), positive = income (money in)**.
 4. **Category budgets**: Query must filter by `start_month <= targetMonth` and take most recent. **Only spending categories have budgets** - income and transfer categories don't need budgets.
 5. **Duplicate detection**: Only checks against existing DB records, not within CSV itself (intentional - allows legitimate duplicate transactions like buying pizza twice)
-6. **Missing indexes = disaster**: Always add indexes to frequently queried columns (date, category_id, account_id, etc.)
-7. **Large datasets in SSR**: Never serialize 1,000+ rows in server components - use API routes with pagination instead
-8. **Chart data formatting**: Recharts expects specific data structures - test with empty datasets to avoid rendering errors
-9. **Month calculations**: Use helper functions (`getPreviousMonth`) to avoid off-by-one errors with month arithmetic
-10. **Feature creep**: Resist adding features "just in case" - build what's needed, iterate based on actual use
-11. **Category types**: When querying categories for budget management, use `getCategoriesWithBudgets()` which only returns spending categories. Use `getCategories("income")` for income categories, and `getCategories("transfer")` for transfer categories. Transfer transactions are automatically excluded from all spending and income reports.
-12. **Pattern extraction too specific**: If auto-tagging isn't working, check if the extracted pattern is too specific. Transaction descriptions from same merchant often have different suffixes (PAYROLL vs DIR DEP vs ACH). The pattern should extract just the merchant identifier, not the full description.
-13. **Always use `confirmTransaction()` for category changes**: The transactions page dropdown and tagger both use `confirmTransaction()` which learns patterns and auto-tags. Don't use `updateTransaction()` directly for category changes or patterns won't be learned.
-14. **Plaid orphan items = wasted money**: If you reset the database without calling `itemRemove()` on Plaid, those items remain active and you'll be billed! Always use `pnpm --filter web db:safe-reset` instead of `pnpm --filter web db:reset` when you have Plaid connections. The safe reset automatically disconnects Plaid items before resetting. To check for orphans, use `pnpm --filter web plaid:status` or visit dashboard.plaid.com.
-15. **Monorepo commands**: Remember to use `pnpm --filter web` for web-specific commands. Root `pnpm dev` runs all apps.
-16. **React version mismatch**: Web uses React ^19.1.4 (patched), Mobile uses React 19.1.0 (must match react-native-renderer). Each app has its own node_modules, so they run together without conflicts.
-17. **Mobile needs explicit @expo/metro-runtime**: Due to pnpm's symlink structure, `@expo/metro-runtime` must be listed as an explicit dependency in mobile's package.json.
+6. **Missing indexes = disaster**: Always add indexes to frequently queried columns (date, category_id, account_id, etc.). Indexes are defined in `packages/shared/src/schema/index.ts`.
+7. **Chart data formatting**: Recharts expects specific data structures - test with empty datasets to avoid rendering errors
+8. **Month calculations**: Use helper functions (`getPreviousMonth`) to avoid off-by-one errors with month arithmetic
+9. **Feature creep**: Resist adding features "just in case" - build what's needed, iterate based on actual use
+10. **Category types**: When querying categories for budget management, filter by `type = 'spending'`. Transfer transactions are automatically excluded from all spending and income reports.
+11. **Pattern extraction too specific**: If auto-tagging isn't working, check if the extracted pattern is too specific. Transaction descriptions from same merchant often have different suffixes (PAYROLL vs DIR DEP vs ACH). The pattern should extract just the merchant identifier, not the full description.
+12. **Always use `confirmTransaction()` for category changes**: The transactions page dropdown and tagger both use `confirmTransaction()` which learns patterns and auto-tags.
+13. **Plaid orphan items = wasted money**: If you reset the database without calling `itemRemove()` on Plaid, those items remain active and you'll be billed! Always use `pnpm --filter web db:safe-reset`. To check for orphans, use `pnpm --filter web plaid:status` or visit dashboard.plaid.com.
+14. **Monorepo commands**: Remember to use `pnpm --filter web` for web-specific commands. Root `pnpm dev` runs all apps.
+15. **React version mismatch**: Web uses React ^19.1.4 (patched), Mobile uses React 19.1.0 (must match react-native-renderer). Each app has its own node_modules, so they run together without conflicts.
+16. **Mobile needs explicit @expo/metro-runtime**: Due to pnpm's symlink structure, `@expo/metro-runtime` must be listed as an explicit dependency in mobile's package.json.
+17. **Encryption key from password**: The encryption key is derived from the user's password. If password is forgotten, data is unrecoverable (by design).
+18. **Mobile theme colors for native components**: Some React Native components (`ActivityIndicator`, `Ionicons`, `RefreshControl`) don't accept `className` and need raw color strings. Use `themeColors` from `apps/mobile/src/lib/theme.ts` with `useColorScheme()` from NativeWind. If you add colors to `global.css`, also add them to `theme.ts`. See `apps/mobile/README.md` for details.
 
 ## Additional Documentation
 

@@ -1,23 +1,23 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useDatabase } from "./use-database";
-import * as CategoryService from "@/services/categories";
-import type { CategoryType, CreateCategoryInput } from "@somar/shared";
+import { useDatabaseAdapter } from "./database-context";
+import * as CategoryService from "../services/categories";
+import type { CategoryType, CreateCategoryInput } from "../types";
 
 /**
  * Hook for accessing categories.
  */
 export function useCategories(type?: CategoryType) {
-  const { db, isReady } = useDatabase();
+  const { adapter, isReady } = useDatabaseAdapter();
 
   const query = useQuery({
     queryKey: ["categories", type],
     queryFn: () => {
-      if (!db) return [];
+      if (!adapter) return [];
       return type
-        ? CategoryService.getCategoriesByType(db, type)
-        : CategoryService.getAllCategories(db);
+        ? CategoryService.getCategoriesByType(adapter, type)
+        : CategoryService.getAllCategories(adapter);
     },
     enabled: isReady,
   });
@@ -33,13 +33,13 @@ export function useCategories(type?: CategoryType) {
  * Hook for accessing spending categories with their budgets.
  */
 export function useCategoriesWithBudgets(currentMonth: string) {
-  const { db, isReady } = useDatabase();
+  const { adapter, isReady } = useDatabaseAdapter();
 
   return useQuery({
     queryKey: ["categories", "withBudgets", currentMonth],
     queryFn: () => {
-      if (!db) return [];
-      return CategoryService.getCategoriesWithBudgets(db, currentMonth);
+      if (!adapter) return [];
+      return CategoryService.getCategoriesWithBudgets(adapter, currentMonth);
     },
     enabled: isReady,
   });
@@ -49,7 +49,7 @@ export function useCategoriesWithBudgets(currentMonth: string) {
  * Hook for category mutations (create, update, delete, budget).
  */
 export function useCategoryMutations() {
-  const { db, isReady, save } = useDatabase();
+  const { adapter, isReady, save } = useDatabaseAdapter();
   const queryClient = useQueryClient();
 
   const invalidateAndSave = async () => {
@@ -61,16 +61,16 @@ export function useCategoryMutations() {
 
   const createCategory = useMutation({
     mutationFn: (input: CreateCategoryInput) => {
-      if (!db) throw new Error("Database not ready");
-      return Promise.resolve(CategoryService.createCategory(db, input));
+      if (!adapter) throw new Error("Database not ready");
+      return Promise.resolve(CategoryService.createCategory(adapter, input));
     },
     onSuccess: invalidateAndSave,
   });
 
   const updateCategory = useMutation({
     mutationFn: ({ id, name, type, color }: { id: string; name: string; type: CategoryType; color: string }) => {
-      if (!db) throw new Error("Database not ready");
-      CategoryService.updateCategory(db, id, name, type, color);
+      if (!adapter) throw new Error("Database not ready");
+      CategoryService.updateCategory(adapter, id, name, type, color);
       return Promise.resolve();
     },
     onSuccess: invalidateAndSave,
@@ -78,8 +78,8 @@ export function useCategoryMutations() {
 
   const deleteCategory = useMutation({
     mutationFn: (id: string) => {
-      if (!db) throw new Error("Database not ready");
-      CategoryService.deleteCategory(db, id);
+      if (!adapter) throw new Error("Database not ready");
+      CategoryService.deleteCategory(adapter, id);
       return Promise.resolve();
     },
     onSuccess: invalidateAndSave,
@@ -87,16 +87,16 @@ export function useCategoryMutations() {
 
   const setBudget = useMutation({
     mutationFn: ({ categoryId, amount, startMonth }: { categoryId: string; amount: number; startMonth: string }) => {
-      if (!db) throw new Error("Database not ready");
-      return Promise.resolve(CategoryService.setBudget(db, categoryId, amount, startMonth));
+      if (!adapter) throw new Error("Database not ready");
+      return Promise.resolve(CategoryService.setBudget(adapter, categoryId, amount, startMonth));
     },
     onSuccess: invalidateAndSave,
   });
 
   const deleteBudget = useMutation({
     mutationFn: (budgetId: string) => {
-      if (!db) throw new Error("Database not ready");
-      CategoryService.deleteBudget(db, budgetId);
+      if (!adapter) throw new Error("Database not ready");
+      CategoryService.deleteBudget(adapter, budgetId);
       return Promise.resolve();
     },
     onSuccess: invalidateAndSave,

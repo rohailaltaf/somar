@@ -1,46 +1,44 @@
 /**
  * Account service - encapsulates all account-related database operations.
  * This is a pure data layer with NO React/UI dependencies.
+ *
+ * Uses DatabaseAdapter interface for platform-agnostic database access.
  */
 
-import type { Database } from "sql.js";
-import type { Account, AccountType, CreateAccountInput } from "@somar/shared";
+import type { DatabaseAdapter } from "../storage";
+import type { Account, AccountType, CreateAccountInput } from "../types";
 
 // ============ Queries ============
 
-export function getAllAccounts(db: Database): Account[] {
-  return queryAll<RawAccount>(
-    db,
+export function getAllAccounts(db: DatabaseAdapter): Account[] {
+  return db.all<RawAccount>(
     "SELECT * FROM accounts ORDER BY name"
   ).map(mapAccountRow);
 }
 
-export function getAccountById(db: Database, id: string): Account | null {
-  const row = queryOne<RawAccount>(
-    db,
+export function getAccountById(db: DatabaseAdapter, id: string): Account | null {
+  const row = db.get<RawAccount>(
     "SELECT * FROM accounts WHERE id = ?",
     [id]
   );
   return row ? mapAccountRow(row) : null;
 }
 
-export function getManualAccounts(db: Database): Account[] {
-  return queryAll<RawAccount>(
-    db,
+export function getManualAccounts(db: DatabaseAdapter): Account[] {
+  return db.all<RawAccount>(
     "SELECT * FROM accounts WHERE plaid_account_id IS NULL ORDER BY name"
   ).map(mapAccountRow);
 }
 
-export function getPlaidAccounts(db: Database): Account[] {
-  return queryAll<RawAccount>(
-    db,
+export function getPlaidAccounts(db: DatabaseAdapter): Account[] {
+  return db.all<RawAccount>(
     "SELECT * FROM accounts WHERE plaid_account_id IS NOT NULL ORDER BY name"
   ).map(mapAccountRow);
 }
 
 // ============ Mutations ============
 
-export function createAccount(db: Database, input: CreateAccountInput): string {
+export function createAccount(db: DatabaseAdapter, input: CreateAccountInput): string {
   const id = crypto.randomUUID();
   db.run(
     `INSERT INTO accounts (id, name, type, created_at, plaid_account_id)
@@ -51,7 +49,7 @@ export function createAccount(db: Database, input: CreateAccountInput): string {
 }
 
 export function updateAccount(
-  db: Database,
+  db: DatabaseAdapter,
   id: string,
   name: string,
   type: AccountType,
@@ -72,7 +70,7 @@ export function updateAccount(
   }
 }
 
-export function deleteAccount(db: Database, id: string): void {
+export function deleteAccount(db: DatabaseAdapter, id: string): void {
   // First delete all transactions for this account
   db.run("DELETE FROM transactions WHERE account_id = ?", [id]);
   // Then delete the account
@@ -99,42 +97,3 @@ function mapAccountRow(row: RawAccount): Account {
     plaidAccountId: row.plaid_account_id,
   };
 }
-
-// ============ Database Query Helpers ============
-
-type SqlParam = string | number | null | Uint8Array;
-
-function queryOne<T>(db: Database, sql: string, params?: SqlParam[]): T | undefined {
-  const stmt = db.prepare(sql);
-  if (params) stmt.bind(params as (string | number | null | Uint8Array)[]);
-  if (stmt.step()) {
-    const columns = stmt.getColumnNames();
-    const values = stmt.get();
-    const row: Record<string, unknown> = {};
-    columns.forEach((col, i) => {
-      row[col] = values[i];
-    });
-    stmt.free();
-    return row as T;
-  }
-  stmt.free();
-  return undefined;
-}
-
-function queryAll<T>(db: Database, sql: string, params?: SqlParam[]): T[] {
-  const stmt = db.prepare(sql);
-  if (params) stmt.bind(params as (string | number | null | Uint8Array)[]);
-  const columns = stmt.getColumnNames();
-  const results: T[] = [];
-  while (stmt.step()) {
-    const values = stmt.get();
-    const row: Record<string, unknown> = {};
-    columns.forEach((col, i) => {
-      row[col] = values[i];
-    });
-    results.push(row as T);
-  }
-  stmt.free();
-  return results;
-}
-

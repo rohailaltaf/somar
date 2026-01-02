@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useTransactionMutations, useTransactions } from "@/hooks";
+import { useTransactionMutations, useTransactions } from "@somar/shared/hooks";
 import {
   runTier1Dedup,
   chunkArray,
@@ -63,7 +63,8 @@ import {
   Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { formatCurrency } from "@somar/shared";
 
 type Step = "select-account" | "upload" | "map-columns" | "confirm-signs" | "review-duplicates" | "preview" | "complete";
 
@@ -196,8 +197,8 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
       const tier1Result = runTier1Dedup(newForDedup, existingForDedup);
 
       // Step 2: If uncertain pairs exist, call API for LLM verification (with batching)
-      let finalDuplicates: DuplicateMatch[] = [...tier1Result.definiteMatches];
-      let finalUnique: TransactionForDedup[] = [...tier1Result.unique];
+      const finalDuplicates: DuplicateMatch[] = [...tier1Result.definiteMatches];
+      const finalUnique: TransactionForDedup[] = [...tier1Result.unique];
       let tier2Matches = 0;
 
       if (tier1Result.uncertainPairs.length > 0) {

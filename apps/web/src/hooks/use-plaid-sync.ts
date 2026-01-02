@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useDatabase } from "./use-database";
+import { useDatabaseAdapter } from "@somar/shared/hooks";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Transaction as PlaidTransaction } from "plaid";
 import {
@@ -99,7 +99,7 @@ interface ExistingTransaction {
 const syncingItemsSet = new Set<string>();
 
 export function usePlaidSync() {
-  const { db, isReady, run, get, all, save } = useDatabase();
+  const { adapter, isReady, save } = useDatabaseAdapter();
   const queryClient = useQueryClient();
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
@@ -109,7 +109,7 @@ export function usePlaidSync() {
    */
   const syncItem = useCallback(
     async (plaidItemId: string): Promise<SyncResult> => {
-      if (!db || !isReady) {
+      if (!adapter || !isReady) {
         return {
           plaidItemId,
           added: 0,
@@ -150,7 +150,7 @@ export function usePlaidSync() {
 
       try {
         // 1. Get current cursor from local DB
-        const syncState = get<{ cursor: string; last_synced_at: string }>(
+        const syncState = adapter.get<{ cursor: string; last_synced_at: string }>(
           "SELECT cursor, last_synced_at FROM plaid_sync_state WHERE item_id = ?",
           [plaidItemId]
         );
@@ -174,7 +174,7 @@ export function usePlaidSync() {
         setSyncStatus({ stage: "processing" });
 
         // Get all local accounts with plaid_account_id
-        const localAccounts = all<LocalAccount>(
+        const localAccounts = adapter.all<LocalAccount>(
           "SELECT id, plaid_account_id FROM accounts WHERE plaid_account_id IS NOT NULL"
         );
         const accountMap = new Map(
@@ -182,7 +182,7 @@ export function usePlaidSync() {
         );
 
         // Get categorization rules for auto-categorization
-        const rules = all<CategorizationRule>(
+        const rules = adapter.all<CategorizationRule>(
           "SELECT pattern, category_id FROM categorization_rules"
         );
 
@@ -198,7 +198,7 @@ export function usePlaidSync() {
             return false;
           }
           // Skip if already synced
-          const existing = get<{ id: string }>(
+          const existing = adapter.get<{ id: string }>(
             "SELECT id FROM transactions WHERE plaid_transaction_id = ?",
             [plaidTx.transaction_id]
           );
@@ -225,7 +225,7 @@ export function usePlaidSync() {
           const maxDateStr = maxDate.toISOString().split("T")[0];
 
           // Get existing CSV transactions within date range (no plaid_transaction_id)
-          const existingCsvTxs = all<ExistingTransaction>(
+          const existingCsvTxs = adapter.all<ExistingTransaction>(
             `SELECT id, description, amount, date,
               plaid_transaction_id, plaid_authorized_date,
               plaid_posted_date, plaid_merchant_name
@@ -264,7 +264,7 @@ export function usePlaidSync() {
           const tier1Result = runTier1Dedup(plaidForDedup, existingForDedup);
 
           // Step 2: If uncertain pairs exist, call API for LLM verification (with batching)
-          let allDuplicates: DuplicateMatch[] = [...tier1Result.definiteMatches];
+          const allDuplicates: DuplicateMatch[] = [...tier1Result.definiteMatches];
 
           if (tier1Result.uncertainPairs.length > 0) {
             // Batch API calls to respect the 100 pair limit
@@ -334,7 +334,7 @@ export function usePlaidSync() {
 
             if (matchedExistingId) {
               // Found a duplicate - upgrade existing transaction with Plaid data
-              run(
+              adapter.run(
                 `UPDATE transactions SET
                   plaid_transaction_id = ?,
                   plaid_merchant_name = ?,
@@ -359,7 +359,7 @@ export function usePlaidSync() {
               const categoryId = findCategory(plaidTx, rules);
               const txId = crypto.randomUUID();
 
-              run(
+              adapter.run(
                 `INSERT INTO transactions (
                   id, account_id, category_id, description, amount, date,
                   excluded, is_confirmed, created_at,
@@ -395,13 +395,13 @@ export function usePlaidSync() {
           const localAccountId = accountMap.get(plaidTx.account_id);
           if (!localAccountId) continue;
 
-          const existing = get<{ id: string }>(
+          const existing = adapter.get<{ id: string }>(
             "SELECT id FROM transactions WHERE plaid_transaction_id = ?",
             [plaidTx.transaction_id]
           );
 
           if (existing) {
-            run(
+            adapter.run(
               `UPDATE transactions SET
                 description = ?,
                 amount = ?,
@@ -430,7 +430,7 @@ export function usePlaidSync() {
 
         // 5. Process removed transactions
         for (const removedTx of removed) {
-          run("DELETE FROM transactions WHERE plaid_transaction_id = ?", [
+          adapter.run("DELETE FROM transactions WHERE plaid_transaction_id = ?", [
             removedTx.transaction_id,
           ]);
           result.removed++;
@@ -438,7 +438,7 @@ export function usePlaidSync() {
 
         // 6. Save new cursor
         setSyncStatus({ stage: "saving" });
-        run(
+        adapter.run(
           `INSERT OR REPLACE INTO plaid_sync_state (item_id, cursor, last_synced_at)
            VALUES (?, ?, ?)`,
           [plaidItemId, nextCursor, new Date().toISOString()]
@@ -463,7 +463,7 @@ export function usePlaidSync() {
         setSyncStatus(null);
       }
     },
-    [db, isReady, run, get, all, save, queryClient]
+    [adapter, isReady, save, queryClient]
   );
 
   /**

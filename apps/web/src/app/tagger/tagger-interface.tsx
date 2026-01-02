@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
-import { useTransactionMutations } from "@/hooks";
+import { useTransactionMutations } from "@somar/shared/hooks";
 import type { Category, TransactionWithRelations } from "@somar/shared";
 import {
   Card,
@@ -26,7 +26,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@somar/shared";
 
 interface TaggerInterfaceProps {
   initialTransactions: TransactionWithRelations[];
@@ -260,18 +261,6 @@ export function TaggerInterface({
     }
   };
 
-  const formatDate = (dateStr: string) => {
-    // Parse YYYY-MM-DD without timezone conversion
-    const [year, month, day] = dateStr.split("-").map(Number);
-    const date = new Date(year, month - 1, day);
-    return date.toLocaleDateString("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
-
   if (!currentTransaction || transactions.length === 0) {
     return null;
   }
@@ -310,7 +299,7 @@ export function TaggerInterface({
                 <div className="flex items-center justify-between">
                   <Badge variant="outline">{currentTransaction.account.name}</Badge>
                   <span className="text-sm text-muted-foreground">
-                    {formatDate(currentTransaction.date)}
+                    {formatDate(currentTransaction.date, { weekday: true, showYear: "always" })}
                   </span>
                 </div>
               </CardHeader>
