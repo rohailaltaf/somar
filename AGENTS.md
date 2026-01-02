@@ -145,10 +145,11 @@ function MyComponent() {
 React hooks that work on any platform with a `DatabaseProvider`:
 
 ```typescript
-import { useTransactions, useAccounts, useCategories } from "@somar/shared/hooks";
+import { useTransactions, useRecentTransactions, useAccounts, useCategories } from "@somar/shared/hooks";
 
 function Dashboard() {
   const { data: transactions } = useTransactions();
+  const { data: recentTxns } = useRecentTransactions(5); // Optimized for dashboards
   const { data: accounts } = useAccounts();
   // ...
 }
@@ -511,6 +512,10 @@ OPENAI_API_KEY=your_key  # For LLM deduplication (optional)
 // Get daily cumulative spending for a month (for burn-up chart)
 getDailyCumulativeSpending(db: DatabaseAdapter, month: string)
 // Returns: [{ day: 1, date: "2024-01", cumulative: 150 }, ...]
+
+// Get recent transactions with limit (optimized for dashboards)
+getRecentTransactions(db: DatabaseAdapter, limit: number)
+// Returns: TransactionWithRelations[] (uses database LIMIT, O(1) performance)
 
 // Existing functions used:
 getTotalSpending(db: DatabaseAdapter, month: string)
