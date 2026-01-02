@@ -1,13 +1,20 @@
 import type { Metadata } from "next";
-import { Lato } from "next/font/google";
+import { Instrument_Serif, DM_Sans } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { Providers } from "./providers";
 import "./globals.css";
 
-const lato = Lato({
-  variable: "--font-lato",
+const instrumentSerif = Instrument_Serif({
+  variable: "--font-serif",
   subsets: ["latin"],
-  weight: ["300", "400", "700", "900"],
+  weight: ["400"],
+  style: ["normal", "italic"],
+});
+
+const dmSans = DM_Sans({
+  variable: "--font-sans",
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -22,7 +29,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${lato.variable} font-sans antialiased`}>
+      <body className={`${instrumentSerif.variable} ${dmSans.variable} font-sans antialiased`}>
         <Providers>
           {children}
         </Providers>
