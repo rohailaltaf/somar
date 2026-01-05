@@ -257,6 +257,19 @@
   animation: breathe 4s ease-in-out infinite;
 }
 
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 0.03;
+  }
+  50% {
+    opacity: 0.08;
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 8s ease-in-out infinite;
+}
+
 /* Stagger delays */
 .delay-100 { animation-delay: 100ms; }
 .delay-200 { animation-delay: 200ms; }
