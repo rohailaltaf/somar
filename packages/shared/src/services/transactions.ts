@@ -145,10 +145,28 @@ export function getTotalSpending(db: DatabaseAdapter, month: string): number {
   return result?.total ?? 0;
 }
 
+export interface SpendingByCategoryOptions {
+  /** Only include categories with spending above this amount */
+  minSpent?: number;
+  /** Limit the number of results returned */
+  limit?: number;
+}
+
 export function getSpendingByCategory(
   db: DatabaseAdapter,
-  month: string
+  month: string,
+  options?: SpendingByCategoryOptions
 ): Array<{ id: string; name: string; color: string; spent: number; budget: number | null }> {
+  const { minSpent, limit } = options ?? {};
+
+  // Build query with optional HAVING and LIMIT clauses
+  const havingClause = minSpent !== undefined ? `HAVING spent > ?` : "";
+  const limitClause = limit !== undefined ? `LIMIT ?` : "";
+
+  const params: (string | number)[] = [month, `${month}%`];
+  if (minSpent !== undefined) params.push(minSpent);
+  if (limit !== undefined) params.push(limit);
+
   const rows = db.all<{
     id: string;
     name: string;
@@ -169,8 +187,10 @@ export function getSpendingByCategory(
        AND t.date LIKE ?
      WHERE c.type = 'spending'
      GROUP BY c.id
-     ORDER BY spent DESC`,
-    [month, `${month}%`]
+     ${havingClause}
+     ORDER BY spent DESC
+     ${limitClause}`,
+    params
   );
 
   return rows.map(r => ({

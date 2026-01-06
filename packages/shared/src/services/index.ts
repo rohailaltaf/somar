@@ -32,6 +32,7 @@ export {
   uncategorizeTransaction,
   extractMerchantPattern,
   type SpendingTransaction,
+  type SpendingByCategoryOptions,
 } from "./transactions";
 
 // Account operations

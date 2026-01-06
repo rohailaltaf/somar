@@ -20,6 +20,7 @@ export {
   useSpendingByCategory,
   useTransactionMutations,
   type TransactionFilterOptions,
+  type SpendingByCategoryOptions,
 } from "./use-transactions";
 
 // Account hooks
