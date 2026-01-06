@@ -81,8 +81,9 @@ pnpm --filter mobile android   # Start Android emulator
 - **User Database:** SQLite via sql.js (web) / expo-sqlite (mobile), encrypted
 - **UI (Web):** shadcn/ui components + Tailwind CSS v4
 - **UI (Mobile):** NativeWind (Tailwind for React Native)
-- **Font:** Lato (Google Fonts)
-- **Animations:** Framer Motion (for tagger swipe)
+- **Fonts:** DM Sans (body text) + Instrument Serif (display/numbers)
+- **Animations (Web):** Framer Motion (for tagger swipe and dashboard)
+- **Animations (Mobile):** react-native-reanimated + expo-haptics
 - **Charts:** Recharts (for reports/analytics)
 - **Financial Data:** Plaid (for bank connections)
 - **Language:** TypeScript
@@ -217,7 +218,8 @@ somar/
 │       │       │   └── expo-sqlite-adapter.ts  # expo-sqlite → DatabaseAdapter
 │       │       ├── auth-client.ts  # Better Auth client
 │       │       ├── api.ts          # API helpers
-│       │       └── theme.ts        # Theme colors for native components
+│       │       ├── theme.ts        # Theme colors for native components
+│       │       └── color.ts        # Color conversion utilities (oklch to hex)
 │       ├── global.css              # NativeWind theme variables
 │       ├── tailwind.config.js      # Tailwind/NativeWind config
 │       ├── app.json                # Expo config
@@ -850,6 +852,7 @@ With 10,000+ transactions, performance remains the same due to server-side pagin
 16. **Mobile needs explicit @expo/metro-runtime**: Due to pnpm's symlink structure, `@expo/metro-runtime` must be listed as an explicit dependency in mobile's package.json.
 17. **Encryption key from password**: The encryption key is derived from the user's password. If password is forgotten, data is unrecoverable (by design).
 18. **Mobile theme colors for native components**: Some React Native components (`ActivityIndicator`, `Ionicons`, `RefreshControl`) don't accept `className` and need raw color strings. Use `themeColors` from `apps/mobile/src/lib/theme.ts` with `useColorScheme()` from NativeWind. If you add colors to `global.css`, also add them to `theme.ts`. See `apps/mobile/README.md` for details.
+19. **OKLCH color conversion for mobile**: Category colors are stored as OKLCH strings but mobile native components need hex values. Use `oklchToHex()` from `apps/mobile/src/lib/color.ts` to convert category colors when rendering outside NativeWind.
 
 ## Additional Documentation
 
@@ -857,4 +860,5 @@ Detailed documentation for specific subsystems:
 
 | File | Description |
 |------|-------------|
+| [docs/design-system.md](docs/design-system.md) | Visual design system for dashboard screens (colors, typography, animations, components) |
 | [docs/deduplication.md](docs/deduplication.md) | AI-powered transaction deduplication system (2-tier: deterministic + LLM) |
