@@ -27,6 +27,9 @@ import {
 import {
   getCurrentMonth,
   getPreviousMonth,
+  getPercentageChange,
+  getBudgetProgress,
+  getBudgetRemaining,
   formatMonth,
   formatCurrency,
 } from "@somar/shared";
@@ -84,11 +87,9 @@ function DashboardContent() {
     (sum, cat) => sum + (cat.budget || 0),
     0
   );
-  const budgetPercentage = totalBudget > 0 ? (totalSpending / totalBudget) * 100 : 0;
-  const spendingChange = lastMonthSpending > 0
-    ? ((totalSpending - lastMonthSpending) / lastMonthSpending) * 100
-    : 0;
-  const budgetRemaining = Math.max(0, totalBudget - totalSpending);
+  const budgetProgress = getBudgetProgress(totalSpending, totalBudget);
+  const spendingChange = getPercentageChange(Math.abs(totalSpending), Math.abs(lastMonthSpending));
+  const budgetRemaining = getBudgetRemaining(totalSpending, totalBudget);
 
   const topCategories = categorySpending
     .filter((cat) => cat.spent > 0)
@@ -181,7 +182,7 @@ function DashboardContent() {
                       {formatCurrency(budgetRemaining)} left
                     </span>
                   </div>
-                  <BudgetBar percentage={budgetPercentage} />
+                  <BudgetBar percentage={budgetProgress * 100} />
                 </motion.div>
               )}
             </div>
@@ -476,7 +477,9 @@ function AnimatedCurrency({ value }: { value: number }) {
 }
 
 // Trend Badge Component
-function TrendBadge({ change }: { change: number }) {
+function TrendBadge({ change }: { change: number | null }) {
+  if (change === null) return null;
+
   const isUp = change > 0;
   const isDown = change < 0;
 
@@ -495,7 +498,7 @@ function TrendBadge({ change }: { change: number }) {
       ) : isDown ? (
         <ArrowDownRight className="w-3.5 h-3.5" />
       ) : null}
-      {Math.abs(change).toFixed(0)}%
+      {Math.abs(change)}%
       <span className="text-[0.65rem] opacity-70">vs last mo</span>
     </div>
   );

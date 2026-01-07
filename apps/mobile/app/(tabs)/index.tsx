@@ -31,6 +31,8 @@ import {
   getCurrentMonth,
   getPreviousMonth,
   getPercentageChange,
+  getBudgetProgress,
+  getBudgetRemaining,
 } from "@somar/shared";
 import { spacing } from "@somar/shared/theme";
 import { oklchToHex } from "@somar/shared/utils";
@@ -81,8 +83,8 @@ export default function Dashboard() {
     [categoriesWithBudgets]
   );
 
-  const budgetProgress = totalBudget > 0 ? Math.abs(currentSpending) / totalBudget : 0;
-  const budgetRemaining = Math.max(0, totalBudget - Math.abs(currentSpending));
+  const budgetProgress = getBudgetProgress(currentSpending, totalBudget);
+  const budgetRemaining = getBudgetRemaining(currentSpending, totalBudget);
 
   // Get top spending categories (DB already limits to 5 via hook options)
   const categoryProgress = useMemo(() => {
