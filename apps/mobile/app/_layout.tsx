@@ -14,6 +14,14 @@ import {
 } from "react-native";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useFonts } from "expo-font";
+import { InstrumentSerif_400Regular } from "@expo-google-fonts/instrument-serif";
+import {
+  DMSans_400Regular,
+  DMSans_500Medium,
+  DMSans_600SemiBold,
+  DMSans_700Bold,
+} from "@expo-google-fonts/dm-sans";
 import { AuthProvider, useAuth } from "../src/providers";
 import { FormTextInput, DecryptingScreen } from "../src/components/ui";
 import { unlockSchema, type UnlockFormData } from "../src/lib/validation";
@@ -188,6 +196,19 @@ function RootLayoutContent() {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    InstrumentSerif_400Regular,
+    DMSans_400Regular,
+    DMSans_500Medium,
+    DMSans_600SemiBold,
+    DMSans_700Bold,
+  });
+
+  // Show nothing while fonts load (or could show splash screen)
+  if (!fontsLoaded) {
+    return null;
+  }
+
   return (
     <AuthProvider>
       <RootLayoutContent />
