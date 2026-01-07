@@ -85,6 +85,16 @@ const { colorScheme } = useColorScheme();
 const colors = themeColors[colorScheme ?? "light"];
 ```
 
+**Mobile Dark Mode RGB Values** (synchronized with web's OKLCH):
+
+| Token | OKLCH | RGB | Hex |
+|-------|-------|-----|-----|
+| background | `oklch(0.08 0.015 260)` | `10 11 18` | `#0a0b12` |
+| card | `oklch(0.11 0.02 260)` | `16 18 29` | `#10121d` |
+| surface | `oklch(0.12 0.02 260)` | `18 20 32` | `#121420` |
+| border | `oklch(0.28 0.02 260)` | `46 50 66` | `#2e3242` |
+| muted-foreground | `oklch(0.65 0.02 260)` | `148 154 170` | `#949aaa` |
+
 ## Typography
 
 ### Font Stack
@@ -293,6 +303,12 @@ Cards in a grid layout with varying sizes. The main spending card spans multiple
 └─────────────────────────┴────────────┘
 ```
 
+**Minimum Heights:**
+| Card Type | Web | Mobile |
+|-----------|-----|--------|
+| Main spending card | 320px (lg: 380px) | N/A (hero section) |
+| Side cards (uncategorized, accounts) | 160px | 160px |
+
 **Highlight state (gradient border):**
 ```tsx
 // Web
@@ -308,9 +324,9 @@ Cards in a grid layout with varying sizes. The main spending card spans multiple
   colors={["#4f46e5", "#6366f1", "#4f46e5"]}
   start={{ x: 0, y: 0 }}
   end={{ x: 1, y: 1 }}
-  style={{ borderRadius: 20, padding: 1.5 }}
+  style={{ borderRadius: 20, padding: 1.5, minHeight: 160 }}
 >
-  <View style={{ backgroundColor: "#0d0f1a", borderRadius: 19 }}>
+  <View style={{ backgroundColor: "#0a0b12", borderRadius: 19 }}>
     {/* Content */}
   </View>
 </LinearGradient>
@@ -347,11 +363,21 @@ Shows category spending with animated progress bar.
 └──────────────────────────────────────────┘
 ```
 
-**Color dot glow:**
+**Color dot (12px on both platforms):**
 ```tsx
+// Web
+className="w-3 h-3 rounded-full"
+style={{ backgroundColor: color, boxShadow: `0 0 8px ${color}80` }}
+
+// Mobile
 style={{
+  width: 12,
+  height: 12,
+  borderRadius: 6,
   backgroundColor: color,
-  boxShadow: `0 0 8px ${color}80`  // 50% opacity glow
+  shadowColor: color,
+  shadowOpacity: 0.5,
+  shadowRadius: 4,
 }}
 ```
 
@@ -473,13 +499,18 @@ style={{ flexDirection: "row", gap: 12, paddingHorizontal: 20 }}
 
 ### Border Radius
 
-| Element | Radius |
-|---------|--------|
-| Hero card | 24px (rounded-3xl) |
-| Standard card | 16px (rounded-2xl) |
-| Buttons/badges | 12-20px |
-| Progress bars | 4px |
-| Color dots | 50% (circular) |
+Use a consolidated 5-value scale. Larger elements get softer corners; smaller elements stay sharper.
+
+| Value | Tailwind | Mobile | Usage |
+|-------|----------|--------|-------|
+| 24px | `rounded-3xl` | `borderRadius: 24` | Hero cards, large modals |
+| 16px | `rounded-2xl` | `borderRadius: 16` | Standard cards, panels, quick actions |
+| 12px | `rounded-xl` | `borderRadius: 12` | Icon containers, inputs |
+| 8px | `rounded-lg` | `borderRadius: 8` | Small interactive elements, icon backgrounds |
+| 4px | `rounded` | `borderRadius: 4` | Progress bars, tiny details |
+| pill | `rounded-full` | `borderRadius: 9999` | Pills, badges, dots, avatars |
+
+**Principle:** The jump between values is roughly 1.5-2x, creating visual rhythm. Avoid arbitrary intermediate values (3px, 2px, etc.).
 
 ## Haptic Feedback (Mobile)
 

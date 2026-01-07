@@ -115,7 +115,7 @@ Some React Native components **don't accept `className`** and need raw color str
 ```tsx
 // ❌ These don't work with className
 <ActivityIndicator color={???} />
-<Ionicons color={???} />
+<Search color={???} />  // Lucide icon
 <RefreshControl tintColor={???} />
 ```
 
@@ -124,12 +124,13 @@ Solution — import pre-computed hex values:
 ```tsx
 import { themeColors } from "../src/lib/theme";
 import { useColorScheme } from "nativewind";
+import { Search } from "lucide-react-native";
 
 const { colorScheme } = useColorScheme();
 const colors = themeColors[colorScheme ?? "light"];
 
 <ActivityIndicator color={colors.primaryForeground} />
-<Ionicons color={colors.mutedForeground} />
+<Search color={colors.mutedForeground} />
 <RefreshControl tintColor={colors.primary} />
 ```
 
