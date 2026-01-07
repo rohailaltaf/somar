@@ -42,7 +42,34 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  
+
+  /* Surface hierarchy (dark premium theme) */
+  --color-surface-deep: var(--surface-deep);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-surface-overlay: var(--surface-overlay);
+
+  /* Extended text hierarchy */
+  --color-foreground-bright: var(--foreground-bright);
+  --color-foreground-secondary: var(--foreground-secondary);
+  --color-foreground-muted: var(--foreground-muted);
+  --color-foreground-dim: var(--foreground-dim);
+
+  /* Extended border hierarchy */
+  --color-border-subtle: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+
+  /* Status colors */
+  --color-success: var(--success);
+  --color-success-muted: var(--success-muted);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-danger-muted: var(--danger-muted);
+
+  /* Premium accent (gold) */
+  --color-gold: var(--gold);
+  --color-gold-muted: var(--gold-muted);
+
   /* Category colors */
   --color-category-personal: oklch(0.65 0.15 280);
   --color-category-reimbursed: oklch(0.7 0.15 150);
@@ -129,6 +156,33 @@
   --sidebar-accent-foreground: oklch(0.95 0.01 260);
   --sidebar-border: oklch(0.28 0.02 260);
   --sidebar-ring: oklch(0.65 0.18 260);
+
+  /* Surface hierarchy - matched to mobile */
+  --surface-deep: oklch(0.08 0.015 260);
+  --surface: oklch(0.12 0.02 260);
+  --surface-elevated: oklch(0.16 0.02 260);
+  --surface-overlay: oklch(0.18 0.02 260);
+
+  /* Extended text hierarchy */
+  --foreground-bright: oklch(0.98 0.01 260);
+  --foreground-secondary: oklch(0.85 0.02 260);
+  --foreground-muted: oklch(0.65 0.02 260);
+  --foreground-dim: oklch(0.45 0.02 260);
+
+  /* Extended border hierarchy */
+  --border-subtle: oklch(0.25 0.02 260 / 0.5);
+  --border-strong: oklch(0.35 0.02 260);
+
+  /* Status colors */
+  --success: oklch(0.7 0.15 145);
+  --success-muted: oklch(0.75 0.12 145);
+  --warning: oklch(0.75 0.18 85);
+  --danger: oklch(0.6 0.2 25);
+  --danger-muted: oklch(0.7 0.15 25);
+
+  /* Premium accent (gold) */
+  --gold: oklch(0.78 0.12 75);
+  --gold-muted: oklch(0.55 0.08 75);
 }
 
 @layer base {
@@ -262,12 +316,12 @@
     opacity: 0.03;
   }
   50% {
-    opacity: 0.08;
+    opacity: 0.045;
   }
 }
 
 .animate-pulse-glow {
-  animation: pulse-glow 8s ease-in-out infinite;
+  animation: pulse-glow 16s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 /* Stagger delays */

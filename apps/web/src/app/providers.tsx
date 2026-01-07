@@ -22,18 +22,18 @@ import { toast } from "sonner";
  */
 function DecryptingScreen() {
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
+    <div className="fixed inset-0 flex items-center justify-center bg-surface-deep p-4">
       <div className="text-center">
         <div className="relative inline-flex">
-          <div className="w-16 h-16 rounded-full bg-indigo-500/20 flex items-center justify-center">
-            <Lock className="w-8 h-8 text-indigo-400" />
+          <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
+            <Lock className="w-8 h-8 text-primary" />
           </div>
-          <Loader2 className="absolute -top-1 -right-1 w-6 h-6 animate-spin text-indigo-400" />
+          <Loader2 className="absolute -top-1 -right-1 w-6 h-6 animate-spin text-primary" />
         </div>
-        <h2 className="mt-6 text-xl font-semibold text-white">
+        <h2 className="mt-6 text-xl font-semibold text-foreground">
           Decrypting your data
         </h2>
-        <p className="mt-2 text-slate-400 max-w-xs">
+        <p className="mt-2 text-muted-foreground max-w-xs">
           Your financial data is end-to-end encrypted. Loading securely...
         </p>
       </div>
@@ -46,22 +46,22 @@ function DecryptingScreen() {
  */
 function DatabaseErrorScreen({ error }: { error: Error }) {
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
-      <Card className="w-full max-w-md border-slate-700 bg-slate-800/50 backdrop-blur">
+    <div className="fixed inset-0 flex items-center justify-center bg-surface-deep p-4">
+      <Card className="w-full max-w-md border-border bg-surface">
         <CardHeader className="text-center">
-          <div className="mx-auto w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center mb-2">
-            <AlertCircle className="w-6 h-6 text-red-400" />
+          <div className="mx-auto w-12 h-12 rounded-full bg-danger/20 flex items-center justify-center mb-2">
+            <AlertCircle className="w-6 h-6 text-danger" />
           </div>
-          <CardTitle className="text-xl text-red-400">
+          <CardTitle className="text-xl text-danger">
             Error Loading Data
           </CardTitle>
-          <CardDescription className="text-slate-400">
+          <CardDescription className="text-muted-foreground">
             {error.message}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Button
-            className="w-full bg-indigo-600 hover:bg-indigo-700"
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
             onClick={() => (window.location.href = "/login")}
           >
             Try Signing In Again
@@ -129,21 +129,21 @@ function UnlockPrompt() {
   }
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
-      <Card className="w-full max-w-md border-slate-700 bg-slate-800/50 backdrop-blur">
+    <div className="fixed inset-0 flex items-center justify-center bg-surface-deep p-4">
+      <Card className="w-full max-w-md border-border bg-surface">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold text-white">
+          <CardTitle className="text-2xl font-bold text-foreground">
             Unlock Your Data
           </CardTitle>
-          <CardDescription className="text-slate-400">
-            Welcome back, {session?.user?.name || session?.user?.email}! 
+          <CardDescription className="text-muted-foreground">
+            Welcome back, {session?.user?.name || session?.user?.email}!
             Enter your password to decrypt your data in this tab.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <form onSubmit={handleUnlock} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-slate-200">
+              <Label htmlFor="password" className="text-foreground-secondary">
                 Password
               </Label>
               <Input
@@ -154,12 +154,12 @@ function UnlockPrompt() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 autoFocus
-                className="border-slate-600 bg-slate-700/50 text-white placeholder:text-slate-400"
+                className="border-border bg-surface-elevated text-foreground placeholder:text-foreground-dim"
               />
             </div>
             <Button
               type="submit"
-              className="w-full bg-indigo-600 hover:bg-indigo-700"
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
               disabled={isUnlocking}
             >
               {isUnlocking ? "Unlocking..." : "Unlock"}
@@ -169,12 +169,12 @@ function UnlockPrompt() {
             <button
               type="button"
               onClick={handleSignOut}
-              className="text-sm text-slate-400 hover:text-slate-300 hover:underline"
+              className="text-sm text-muted-foreground hover:text-foreground-secondary hover:underline"
             >
               Sign out instead
             </button>
           </div>
-          <p className="text-xs text-slate-500 text-center">
+          <p className="text-xs text-foreground-dim text-center">
             Your data is encrypted with your password. We need it to decrypt your data in this browser tab.
           </p>
         </CardContent>
@@ -189,9 +189,9 @@ function UnlockPrompt() {
  */
 function AuthLoadingScreen() {
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
+    <div className="fixed inset-0 flex items-center justify-center bg-surface-deep p-4">
       <div className="text-center">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-400 mx-auto" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
       </div>
     </div>
   );

@@ -50,11 +50,11 @@ export default function LoginPage() {
   // Show fullscreen loading when redirecting
   if (isRedirecting) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      <div className="fixed inset-0 flex items-center justify-center bg-surface-deep">
         <div className="text-center space-y-4">
-          <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
-          <h2 className="text-xl font-semibold text-white">Signing in...</h2>
-          <p className="text-slate-400">Preparing your encrypted data</p>
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+          <h2 className="text-xl font-semibold text-foreground">Signing in...</h2>
+          <p className="text-muted-foreground">Preparing your encrypted data</p>
         </div>
       </div>
     );
@@ -79,12 +79,12 @@ export default function LoginPage() {
   }
 
   return (
-    <Card className="border-slate-700 bg-slate-800/50 backdrop-blur">
+    <Card className="border-border bg-surface">
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-bold text-white">
+        <CardTitle className="text-2xl font-bold text-foreground">
           Welcome back
         </CardTitle>
-        <CardDescription className="text-slate-400">
+        <CardDescription className="text-muted-foreground">
           Sign in to access your finances
         </CardDescription>
       </CardHeader>
@@ -118,10 +118,10 @@ export default function LoginPage() {
 
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-slate-600" />
+            <span className="w-full border-t border-border" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-slate-800 px-2 text-slate-400">
+            <span className="bg-surface px-2 text-muted-foreground">
               Or continue with email
             </span>
           </div>
@@ -138,7 +138,7 @@ export default function LoginPage() {
             </Alert>
           )}
           <div className="space-y-2">
-            <Label htmlFor="email" className="text-slate-200">
+            <Label htmlFor="email" className="text-foreground-secondary">
               Email
             </Label>
             <Input
@@ -151,11 +151,11 @@ export default function LoginPage() {
                 setError(null); // Clear error when user types
               }}
               required
-              className="border-slate-600 bg-slate-700/50 text-white placeholder:text-slate-400"
+              className="border-border bg-surface-elevated text-foreground placeholder:text-foreground-dim"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password" className="text-slate-200">
+            <Label htmlFor="password" className="text-foreground-secondary">
               Password
             </Label>
             <Input
@@ -169,12 +169,12 @@ export default function LoginPage() {
               }}
               required
               minLength={8}
-              className="border-slate-600 bg-slate-700/50 text-white placeholder:text-slate-400"
+              className="border-border bg-surface-elevated text-foreground placeholder:text-foreground-dim"
             />
           </div>
           <Button
             type="submit"
-            className="w-full bg-indigo-600 hover:bg-indigo-700"
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
             disabled={isLoading}
           >
             {isLoading ? "Signing in..." : "Sign in"}
@@ -182,13 +182,13 @@ export default function LoginPage() {
         </form>
       </CardContent>
       <CardFooter className="flex-col gap-2">
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-muted-foreground">
           Don&apos;t have an account?{" "}
-          <Link href="/register" className="text-indigo-400 hover:underline">
+          <Link href="/register" className="text-primary hover:underline">
             Sign up
           </Link>
         </p>
-        <p className="text-xs text-slate-500 text-center">
+        <p className="text-xs text-foreground-dim text-center">
           Your data is encrypted with your password. We can never see it.
         </p>
       </CardFooter>

@@ -3,99 +3,99 @@
 @tailwind utilities;
 
 /*
- * Design System for Somar Mobile
+ * Premium Design System for Somar Mobile
+ * Synchronized with Web's Financial Observatory Theme
  *
- * Core principles:
- * - Bold, confident typography
- * - Generous whitespace
- * - Subtle depth through shadows
- * - Meaningful color usage
+ * All colors are RGB equivalents of the web's oklch values
+ * to ensure perfect visual consistency across platforms.
  */
 
 /* Light mode (default) */
 :root {
-  /* Base colors */
-  --color-background: 255 255 255;
-  --color-foreground: 15 23 42;
+  /* Base colors - oklch(0.98 0.005 260) / oklch(0.15 0.02 260) */
+  --color-background: 250 250 252;
+  --color-foreground: 21 24 38;
 
   /* Surface hierarchy */
   --color-card: 255 255 255;
-  --color-card-foreground: 15 23 42;
-  --color-surface: 248 250 252;
+  --color-card-foreground: 21 24 38;
+  --color-surface: 248 249 252;
   --color-surface-elevated: 255 255 255;
 
-  /* Muted/secondary */
-  --color-muted: 241 245 249;
-  --color-muted-foreground: 100 116 139;
-  --color-secondary: 226 232 240;
-  --color-secondary-foreground: 71 85 105;
+  /* Muted/secondary - oklch(0.95 0.01 260) / oklch(0.5 0.02 260) */
+  --color-muted: 237 238 244;
+  --color-muted-foreground: 113 118 138;
+  --color-secondary: 226 228 238;
+  --color-secondary-foreground: 56 60 78;
 
-  /* Brand / Primary */
-  --color-primary: 99 102 241;
+  /* Brand / Primary - oklch(0.45 0.18 260) */
+  --color-primary: 79 70 205;
   --color-primary-foreground: 255 255 255;
-  --color-primary-muted: 224 231 255;
+  --color-primary-muted: 224 222 252;
 
   /* Semantic colors */
-  --color-border: 226 232 240;
-  --color-border-subtle: 241 245 249;
-  --color-destructive: 239 68 68;
-  --color-destructive-muted: 254 226 226;
+  --color-border: 226 228 238;
+  --color-border-subtle: 237 238 244;
+  --color-destructive: 220 53 69;
+  --color-destructive-muted: 254 226 228;
   --color-success: 34 197 94;
   --color-success-muted: 220 252 231;
   --color-warning: 245 158 11;
   --color-warning-muted: 254 243 199;
-  --color-accent: 99 102 241;
+  --color-accent: 79 70 205;
 
   /* Text hierarchy */
-  --color-text-primary: 15 23 42;
-  --color-text-secondary: 71 85 105;
-  --color-text-tertiary: 148 163 184;
+  --color-text-primary: 21 24 38;
+  --color-text-secondary: 56 60 78;
+  --color-text-tertiary: 133 138 158;
   --color-text-inverse: 255 255 255;
 
   /* Overlay */
   --color-overlay: 0 0 0;
 }
 
-/* Dark mode - respects system preference */
+/* Dark mode - Premium Financial Observatory theme
+ * Exact RGB conversions from web's oklch colors
+ * Matched to web dashboard: oklch(0.08 0.015 260) background */
 @media (prefers-color-scheme: dark) {
   :root {
-    /* Base colors */
-    --color-background: 2 6 23;
-    --color-foreground: 248 250 252;
+    /* Base colors - oklch(0.08 0.015 260) for deep observatory feel */
+    --color-background: 10 11 18;
+    --color-foreground: 240 241 245;
 
-    /* Surface hierarchy */
-    --color-card: 15 23 42;
-    --color-card-foreground: 248 250 252;
-    --color-surface: 15 23 42;
-    --color-surface-elevated: 30 41 59;
+    /* Surface hierarchy - oklch(0.11/0.12/0.16 0.02 260) */
+    --color-card: 16 18 29;
+    --color-card-foreground: 240 241 245;
+    --color-surface: 18 20 32;
+    --color-surface-elevated: 26 29 46;
 
-    /* Muted/secondary */
-    --color-muted: 30 41 59;
-    --color-muted-foreground: 148 163 184;
-    --color-secondary: 51 65 85;
-    --color-secondary-foreground: 203 213 225;
+    /* Muted/secondary - oklch(0.25/0.65 0.02 260) */
+    --color-muted: 40 44 60;
+    --color-muted-foreground: 148 154 170;
+    --color-secondary: 50 54 72;
+    --color-secondary-foreground: 200 203 215;
 
-    /* Brand / Primary */
-    --color-primary: 129 140 248;
-    --color-primary-foreground: 15 23 42;
-    --color-primary-muted: 30 27 75;
+    /* Brand / Primary - oklch(0.65 0.18 260) */
+    --color-primary: 124 127 245;
+    --color-primary-foreground: 10 11 18;
+    --color-primary-muted: 46 45 92;
 
     /* Semantic colors */
-    --color-border: 51 65 85;
-    --color-border-subtle: 30 41 59;
+    --color-border: 46 50 66;
+    --color-border-subtle: 30 33 48;
     --color-destructive: 248 113 113;
-    --color-destructive-muted: 69 26 26;
+    --color-destructive-muted: 68 35 42;
     --color-success: 74 222 128;
-    --color-success-muted: 20 83 45;
+    --color-success-muted: 28 72 52;
     --color-warning: 251 191 36;
-    --color-warning-muted: 69 46 6;
-    --color-accent: 129 140 248;
+    --color-warning-muted: 68 58 28;
+    --color-accent: 124 127 245;
 
     /* Text hierarchy */
-    --color-text-primary: 248 250 252;
-    --color-text-secondary: 203 213 225;
-    --color-text-tertiary: 100 116 139;
-    --color-text-inverse: 15 23 42;
+    --color-text-primary: 240 241 245;
+    --color-text-secondary: 180 184 200;
+    --color-text-tertiary: 108 114 138;
+    --color-text-inverse: 10 11 18;
 
     /* Overlay */
     --color-overlay: 0 0 0;

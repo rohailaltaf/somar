@@ -8,7 +8,7 @@ import {
   Pressable,
 } from "react-native";
 import { useColorScheme } from "nativewind";
-import { Ionicons } from "@expo/vector-icons";
+import { Search, X } from "lucide-react-native";
 import { useTransactions, useTotalSpending } from "@somar/shared/hooks";
 import type { TransactionWithRelations } from "@somar/shared";
 import { getCurrentMonth } from "@somar/shared";
@@ -117,11 +117,11 @@ export default function Transactions() {
             }}
             className="w-10 h-10 rounded-full bg-muted items-center justify-center"
           >
-            <Ionicons
-              name={searchVisible ? "close" : "search"}
-              size={20}
-              color={colors.mutedForeground}
-            />
+            {searchVisible ? (
+              <X size={20} color={colors.mutedForeground} />
+            ) : (
+              <Search size={20} color={colors.mutedForeground} />
+            )}
           </Pressable>
         </View>
 
