@@ -1,6 +1,6 @@
 import { Tabs } from "expo-router";
 import { useColorScheme, View, Text, ActivityIndicator, Pressable, Alert } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { LogOut, LayoutGrid, Receipt } from "lucide-react-native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { useAuth, DatabaseProvider } from "../../src/providers";
@@ -28,7 +28,7 @@ function SignOutButton() {
 
   return (
     <Pressable onPress={handleSignOut} className="mr-4 p-2">
-      <Ionicons name="log-out-outline" size={22} color="#64748b" />
+      <LogOut size={22} color="#64748b" />
     </Pressable>
   );
 }
@@ -138,10 +138,10 @@ function TabNavigator() {
           options={{
             title: "Dashboard",
             tabBarIcon: ({ color, focused }) => (
-              <Ionicons
-                name={focused ? "grid" : "grid-outline"}
+              <LayoutGrid
                 size={24}
                 color={color}
+                strokeWidth={focused ? 2.5 : 1.5}
               />
             ),
             headerRight: () => <SignOutButton />,
@@ -152,10 +152,10 @@ function TabNavigator() {
           options={{
             title: "Transactions",
             tabBarIcon: ({ color, focused }) => (
-              <Ionicons
-                name={focused ? "receipt" : "receipt-outline"}
+              <Receipt
                 size={24}
                 color={color}
+                strokeWidth={focused ? 2.5 : 1.5}
               />
             ),
           }}
