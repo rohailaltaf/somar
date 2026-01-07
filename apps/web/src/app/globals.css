@@ -70,18 +70,6 @@
   --color-gold: var(--gold);
   --color-gold-muted: var(--gold-muted);
 
-  /* Category colors */
-  --color-category-personal: oklch(0.65 0.15 280);
-  --color-category-reimbursed: oklch(0.7 0.15 150);
-  --color-category-restaurant: oklch(0.65 0.2 30);
-  --color-category-work: oklch(0.55 0.15 250);
-  --color-category-house: oklch(0.6 0.12 80);
-  --color-category-entertainment: oklch(0.65 0.2 330);
-  --color-category-travel: oklch(0.6 0.18 200);
-  --color-category-shopping: oklch(0.65 0.18 350);
-  --color-category-car: oklch(0.5 0.12 240);
-  --color-category-grocery: oklch(0.65 0.18 140);
-  --color-category-subscriptions: oklch(0.6 0.15 300);
 }
 
 :root {
@@ -192,17 +180,6 @@
   html, body {
     @apply bg-background text-foreground overflow-x-hidden;
   }
-}
-
-/* Dashboard Premium Theme Overrides */
-.dashboard-premium {
-  --premium-gold: oklch(0.78 0.12 75);
-  --premium-gold-dim: oklch(0.55 0.08 75);
-  --premium-copper: oklch(0.65 0.14 55);
-  --premium-glow: oklch(0.45 0.18 260 / 0.5);
-  --premium-surface: oklch(0.16 0.02 260);
-  --premium-surface-elevated: oklch(0.20 0.02 260);
-  --premium-border-subtle: oklch(0.28 0.02 260 / 0.5);
 }
 
 /* Animations */
@@ -333,70 +310,6 @@
 .delay-600 { animation-delay: 600ms; }
 .delay-700 { animation-delay: 700ms; }
 .delay-800 { animation-delay: 800ms; }
-
-/* Premium text styles */
-.text-gradient-gold {
-  background: linear-gradient(135deg, oklch(0.85 0.12 75), oklch(0.65 0.14 55));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.text-gradient-premium {
-  background: linear-gradient(135deg, oklch(0.95 0.01 260), oklch(0.75 0.02 260));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-/* Glassmorphism */
-.glass {
-  background: oklch(0.18 0.02 260 / 0.7);
-  backdrop-filter: blur(20px);
-  border: 1px solid oklch(0.35 0.02 260 / 0.3);
-}
-
-.glass-subtle {
-  background: oklch(0.15 0.02 260 / 0.5);
-  backdrop-filter: blur(12px);
-}
-
-/* Noise texture overlay */
-.noise-overlay::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-  opacity: 0.03;
-  pointer-events: none;
-  mix-blend-mode: overlay;
-}
-
-/* Radial gradient backgrounds */
-.bg-radial-premium {
-  background: radial-gradient(ellipse at 50% 0%, oklch(0.25 0.04 260) 0%, transparent 70%);
-}
-
-.bg-radial-gold {
-  background: radial-gradient(ellipse at 30% 20%, oklch(0.78 0.12 75 / 0.08) 0%, transparent 50%);
-}
-
-/* Ring progress styles */
-.ring-progress {
-  transform: rotate(-90deg);
-  transform-origin: center;
-}
-
-.ring-track {
-  stroke: oklch(0.25 0.02 260);
-  fill: none;
-}
-
-.ring-fill {
-  fill: none;
-  stroke-linecap: round;
-  transition: stroke-dashoffset 1s cubic-bezier(0.16, 1, 0.3, 1);
-}
 
 /* Custom scrollbar - hidden by default, visible on hover */
 * {
