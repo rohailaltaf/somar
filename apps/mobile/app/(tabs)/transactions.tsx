@@ -17,8 +17,8 @@ import {
   SearchEmptyState,
   TransactionsLoadingState,
   DateSectionHeader,
-  TransactionRow,
 } from "../../src/components/ui";
+import { TransactionRow } from "../../src/components/transactions";
 import { themeColors } from "../../src/lib/theme";
 
 interface TransactionSection {
@@ -87,9 +87,6 @@ export default function Transactions() {
     return <TransactionsLoadingState />;
   }
 
-  const hasTransactions = transactions.length > 0;
-  const transactionCount = filteredTransactions.length;
-
   return (
     <View className="flex-1 bg-background">
       {/* Header */}
@@ -142,15 +139,6 @@ export default function Transactions() {
           </View>
         )}
       </View>
-
-      {/* Transaction count */}
-      {hasTransactions && (
-        <View className="px-4 pb-2">
-          <Text className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            {transactionCount} transaction{transactionCount !== 1 ? "s" : ""}
-          </Text>
-        </View>
-      )}
 
       {/* Transaction List */}
       <SectionList

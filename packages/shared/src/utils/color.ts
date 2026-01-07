@@ -1,6 +1,6 @@
 /**
- * Convert oklch color to hex format for React Native compatibility.
- * React Native/Reanimated doesn't support oklch colors.
+ * Color conversion utilities for cross-platform compatibility.
+ * React Native doesn't support oklch colors, so we need to convert them.
  */
 
 // oklch to OKLab conversion
@@ -10,7 +10,11 @@ function oklchToOklab(l: number, c: number, h: number): [number, number, number]
 }
 
 // OKLab to linear RGB
-function oklabToLinearRgb(l: number, a: number, b: number): [number, number, number] {
+function oklabToLinearRgb(
+  l: number,
+  a: number,
+  b: number
+): [number, number, number] {
   const l_ = l + 0.3963377774 * a + 0.2158037573 * b;
   const m_ = l - 0.1055613458 * a - 0.0638541728 * b;
   const s_ = l - 0.0894841775 * a - 1.291485548 * b;
@@ -47,6 +51,22 @@ function rgbToHex(r: number, g: number, b: number): string {
 }
 
 /**
+ * Parse an oklch color string into its components.
+ * Returns null if the string is not a valid oklch color.
+ */
+export function parseOklch(
+  color: string
+): { l: number; c: number; h: number } | null {
+  const match = color.match(/oklch\(\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*\)/);
+  if (!match) return null;
+  return {
+    l: parseFloat(match[1]),
+    c: parseFloat(match[2]),
+    h: parseFloat(match[3]),
+  };
+}
+
+/**
  * Convert an oklch color string to hex.
  * If the color is already in a supported format (hex, rgb), returns it as-is.
  */
@@ -56,17 +76,13 @@ export function oklchToHex(color: string): string {
     return color;
   }
 
-  // Parse oklch(L C H) format
-  const match = color.match(/oklch\(\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*\)/);
-  if (!match) {
+  const parsed = parseOklch(color);
+  if (!parsed) {
     // Fallback for unparseable colors
     return "#6366f1";
   }
 
-  const l = parseFloat(match[1]);
-  const c = parseFloat(match[2]);
-  const h = parseFloat(match[3]);
-
+  const { l, c, h } = parsed;
   const [labL, labA, labB] = oklchToOklab(l, c, h);
   const [linR, linG, linB] = oklabToLinearRgb(labL, labA, labB);
   const sR = linearToSrgb(linR);
@@ -74,4 +90,16 @@ export function oklchToHex(color: string): string {
   const sB = linearToSrgb(linB);
 
   return rgbToHex(sR, sG, sB);
+}
+
+/**
+ * Convert an oklch color string to RGB triplet (for NativeWind CSS variables).
+ * Returns format like "79 70 205" (space-separated RGB values).
+ */
+export function oklchToRgbTriplet(color: string): string {
+  const hex = oklchToHex(color);
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `${r} ${g} ${b}`;
 }

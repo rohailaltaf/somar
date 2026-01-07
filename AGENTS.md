@@ -67,9 +67,10 @@ pnpm --filter web db:safe-reset # Reset database (disconnects Plaid first)
 
 **Mobile app commands:**
 ```bash
-pnpm --filter mobile dev       # Start Expo dev server
-pnpm --filter mobile ios       # Start iOS simulator
-pnpm --filter mobile android   # Start Android emulator
+pnpm --filter mobile dev            # Start Expo dev server
+pnpm --filter mobile ios            # Start iOS simulator
+pnpm --filter mobile android        # Start Android emulator
+pnpm --filter mobile generate:theme # Regenerate global.css from shared theme
 ```
 
 ## Tech Stack
@@ -105,6 +106,12 @@ import { getAllTransactions, confirmTransaction } from "@somar/shared/services";
 
 // Hooks (React hooks) - via subpath
 import { useTransactions, useAccounts, useCategories } from "@somar/shared/hooks";
+
+// Theme colors - via subpath (single source of truth for all colors)
+import { hexColors, oklchColors, rgbColors } from "@somar/shared/theme";
+
+// Utilities - via subpath
+import { oklchToHex, oklchToRgbTriplet } from "@somar/shared/utils";
 ```
 
 ### DatabaseAdapter Abstraction
@@ -154,6 +161,73 @@ function Dashboard() {
   const { data: accounts } = useAccounts();
   // ...
 }
+```
+
+### Theme System
+
+All theme colors are defined in `@somar/shared/theme` as the **single source of truth**. This ensures visual consistency across web and mobile.
+
+**Architecture:**
+```
+┌─────────────────────────────────────────┐
+│  @somar/shared/theme                    │
+│  ─────────────────                      │
+│  oklchColors (source of truth)          │
+│  hexColors (pre-computed at import)     │
+│  rgbColors (pre-computed at import)     │
+└───────────────┬─────────────────────────┘
+                │
+       ┌────────┴────────┐
+       ▼                 ▼
+┌──────────────┐  ┌──────────────────────┐
+│  Web         │  │  Mobile              │
+│  Uses oklch  │  │  generate:theme      │
+│  directly in │  │  → global.css (RGB)  │
+│  globals.css │  │  theme.ts → hexColors│
+└──────────────┘  └──────────────────────┘
+```
+
+**Why different formats?**
+- **Web (oklch):** Modern CSS color space with better perceptual uniformity
+- **Mobile (RGB/hex):** React Native doesn't support oklch; NativeWind needs RGB triplets
+
+**Color exports from `@somar/shared/theme`:**
+```typescript
+import { oklchColors, hexColors, rgbColors, getThemeColors } from "@somar/shared/theme";
+
+// oklchColors - Source of truth, use in web CSS
+oklchColors.light.primary  // "oklch(0.45 0.18 260)"
+oklchColors.dark.background // "oklch(0.08 0.015 260)"
+
+// hexColors - Pre-computed, use for native components
+hexColors.light.primary    // "#044CB6"
+hexColors.dark.success     // "#5BB661"
+
+// rgbColors - Pre-computed, use in NativeWind CSS variables
+rgbColors.light.primary    // "4 76 182"
+
+// getThemeColors(mode) - Get all formats for a mode
+const { oklch, hex, rgb } = getThemeColors("dark");
+```
+
+**Adding/modifying colors:**
+1. Edit `packages/shared/src/theme/colors.ts` - add to `oklchColors`
+2. Hex and RGB values are auto-computed at import time
+3. Run `pnpm --filter mobile generate:theme` to regenerate mobile's `global.css`
+4. Web's `globals.css` uses oklch directly (update manually if needed for web-only features)
+
+**Mobile usage:**
+```typescript
+// For native components (ActivityIndicator, icons, RefreshControl)
+import { themeColors } from "@/lib/theme";
+import { useColorScheme } from "nativewind";
+
+const { colorScheme } = useColorScheme();
+<ActivityIndicator color={themeColors[colorScheme ?? "light"].primary} />
+
+// For category colors (stored as oklch in DB)
+import { oklchToHex } from "@somar/shared/utils";
+<View style={{ backgroundColor: oklchToHex(category.color) }} />
 ```
 
 ## Project Structure
@@ -218,9 +292,11 @@ somar/
 │       │       │   └── expo-sqlite-adapter.ts  # expo-sqlite → DatabaseAdapter
 │       │       ├── auth-client.ts  # Better Auth client
 │       │       ├── api.ts          # API helpers
-│       │       ├── theme.ts        # Theme colors for native components
-│       │       └── color.ts        # Color conversion utilities (oklch to hex)
-│       ├── global.css              # NativeWind theme variables
+│       │       ├── theme.ts        # Theme colors for native components (imports from @somar/shared/theme)
+│       │       └── color.ts        # Re-exports color utils from @somar/shared/utils
+│       ├── scripts/
+│       │   └── generate-theme.ts   # Generates global.css from shared theme
+│       ├── global.css              # NativeWind theme variables (auto-generated)
 │       ├── tailwind.config.js      # Tailwind/NativeWind config
 │       ├── app.json                # Expo config
 │       ├── metro.config.js         # Metro bundler config for pnpm
@@ -238,7 +314,11 @@ somar/
 │       │   │   └── types.ts        # DatabaseAdapter interface
 │       │   ├── utils/              # Shared utilities
 │       │   │   ├── index.ts        # Exports
-│       │   │   └── date.ts         # Date formatting utilities
+│       │   │   ├── date.ts         # Date formatting utilities
+│       │   │   └── color.ts        # Color conversion (oklch → hex/RGB)
+│       │   ├── theme/              # Theme system (single source of truth)
+│       │   │   ├── index.ts        # Exports
+│       │   │   └── colors.ts       # All theme colors in oklch + pre-computed hex/RGB
 │       │   ├── services/           # Data access layer (platform-agnostic)
 │       │   │   ├── index.ts        # Exports all services
 │       │   │   ├── transactions.ts # Transaction queries + categorization
@@ -851,8 +931,9 @@ With 10,000+ transactions, performance remains the same due to server-side pagin
 15. **React version mismatch**: Web uses React ^19.1.4 (patched), Mobile uses React 19.1.0 (must match react-native-renderer). Each app has its own node_modules, so they run together without conflicts.
 16. **Mobile needs explicit @expo/metro-runtime**: Due to pnpm's symlink structure, `@expo/metro-runtime` must be listed as an explicit dependency in mobile's package.json.
 17. **Encryption key from password**: The encryption key is derived from the user's password. If password is forgotten, data is unrecoverable (by design).
-18. **Mobile theme colors for native components**: Some React Native components (`ActivityIndicator`, Lucide icons, `RefreshControl`) don't accept `className` and need raw color strings. Use `themeColors` from `apps/mobile/src/lib/theme.ts` with `useColorScheme()` from NativeWind. If you add colors to `global.css`, also add them to `theme.ts`. See `apps/mobile/README.md` for details.
-19. **OKLCH color conversion for mobile**: Category colors are stored as OKLCH strings but mobile native components need hex values. Use `oklchToHex()` from `apps/mobile/src/lib/color.ts` to convert category colors when rendering outside NativeWind.
+18. **Mobile theme colors for native components**: Some React Native components (`ActivityIndicator`, Lucide icons, `RefreshControl`) don't accept `className` and need raw color strings. Use `themeColors` from `apps/mobile/src/lib/theme.ts` with `useColorScheme()` from NativeWind. Colors come from `@somar/shared/theme`.
+19. **OKLCH color conversion for mobile**: Category colors are stored as OKLCH strings but mobile native components need hex values. Use `oklchToHex()` from `@somar/shared/utils` to convert category colors when rendering outside NativeWind.
+20. **Theme colors are in `@somar/shared/theme`**: All colors are defined once in `packages/shared/src/theme/colors.ts`. When adding colors: (1) add to `oklchColors`, (2) run `pnpm --filter mobile generate:theme` to regenerate mobile CSS. Don't manually edit `apps/mobile/global.css` - it's auto-generated.
 
 ## Additional Documentation
 

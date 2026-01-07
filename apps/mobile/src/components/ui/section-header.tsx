@@ -1,5 +1,8 @@
-import { View, Text } from "react-native";
+import { View, Text, Pressable } from "react-native";
 import { useMemo } from "react";
+import * as Haptics from "expo-haptics";
+import { ChevronRight } from "lucide-react-native";
+import type { ThemeColors } from "../../lib/theme";
 
 interface DateSectionHeaderProps {
   date: string; // YYYY-MM-DD format
@@ -108,6 +111,71 @@ export function SectionHeader({
           {action}
         </Text>
       )}
+    </View>
+  );
+}
+
+interface DashboardSectionHeaderProps {
+  title: string;
+  subtitle: string;
+  actionLabel: string;
+  onAction: () => void;
+  colors: ThemeColors;
+}
+
+/**
+ * Enhanced section header for dashboard with subtitle and action.
+ * Uses inline styles for precise theme control.
+ */
+export function DashboardSectionHeader({
+  title,
+  subtitle,
+  actionLabel,
+  onAction,
+  colors,
+}: DashboardSectionHeaderProps) {
+  return (
+    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+      <View>
+        <Text
+          style={{
+            fontFamily: "DMSans_600SemiBold",
+            fontSize: 18,
+            color: colors.foreground,
+          }}
+        >
+          {title}
+        </Text>
+        <Text
+          style={{
+            fontFamily: "DMSans_400Regular",
+            fontSize: 13,
+            color: colors.mutedForeground,
+            marginTop: 2,
+          }}
+        >
+          {subtitle}
+        </Text>
+      </View>
+      <Pressable
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          onAction();
+        }}
+        style={{ flexDirection: "row", alignItems: "center" }}
+      >
+        <Text
+          style={{
+            fontFamily: "DMSans_500Medium",
+            fontSize: 13,
+            color: colors.mutedForeground,
+            marginRight: 4,
+          }}
+        >
+          {actionLabel}
+        </Text>
+        <ChevronRight size={14} color={colors.mutedForeground} />
+      </Pressable>
     </View>
   );
 }
