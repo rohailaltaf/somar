@@ -86,35 +86,6 @@ export function DateSectionHeader({ date, dayTotal }: DateSectionHeaderProps) {
   );
 }
 
-/**
- * Generic section header for lists.
- */
-export function SectionHeader({
-  title,
-  action,
-  onActionPress,
-}: {
-  title: string;
-  action?: string;
-  onActionPress?: () => void;
-}) {
-  return (
-    <View className="flex-row items-center justify-between px-5 py-3">
-      <Text className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-        {title}
-      </Text>
-      {action && (
-        <Text
-          className="text-sm font-medium text-primary"
-          onPress={onActionPress}
-        >
-          {action}
-        </Text>
-      )}
-    </View>
-  );
-}
-
 interface DashboardSectionHeaderProps {
   title: string;
   subtitle: string;
