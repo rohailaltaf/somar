@@ -34,22 +34,16 @@ import {
 } from "@somar/shared";
 import { spacing } from "@somar/shared/theme";
 import { oklchToHex } from "@somar/shared/utils";
-import { themeColors } from "../../src/lib/theme";
-
-// UI Components
-import { DashboardSectionHeader, QuickAction } from "../../src/components/ui";
-
-// Feature Components
-import { TransactionRowAnimated } from "../../src/components/transactions";
-import { CategoryRow } from "../../src/components/categories";
-
-// Dashboard Components
+import { themeColors } from "@/src/lib/theme";
+import { DashboardSectionHeader, QuickAction } from "@/src/components/ui";
+import { TransactionRowAnimated } from "@/src/components/transactions";
+import { CategoryRow } from "@/src/components/categories";
 import {
   BentoCard,
   HeroCard,
   AtmosphericBackground,
   DashboardSkeleton,
-} from "../../src/components/dashboard";
+} from "@/src/components/dashboard";
 
 export default function Dashboard() {
   const router = useRouter();

@@ -4,8 +4,8 @@ import { useColorScheme } from "nativewind";
 import { LogOut, LayoutGrid, Receipt } from "lucide-react-native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
-import { useAuth, DatabaseProvider } from "../../src/providers";
-import { themeColors } from "../../src/lib/theme";
+import { useAuth, DatabaseProvider } from "@/src/providers";
+import { themeColors } from "@/src/lib/theme";
 
 /**
  * Sign out button for header.
