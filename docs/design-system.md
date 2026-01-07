@@ -474,6 +474,30 @@ Use `animate-pulse` (web) or a subtle opacity animation (mobile).
 
 ## Spacing & Layout
 
+### Spacing Scale
+
+Spacing tokens match Tailwind's numeric scale exactly. Formula: `spacing[n] = n * 4px`
+
+```typescript
+import { spacing } from "@somar/shared/theme";
+
+// Mobile usage - maps 1:1 to Tailwind classes
+style={{ padding: spacing[4], gap: spacing[3] }}
+// spacing[4] = 16px = same as p-4 in Tailwind
+// spacing[3] = 12px = same as gap-3 in Tailwind
+```
+
+| Token | Value | Tailwind | Usage |
+|-------|-------|----------|-------|
+| `spacing[1]` | 4px | p-1, gap-1 | Tight spacing |
+| `spacing[2]` | 8px | p-2, gap-2 | Compact spacing |
+| `spacing[3]` | 12px | p-3, gap-3 | Default gaps |
+| `spacing[4]` | 16px | p-4, gap-4 | **Standard horizontal padding** |
+| `spacing[5]` | 20px | p-5, gap-5 | Comfortable padding |
+| `spacing[6]` | 24px | p-6, gap-6 | Section margins |
+| `spacing[8]` | 32px | p-8, gap-8 | Large spacing |
+| `spacing[10]` | 40px | p-10, gap-10 | Hero padding |
+
 ### Grid System
 
 **Web:** 12-column grid with responsive breakpoints
@@ -484,33 +508,44 @@ className="grid grid-cols-12 gap-4 lg:gap-6"
 **Main card:** `col-span-12 lg:col-span-7 row-span-2`
 **Side cards:** `col-span-12 sm:col-span-6 lg:col-span-5`
 
-**Mobile:** Flexbox with fixed gaps
+**Mobile:** Flexbox with spacing tokens
 ```tsx
-style={{ flexDirection: "row", gap: 12, paddingHorizontal: 20 }}
+import { spacing } from "@somar/shared/theme";
+style={{ flexDirection: "row", gap: spacing[3], paddingHorizontal: spacing[4] }}
 ```
 
 ### Card Padding
 
-| Element | Padding |
-|---------|---------|
-| Hero card | 32-40px (p-8 lg:p-10) |
-| Standard card | 24-32px (p-6 lg:p-8) |
-| List rows | 16-20px horizontal, 14-16px vertical |
+| Element | Web | Mobile |
+|---------|-----|--------|
+| Hero card | p-8 lg:p-10 | spacing[8] to spacing[10] |
+| Standard card | p-6 lg:p-8 | spacing[6] to spacing[8] |
+| List rows | px-4 py-3.5 | spacing[4] horizontal, spacing[3.5] vertical |
 
 ### Border Radius
 
-Use a consolidated 5-value scale. Larger elements get softer corners; smaller elements stay sharper.
+Radius tokens match Tailwind's `rounded-*` utilities exactly.
 
-| Value | Tailwind | Mobile | Usage |
-|-------|----------|--------|-------|
-| 24px | `rounded-3xl` | `borderRadius: 24` | Hero cards, large modals |
-| 16px | `rounded-2xl` | `borderRadius: 16` | Standard cards, panels, quick actions |
-| 12px | `rounded-xl` | `borderRadius: 12` | Icon containers, inputs |
-| 8px | `rounded-lg` | `borderRadius: 8` | Small interactive elements, icon backgrounds |
-| 4px | `rounded` | `borderRadius: 4` | Progress bars, tiny details |
-| pill | `rounded-full` | `borderRadius: 9999` | Pills, badges, dots, avatars |
+```typescript
+import { radius } from "@somar/shared/theme";
 
-**Principle:** The jump between values is roughly 1.5-2x, creating visual rhythm. Avoid arbitrary intermediate values (3px, 2px, etc.).
+// Mobile usage - maps 1:1 to Tailwind classes
+style={{ borderRadius: radius["2xl"] }}
+// radius["2xl"] = 16px = same as rounded-2xl in Tailwind
+```
+
+| Token | Value | Tailwind | Usage |
+|-------|-------|----------|-------|
+| `radius.sm` | 2px | rounded-sm | Subtle rounding |
+| `radius.DEFAULT` | 4px | rounded | Progress bars, tiny details |
+| `radius.md` | 6px | rounded-md | Small elements |
+| `radius.lg` | 8px | rounded-lg | Icon backgrounds |
+| `radius.xl` | 12px | rounded-xl | Icon containers, inputs |
+| `radius["2xl"]` | 16px | rounded-2xl | Standard cards, panels |
+| `radius["3xl"]` | 24px | rounded-3xl | Hero cards, large modals |
+| `radius.full` | 9999px | rounded-full | Pills, badges, dots |
+
+**Key insight:** Spacing uses numeric keys (`spacing[4]`), radius uses t-shirt sizes (`radius["2xl"]`). This matches how Tailwind works: `p-4` vs `rounded-2xl`.
 
 ## Haptic Feedback (Mobile)
 
@@ -540,8 +575,9 @@ import * as Haptics from "expo-haptics";
 
 | File | Purpose |
 |------|---------|
+| `packages/shared/src/theme/spacing.ts` | Spacing & radius tokens (single source of truth) |
+| `packages/shared/src/theme/colors.ts` | Color tokens |
 | `apps/web/src/app/globals.css` | Web theme variables, animations |
 | `apps/web/src/app/page.tsx` | Web dashboard implementation |
 | `apps/mobile/src/lib/theme.ts` | Mobile theme colors (hex) |
-| `apps/mobile/src/lib/color.ts` | OKLCH to hex conversion |
 | `apps/mobile/app/(tabs)/index.tsx` | Mobile dashboard implementation |

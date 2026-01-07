@@ -117,7 +117,7 @@ export default function Dashboard() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.background, padding: spacing.lg }}>
+      <View style={{ flex: 1, backgroundColor: colors.background, padding: spacing[4] }}>
         <DashboardSkeleton colors={colors} />
       </View>
     );
@@ -161,9 +161,9 @@ export default function Dashboard() {
           entering={FadeInDown.duration(600).delay(200)}
           style={{
             flexDirection: "row",
-            paddingHorizontal: spacing.lg,
-            gap: spacing.md,
-            marginTop: spacing.sm,
+            paddingHorizontal: spacing[4],
+            gap: spacing[3],
+            marginTop: spacing[2],
           }}
         >
           {/* Uncategorized Card */}
@@ -282,7 +282,7 @@ export default function Dashboard() {
         {categoryProgress.length > 0 && (
           <Animated.View
             entering={FadeInDown.duration(600).delay(400)}
-            style={{ marginHorizontal: spacing.lg, marginTop: spacing["2xl"] }}
+            style={{ marginHorizontal: spacing[4], marginTop: spacing[6] }}
           >
             <DashboardSectionHeader
               title="Spending Breakdown"
@@ -299,7 +299,7 @@ export default function Dashboard() {
                 overflow: "hidden",
                 borderWidth: 1,
                 borderColor: isDark ? "rgba(46, 50, 66, 0.5)" : colors.border,
-                marginTop: spacing.lg,
+                marginTop: spacing[4],
               }}
             >
               {categoryProgress.map((cat, index) => (
@@ -323,7 +323,7 @@ export default function Dashboard() {
         {recentTransactions.length > 0 && (
           <Animated.View
             entering={FadeInDown.duration(600).delay(500)}
-            style={{ marginHorizontal: spacing.lg, marginTop: spacing["2xl"] }}
+            style={{ marginHorizontal: spacing[4], marginTop: spacing[6] }}
           >
             <DashboardSectionHeader
               title="Recent Activity"
@@ -340,7 +340,7 @@ export default function Dashboard() {
                 overflow: "hidden",
                 borderWidth: 1,
                 borderColor: isDark ? "rgba(46, 50, 66, 0.5)" : colors.border,
-                marginTop: spacing.lg,
+                marginTop: spacing[4],
               }}
             >
               {recentTransactions.map((tx, index) => (
@@ -365,13 +365,13 @@ export default function Dashboard() {
         {!hasData && (
           <Animated.View
             entering={FadeInDown.duration(600).delay(300)}
-            style={{ marginHorizontal: spacing.lg, marginTop: spacing["3xl"] }}
+            style={{ marginHorizontal: spacing[4], marginTop: spacing[8] }}
           >
             <View
               style={{
                 backgroundColor: colors.card,
                 borderRadius: 16,
-                padding: spacing["4xl"],
+                padding: spacing[10],
                 alignItems: "center",
                 borderWidth: 1,
                 borderColor: colors.border,
@@ -385,7 +385,7 @@ export default function Dashboard() {
                   backgroundColor: colors.muted,
                   alignItems: "center",
                   justifyContent: "center",
-                  marginBottom: spacing.xl,
+                  marginBottom: spacing[5],
                 }}
               >
                 <Wallet size={28} color={colors.mutedForeground} />
@@ -396,7 +396,7 @@ export default function Dashboard() {
                   fontSize: 17,
                   color: colors.foreground,
                   textAlign: "center",
-                  marginBottom: 8,
+                  marginBottom: spacing[2],
                 }}
               >
                 No transactions yet
@@ -423,9 +423,9 @@ export default function Dashboard() {
           style={{
             flexDirection: "row",
             flexWrap: "wrap",
-            paddingHorizontal: spacing.lg,
-            gap: spacing.md,
-            marginTop: spacing["2xl"],
+            paddingHorizontal: spacing[4],
+            gap: spacing[3],
+            marginTop: spacing[6],
           }}
         >
           <QuickAction

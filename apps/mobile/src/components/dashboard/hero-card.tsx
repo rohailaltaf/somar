@@ -3,6 +3,7 @@ import { View, Text } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeInDown, FadeInRight } from "react-native-reanimated";
 import { formatMonth, formatCurrency } from "@somar/shared";
+import { spacing } from "@somar/shared/theme";
 import { oklchToHex } from "@somar/shared/utils";
 import type { ThemeColors } from "../../lib/theme";
 import { AnimatedCurrency } from "../ui/animated-currency";
@@ -37,7 +38,7 @@ export function HeroCard({
   isDark,
 }: HeroCardProps) {
   return (
-    <Animated.View entering={FadeInDown.duration(600).delay(100)} style={{ padding: 20, paddingTop: 16 }}>
+    <Animated.View entering={FadeInDown.duration(600).delay(100)} style={{ paddingHorizontal: spacing[4], paddingTop: spacing[4], paddingBottom: spacing[2] }}>
       <LinearGradient
         colors={isDark
           ? [

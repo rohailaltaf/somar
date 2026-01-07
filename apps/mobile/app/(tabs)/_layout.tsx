@@ -1,15 +1,19 @@
 import { Tabs } from "expo-router";
-import { useColorScheme, View, Text, ActivityIndicator, Pressable, Alert } from "react-native";
+import { View, Text, ActivityIndicator, Pressable, Alert } from "react-native";
+import { useColorScheme } from "nativewind";
 import { LogOut, LayoutGrid, Receipt } from "lucide-react-native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { useAuth, DatabaseProvider } from "../../src/providers";
+import { themeColors } from "../../src/lib/theme";
 
 /**
  * Sign out button for header.
  */
 function SignOutButton() {
   const { logout } = useAuth();
+  const { colorScheme } = useColorScheme();
+  const colors = themeColors[colorScheme ?? "light"];
 
   const handleSignOut = () => {
     Alert.alert(
@@ -28,40 +32,22 @@ function SignOutButton() {
 
   return (
     <Pressable onPress={handleSignOut} className="mr-4 p-2">
-      <LogOut size={22} color="#64748b" />
+      <LogOut size={22} color={colors.mutedForeground} />
     </Pressable>
   );
 }
-
-// Navigation options require color strings (can't use className)
-// These match the CSS variables in global.css
-const navColors = {
-  light: {
-    background: "#ffffff",
-    card: "#ffffff",
-    text: "#0f172a",
-    border: "#e2e8f0",
-    accent: "#6366f1",
-    muted: "#94a3b8",
-  },
-  dark: {
-    background: "#020617",
-    card: "#0f172a",
-    text: "#f8fafc",
-    border: "#334155",
-    accent: "#818cf8",
-    muted: "#64748b",
-  },
-};
 
 /**
  * Loading screen shown while database is initializing.
  */
 function LoadingScreen() {
+  const { colorScheme } = useColorScheme();
+  const colors = themeColors[colorScheme ?? "light"];
+
   return (
     <View className="flex-1 items-center justify-center bg-background">
       <View className="w-16 h-16 rounded-2xl bg-primary/10 items-center justify-center mb-4">
-        <ActivityIndicator size="large" color="#6366f1" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
       <Text className="text-base font-medium text-foreground mb-1">
         Loading your data
@@ -100,8 +86,8 @@ function DatabaseGate({ children }: { children: React.ReactNode }) {
  * Tab navigator content with icons and styling.
  */
 function TabNavigator() {
-  const colorScheme = useColorScheme();
-  const colors = colorScheme === "dark" ? navColors.dark : navColors.light;
+  const { colorScheme } = useColorScheme();
+  const colors = themeColors[colorScheme ?? "light"];
 
   return (
     <DatabaseGate>
@@ -117,7 +103,7 @@ function TabNavigator() {
             fontWeight: "600",
             fontSize: 17,
           },
-          headerTintColor: colors.text,
+          headerTintColor: colors.foreground,
           tabBarStyle: {
             backgroundColor: colors.card,
             borderTopColor: colors.border,
@@ -129,8 +115,8 @@ function TabNavigator() {
             fontWeight: "500",
             marginTop: 4,
           },
-          tabBarActiveTintColor: colors.accent,
-          tabBarInactiveTintColor: colors.muted,
+          tabBarActiveTintColor: colors.primary,
+          tabBarInactiveTintColor: colors.mutedForeground,
         }}
       >
         <Tabs.Screen
