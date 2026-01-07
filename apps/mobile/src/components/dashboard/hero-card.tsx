@@ -3,7 +3,6 @@ import { View, Text } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeInDown, FadeInRight } from "react-native-reanimated";
 import { formatMonth, formatCurrency } from "@somar/shared";
-import { spacing } from "@somar/shared/theme";
 import { oklchToHex } from "@somar/shared/utils";
 import type { ThemeColors } from "../../lib/theme";
 import { AnimatedCurrency } from "../ui/animated-currency";
@@ -38,7 +37,10 @@ export function HeroCard({
   isDark,
 }: HeroCardProps) {
   return (
-    <Animated.View entering={FadeInDown.duration(600).delay(100)} style={{ paddingHorizontal: spacing[4], paddingTop: spacing[4], paddingBottom: spacing[2] }}>
+    <Animated.View
+      entering={FadeInDown.duration(600).delay(100)}
+      style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 }}
+    >
       <LinearGradient
         colors={isDark
           ? [
@@ -83,25 +85,10 @@ export function HeroCard({
           {/* Header row */}
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
             <View>
-              <Text
-                style={{
-                  fontFamily: "DMSans_500Medium",
-                  fontSize: 11,
-                  color: colors.mutedForeground,
-                  letterSpacing: 1.65, // 0.15em at 11px
-                  textTransform: "uppercase",
-                  marginBottom: 4,
-                }}
-              >
+              <Text className="font-medium text-[11px] text-muted-foreground uppercase tracking-[1.65px] mb-1">
                 {formatMonth(currentMonth)}
               </Text>
-              <Text
-                style={{
-                  fontFamily: "DMSans_400Regular",
-                  fontSize: 12,
-                  color: colors.mutedForeground,
-                }}
-              >
+              <Text className="font-sans text-xs text-muted-foreground">
                 Total Spending
               </Text>
             </View>
@@ -123,22 +110,10 @@ export function HeroCard({
           {totalBudget > 0 && (
             <View>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <Text
-                  style={{
-                    fontFamily: "DMSans_500Medium",
-                    fontSize: 13,
-                    color: colors.mutedForeground,
-                  }}
-                >
+                <Text className="font-medium text-[13px] text-muted-foreground">
                   Budget Progress
                 </Text>
-                <Text
-                  style={{
-                    fontFamily: "DMSans_600SemiBold",
-                    fontSize: 13,
-                    color: colors.foreground,
-                  }}
-                >
+                <Text className="font-semibold text-[13px] text-foreground">
                   {formatCurrency(budgetRemaining)} left
                 </Text>
               </View>

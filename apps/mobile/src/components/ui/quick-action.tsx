@@ -35,18 +35,13 @@ export function QuickAction({
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         onPress();
       }}
+      className="w-[48%] rounded-2xl p-4 flex-row items-center border"
       style={{
-        width: "48%", // 2 per row with gap
         backgroundColor: isHighlight
           ? isDark
-            ? "rgba(58, 45, 112, 0.3)" // oklch(0.2 0.06 260)
+            ? "rgba(58, 45, 112, 0.3)"
             : colors.primaryMuted
           : colors.card,
-        borderRadius: 16,
-        padding: 16,
-        flexDirection: "row",
-        alignItems: "center",
-        borderWidth: 1,
         borderColor: isHighlight
           ? isDark
             ? "rgba(99, 102, 241, 0.3)"
@@ -57,10 +52,8 @@ export function QuickAction({
       }}
     >
       <View
+        className="w-8 h-8 rounded-lg items-center justify-center mr-3"
         style={{
-          width: 32,
-          height: 32,
-          borderRadius: 8,
           backgroundColor: isHighlight
             ? isDark
               ? "rgba(99, 102, 241, 0.3)"
@@ -68,9 +61,6 @@ export function QuickAction({
             : isDark
               ? oklchToHex("oklch(0.18 0.02 260)")
               : colors.muted,
-          alignItems: "center",
-          justifyContent: "center",
-          marginRight: 12,
         }}
       >
         <Icon
@@ -85,23 +75,10 @@ export function QuickAction({
         />
       </View>
       <View>
-        <Text
-          style={{
-            fontFamily: "DMSans_500Medium",
-            fontSize: 14,
-            color: colors.foreground,
-          }}
-        >
+        <Text className="font-medium text-sm text-foreground">
           {label}
         </Text>
-        <Text
-          style={{
-            fontFamily: "DMSans_400Regular",
-            fontSize: 11,
-            color: colors.mutedForeground,
-            marginTop: 1,
-          }}
-        >
+        <Text className="font-sans text-[11px] text-muted-foreground mt-[1px]">
           {sublabel}
         </Text>
       </View>

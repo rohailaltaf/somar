@@ -38,96 +38,48 @@ export function TransactionRowAnimated({
   return (
     <Animated.View
       entering={FadeInDown.duration(300).delay(400 + index * 50)}
+      className="flex-row items-center px-5 py-3.5"
       style={{
-        flexDirection: "row",
-        alignItems: "center",
-        paddingHorizontal: 20,
-        paddingVertical: 14,
         borderBottomWidth: isLast ? 0 : 1,
         borderBottomColor: colors.borderSubtle,
       }}
     >
       {/* Category color bar */}
       <View
-        style={{
-          width: 3,
-          height: 36,
-          borderRadius: 4,
-          backgroundColor: categoryColor || colors.muted,
-          marginRight: 14,
-        }}
+        className="w-[3px] h-9 rounded mr-3.5"
+        style={{ backgroundColor: categoryColor || colors.muted }}
       />
 
       {/* Details */}
-      <View style={{ flex: 1, marginRight: 12 }}>
-        <Text
-          style={{
-            fontFamily: "DMSans_500Medium",
-            fontSize: 14,
-            color: colors.foreground,
-          }}
-          numberOfLines={1}
-        >
+      <View className="flex-1 mr-3">
+        <Text className="font-medium text-sm text-foreground" numberOfLines={1}>
           {description}
         </Text>
-        <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4 }}>
-          <Text
-            style={{
-              fontFamily: "DMSans_400Regular",
-              fontSize: 12,
-              color: colors.mutedForeground,
-            }}
-          >
+        <View className="flex-row items-center mt-1">
+          <Text className="font-sans text-xs text-muted-foreground">
             {new Date(2024, parseInt(month) - 1, parseInt(day)).toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",
             })}
           </Text>
           {categoryName ? (
-            <Text
-              style={{
-                fontFamily: "DMSans_400Regular",
-                fontSize: 12,
-                color: colors.mutedForeground,
-                marginLeft: 6,
-                textTransform: "capitalize",
-              }}
-            >
+            <Text className="font-sans text-xs text-muted-foreground ml-1.5 capitalize">
               · {categoryName}
             </Text>
           ) : (
-            <Text
-              style={{
-                fontFamily: "DMSans_400Regular",
-                fontSize: 12,
-                color: colors.primary,
-                marginLeft: 6,
-              }}
-            >
+            <Text className="font-sans text-xs text-primary ml-1.5">
               · Uncategorized
             </Text>
           )}
           {!isConfirmed && (
-            <View
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: 3,
-                backgroundColor: colors.primary,
-                marginLeft: 6,
-              }}
-            />
+            <View className="w-1.5 h-1.5 rounded-full bg-primary ml-1.5" />
           )}
         </View>
       </View>
 
       {/* Amount */}
       <Text
-        style={{
-          fontFamily: "DMSans_600SemiBold",
-          fontSize: 14,
-          color: isExpense ? colors.foreground : colors.success,
-        }}
+        className={`font-semibold text-sm ${isExpense ? "text-foreground" : "text-success"}`}
       >
         {isExpense ? "-" : "+"}
         {formatCurrency(Math.abs(amount))}

@@ -7,6 +7,12 @@ module.exports = {
   presets: [require("nativewind/preset")],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['DMSans_400Regular'],
+        medium: ['DMSans_500Medium'],
+        semibold: ['DMSans_600SemiBold'],
+        bold: ['DMSans_700Bold'],
+      },
       colors: {
         // Base
         background: "rgb(var(--color-background) / <alpha-value>)",

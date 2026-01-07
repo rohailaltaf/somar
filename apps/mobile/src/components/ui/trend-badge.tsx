@@ -24,15 +24,9 @@ export function TrendBadge({
 
   return (
     <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        alignSelf: "flex-start",
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 20,
-        backgroundColor: isDown ? colors.successMuted : colors.destructiveMuted,
-      }}
+      className={`flex-row items-center self-start px-3 py-1.5 rounded-full ${
+        isDown ? "bg-success-muted" : "bg-destructive-muted"
+      }`}
     >
       {isDown ? (
         <ArrowDownRight size={14} color={colors.success} />
@@ -40,24 +34,14 @@ export function TrendBadge({
         <ArrowUpRight size={14} color={colors.destructive} />
       )}
       <Text
-        style={{
-          fontFamily: "DMSans_600SemiBold",
-          fontSize: 12,
-          color: isDown ? colors.success : colors.destructive,
-          marginLeft: 6,
-        }}
+        className={`font-semibold text-xs ml-1.5 ${
+          isDown ? "text-success" : "text-destructive"
+        }`}
       >
         {Math.abs(percentChange)}%
       </Text>
       {suffix && (
-        <Text
-          style={{
-            fontFamily: "DMSans_400Regular",
-            fontSize: 11,
-            color: colors.mutedForeground,
-            marginLeft: 6,
-          }}
-        >
+        <Text className="font-sans text-[11px] text-muted-foreground ml-1.5">
           {suffix}
         </Text>
       )}

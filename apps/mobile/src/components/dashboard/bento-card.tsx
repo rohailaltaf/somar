@@ -149,7 +149,6 @@ export function BentoCard({
         borderRadius: 16,
         padding: 16,
         minHeight: 160,
-        // No border on inactive state (matching web)
       }}
     >
       {accentColor && (

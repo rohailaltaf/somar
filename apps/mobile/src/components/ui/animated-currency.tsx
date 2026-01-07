@@ -55,26 +55,17 @@ export function AnimatedCurrency({
   const [dollars, cents] = formatted.split(".");
 
   return (
-    <View style={{ flexDirection: "row", alignItems: "baseline" }}>
+    <View className="flex-row items-baseline">
       <Text
-        style={{
-          fontFamily: "InstrumentSerif_400Regular",
-          fontSize: 64,
-          color: colors.foreground,
-          letterSpacing: -2,
-          lineHeight: 68,
-        }}
+        className="text-foreground text-[64px] tracking-[-2px] leading-[68px]"
+        style={{ fontFamily: "InstrumentSerif_400Regular" }}
       >
         {dollars}
       </Text>
       {cents && (
         <Text
-          style={{
-            fontFamily: "InstrumentSerif_400Regular",
-            fontSize: 32,
-            color: colors.mutedForeground,
-            marginLeft: 4,
-          }}
+          className="text-muted-foreground text-[32px] ml-1"
+          style={{ fontFamily: "InstrumentSerif_400Regular" }}
         >
           .{cents}
         </Text>

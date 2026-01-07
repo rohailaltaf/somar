@@ -34,7 +34,6 @@ import {
   getBudgetProgress,
   getBudgetRemaining,
 } from "@somar/shared";
-import { spacing } from "@somar/shared/theme";
 import { oklchToHex } from "@somar/shared/utils";
 import { themeColors } from "@/src/lib/theme";
 import { DashboardSectionHeader, QuickAction } from "@/src/components/ui";
@@ -51,6 +50,7 @@ export default function Dashboard() {
   const router = useRouter();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
+  // colors needed for: RefreshControl, Lucide icons, child component props
   const colors = themeColors[isDark ? "dark" : "light"];
   const { isReady: dbReady } = useDatabaseAdapter();
   const currentMonth = useMemo(() => getCurrentMonth(), []);
@@ -113,8 +113,8 @@ export default function Dashboard() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.background, padding: spacing[4] }}>
-        <DashboardSkeleton colors={colors} />
+      <View className="flex-1 bg-background p-4">
+        <DashboardSkeleton />
       </View>
     );
   }
@@ -123,12 +123,12 @@ export default function Dashboard() {
   const spendingValue = Math.abs(currentSpending);
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <View className="flex-1 bg-background">
       {/* Atmospheric Background - Deep Space Effect */}
       {isDark && <AtmosphericBackground />}
 
       <ScrollView
-        style={{ flex: 1 }}
+        className="flex-1"
         contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -155,12 +155,7 @@ export default function Dashboard() {
         {/* Bento Grid - Cards Row */}
         <Animated.View
           entering={FadeInDown.duration(600).delay(200)}
-          style={{
-            flexDirection: "row",
-            paddingHorizontal: spacing[4],
-            gap: spacing[3],
-            marginTop: spacing[2],
-          }}
+          className="flex-row px-4 gap-3 mt-2"
         >
           {/* Uncategorized Card */}
           <Pressable
@@ -168,25 +163,18 @@ export default function Dashboard() {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               router.push("/(tabs)/transactions");
             }}
-            style={{ flex: 1 }}
+            className="flex-1"
           >
             <BentoCard
               colors={colors}
               isDark={isDark}
               isHighlight={unconfirmedCount > 0}
             >
-              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <View className="flex-row justify-between items-start">
                 <View
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 12,
-                    backgroundColor: unconfirmedCount > 0
-                      ? colors.primary + "33"
-                      : colors.muted,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
+                  className={`w-11 h-11 rounded-xl items-center justify-center ${
+                    unconfirmedCount > 0 ? "bg-primary/20" : "bg-muted"
+                  }`}
                 >
                   <Zap
                     size={20}
@@ -198,24 +186,15 @@ export default function Dashboard() {
                   color={colors.mutedForeground}
                 />
               </View>
-              <View style={{ marginTop: "auto", paddingTop: 20 }}>
+              <View className="mt-auto pt-5">
                 <Text
-                  style={{
-                    fontFamily: "DMSans_700Bold",
-                    fontSize: 28,
-                    color: unconfirmedCount > 0 ? colors.foreground : colors.mutedForeground,
-                  }}
+                  className={`font-bold text-[28px] ${
+                    unconfirmedCount > 0 ? "text-foreground" : "text-muted-foreground"
+                  }`}
                 >
                   {unconfirmedCount}
                 </Text>
-                <Text
-                  style={{
-                    fontFamily: "DMSans_400Regular",
-                    fontSize: 12,
-                    color: colors.mutedForeground,
-                    marginTop: 2,
-                  }}
-                >
+                <Text className="font-sans text-xs text-muted-foreground mt-0.5">
                   {unconfirmedCount === 1 ? 'Transaction' : 'Transactions'} to categorize
                 </Text>
               </View>
@@ -228,20 +207,11 @@ export default function Dashboard() {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               // Navigate to accounts when available
             }}
-            style={{ flex: 1 }}
+            className="flex-1"
           >
             <BentoCard colors={colors} isDark={isDark} accentColor={colors.warning}>
-              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
-                <View
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 12,
-                    backgroundColor: colors.warning + "1A",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
+              <View className="flex-row justify-between items-start">
+                <View className="w-11 h-11 rounded-xl items-center justify-center bg-warning/10">
                   <Wallet size={20} color={colors.warning} />
                 </View>
                 <ChevronRight
@@ -249,24 +219,11 @@ export default function Dashboard() {
                   color={colors.mutedForeground}
                 />
               </View>
-              <View style={{ marginTop: "auto", paddingTop: 20 }}>
-                <Text
-                  style={{
-                    fontFamily: "DMSans_700Bold",
-                    fontSize: 28,
-                    color: colors.foreground,
-                  }}
-                >
+              <View className="mt-auto pt-5">
+                <Text className="font-bold text-foreground text-[28px]">
                   {accounts.length}
                 </Text>
-                <Text
-                  style={{
-                    fontFamily: "DMSans_400Regular",
-                    fontSize: 12,
-                    color: colors.mutedForeground,
-                    marginTop: 2,
-                  }}
-                >
+                <Text className="font-sans text-xs text-muted-foreground mt-0.5">
                   Connected {accounts.length === 1 ? "Account" : "Accounts"}
                 </Text>
               </View>
@@ -278,7 +235,7 @@ export default function Dashboard() {
         {categoryProgress.length > 0 && (
           <Animated.View
             entering={FadeInDown.duration(600).delay(400)}
-            style={{ marginHorizontal: spacing[4], marginTop: spacing[6] }}
+            className="mx-4 mt-6"
           >
             <DashboardSectionHeader
               title="Spending Breakdown"
@@ -289,13 +246,10 @@ export default function Dashboard() {
             />
 
             <View
+              className="rounded-2xl overflow-hidden border mt-4"
               style={{
                 backgroundColor: isDark ? oklchToHex("oklch(0.12 0.02 260)") : colors.card,
-                borderRadius: 16,
-                overflow: "hidden",
-                borderWidth: 1,
                 borderColor: isDark ? "rgba(46, 50, 66, 0.5)" : colors.border,
-                marginTop: spacing[4],
               }}
             >
               {categoryProgress.map((cat, index) => (
@@ -319,7 +273,7 @@ export default function Dashboard() {
         {recentTransactions.length > 0 && (
           <Animated.View
             entering={FadeInDown.duration(600).delay(500)}
-            style={{ marginHorizontal: spacing[4], marginTop: spacing[6] }}
+            className="mx-4 mt-6"
           >
             <DashboardSectionHeader
               title="Recent Activity"
@@ -330,13 +284,10 @@ export default function Dashboard() {
             />
 
             <View
+              className="rounded-2xl overflow-hidden border mt-4"
               style={{
                 backgroundColor: isDark ? oklchToHex("oklch(0.12 0.02 260)") : colors.card,
-                borderRadius: 16,
-                overflow: "hidden",
-                borderWidth: 1,
                 borderColor: isDark ? "rgba(46, 50, 66, 0.5)" : colors.border,
-                marginTop: spacing[4],
               }}
             >
               {recentTransactions.map((tx, index) => (
@@ -361,52 +312,16 @@ export default function Dashboard() {
         {!hasData && (
           <Animated.View
             entering={FadeInDown.duration(600).delay(300)}
-            style={{ marginHorizontal: spacing[4], marginTop: spacing[8] }}
+            className="mx-4 mt-8"
           >
-            <View
-              style={{
-                backgroundColor: colors.card,
-                borderRadius: 16,
-                padding: spacing[10],
-                alignItems: "center",
-                borderWidth: 1,
-                borderColor: colors.border,
-              }}
-            >
-              <View
-                style={{
-                  width: 64,
-                  height: 64,
-                  borderRadius: 16,
-                  backgroundColor: colors.muted,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginBottom: spacing[5],
-                }}
-              >
+            <View className="bg-card rounded-2xl p-10 items-center border border-border">
+              <View className="w-16 h-16 rounded-2xl bg-muted items-center justify-center mb-5">
                 <Wallet size={28} color={colors.mutedForeground} />
               </View>
-              <Text
-                style={{
-                  fontFamily: "DMSans_600SemiBold",
-                  fontSize: 17,
-                  color: colors.foreground,
-                  textAlign: "center",
-                  marginBottom: spacing[2],
-                }}
-              >
+              <Text className="font-semibold text-foreground text-[17px] text-center mb-2">
                 No transactions yet
               </Text>
-              <Text
-                style={{
-                  fontFamily: "DMSans_400Regular",
-                  fontSize: 14,
-                  color: colors.mutedForeground,
-                  textAlign: "center",
-                  lineHeight: 20,
-                  maxWidth: 240,
-                }}
-              >
+              <Text className="font-sans text-muted-foreground text-sm text-center leading-5 max-w-[240px]">
                 Connect your bank or import transactions on the web app to see your spending here.
               </Text>
             </View>
@@ -416,13 +331,7 @@ export default function Dashboard() {
         {/* Quick Actions - 2x2 grid */}
         <Animated.View
           entering={FadeInDown.duration(600).delay(600)}
-          style={{
-            flexDirection: "row",
-            flexWrap: "wrap",
-            paddingHorizontal: spacing[4],
-            gap: spacing[3],
-            marginTop: spacing[6],
-          }}
+          className="flex-row flex-wrap px-4 gap-3 mt-6"
         >
           <QuickAction
             icon={Upload}

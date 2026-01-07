@@ -59,59 +59,37 @@ export function CategoryRow({
 
   return (
     <View
+      className="px-5 py-4"
       style={{
-        paddingHorizontal: 20,
-        paddingVertical: 16,
         borderBottomWidth: isLast ? 0 : 1,
         borderBottomColor: colors.borderSubtle,
       }}
     >
       {/* Header row */}
-      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
+      <View className="flex-row items-center justify-between mb-2.5">
+        <View className="flex-row items-center">
           <View
+            className="w-3 h-3 rounded-full mr-3"
             style={{
-              width: 12,
-              height: 12,
-              borderRadius: 6,
               backgroundColor: color,
-              marginRight: 12,
               shadowColor: color,
               shadowOffset: { width: 0, height: 0 },
               shadowOpacity: 0.5,
               shadowRadius: 4,
             }}
           />
-          <Text
-            style={{
-              fontFamily: "DMSans_500Medium",
-              fontSize: 14,
-              color: colors.foreground,
-              textTransform: "capitalize",
-            }}
-          >
+          <Text className="font-medium text-sm text-foreground capitalize">
             {name}
           </Text>
         </View>
-        <View style={{ flexDirection: "row", alignItems: "baseline" }}>
+        <View className="flex-row items-baseline">
           <Text
-            style={{
-              fontFamily: "DMSans_600SemiBold",
-              fontSize: 14,
-              color: isOverBudget ? colors.destructive : colors.foreground,
-            }}
+            className={`font-semibold text-sm ${isOverBudget ? "text-destructive" : "text-foreground"}`}
           >
             {formatCurrency(spent)}
           </Text>
           {budget > 0 && (
-            <Text
-              style={{
-                fontFamily: "DMSans_400Regular",
-                fontSize: 12,
-                color: colors.mutedForeground,
-                marginLeft: 4,
-              }}
-            >
+            <Text className="font-sans text-xs text-muted-foreground ml-1">
               / {formatCurrency(budget)}
             </Text>
           )}
@@ -120,38 +98,25 @@ export function CategoryRow({
 
       {/* Progress bar */}
       <View
-        style={{
-          height: 6,
-          backgroundColor: oklchToHex("oklch(0.18 0.02 260)"),
-          borderRadius: 4,
-          overflow: "hidden",
-        }}
+        className="h-1.5 rounded overflow-hidden"
+        style={{ backgroundColor: oklchToHex("oklch(0.18 0.02 260)") }}
       >
         <Animated.View
-          style={[
-            {
-              height: "100%",
-              backgroundColor: color,
-              borderRadius: 4,
-            },
-            animatedStyle,
-          ]}
+          className="h-full rounded"
+          style={[{ backgroundColor: color }, animatedStyle]}
         />
       </View>
 
       {/* Budget indicator */}
       {budgetUsed !== null && (
         <Text
+          className="font-medium text-[10px] text-right mt-1.5"
           style={{
-            fontFamily: "DMSans_500Medium",
-            fontSize: 10,
             color: isOverBudget
               ? colors.destructive
               : budgetUsed >= 80
               ? colors.warning
               : colors.mutedForeground,
-            textAlign: "right",
-            marginTop: 6,
           }}
         >
           {budgetUsed.toFixed(0)}% of budget

@@ -1,36 +1,31 @@
 import React from "react";
 import { View } from "react-native";
-import type { ThemeColors } from "../../lib/theme";
-
-interface DashboardSkeletonProps {
-  colors: ThemeColors;
-}
 
 /**
  * Full dashboard loading skeleton.
  * Matches the dashboard layout with hero, bento cards, and sections.
  */
-export function DashboardSkeleton({ colors }: DashboardSkeletonProps) {
+export function DashboardSkeleton() {
   return (
-    <View style={{ flex: 1 }}>
+    <View className="flex-1">
       {/* Hero skeleton */}
-      <View style={{ marginBottom: 20 }}>
-        <View style={{ width: 80, height: 12, backgroundColor: colors.muted, borderRadius: 6, marginBottom: 16 }} />
-        <View style={{ width: 200, height: 48, backgroundColor: colors.muted, borderRadius: 8, marginBottom: 16 }} />
-        <View style={{ width: 120, height: 28, backgroundColor: colors.muted, borderRadius: 14 }} />
+      <View className="mb-5">
+        <View className="w-20 h-3 bg-muted rounded-md mb-4" />
+        <View className="w-[200px] h-12 bg-muted rounded-lg mb-4" />
+        <View className="w-[120px] h-7 bg-muted rounded-full" />
       </View>
 
       {/* Bento cards skeleton */}
-      <View style={{ flexDirection: "row", gap: 12, marginBottom: 12 }}>
-        <View style={{ flex: 1, height: 140, backgroundColor: colors.muted, borderRadius: 16 }} />
-        <View style={{ flex: 1, height: 140, backgroundColor: colors.muted, borderRadius: 16 }} />
+      <View className="flex-row gap-3 mb-3">
+        <View className="flex-1 h-[140px] bg-muted rounded-2xl" />
+        <View className="flex-1 h-[140px] bg-muted rounded-2xl" />
       </View>
 
       {/* Budget bar skeleton */}
-      <View style={{ height: 80, backgroundColor: colors.muted, borderRadius: 16, marginBottom: 24 }} />
+      <View className="h-20 bg-muted rounded-2xl mb-6" />
 
       {/* Categories skeleton */}
-      <View style={{ height: 200, backgroundColor: colors.muted, borderRadius: 16 }} />
+      <View className="h-[200px] bg-muted rounded-2xl" />
     </View>
   );
 }

@@ -60,20 +60,19 @@ export function AnimatedProgressBar({
 
   return (
     <View
+      className="overflow-hidden"
       style={{
         height,
         backgroundColor: oklchToHex("oklch(0.2 0.02 260)"),
         borderRadius: height / 2,
-        overflow: "hidden",
       }}
     >
       {/* Glow layer */}
       {showGlow && (
         <Animated.View
+          className="absolute h-full"
           style={[
             {
-              position: "absolute",
-              height: "100%",
               backgroundColor: barColor,
               borderRadius: height / 2,
               opacity: 0.5,
@@ -88,9 +87,9 @@ export function AnimatedProgressBar({
       )}
       {/* Main bar */}
       <Animated.View
+        className="h-full"
         style={[
           {
-            height: "100%",
             backgroundColor: barColor,
             borderRadius: height / 2,
           },

@@ -96,7 +96,6 @@ interface DashboardSectionHeaderProps {
 
 /**
  * Enhanced section header for dashboard with subtitle and action.
- * Uses inline styles for precise theme control.
  */
 export function DashboardSectionHeader({
   title,
@@ -106,25 +105,12 @@ export function DashboardSectionHeader({
   colors,
 }: DashboardSectionHeaderProps) {
   return (
-    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+    <View className="flex-row justify-between items-start">
       <View>
-        <Text
-          style={{
-            fontFamily: "DMSans_600SemiBold",
-            fontSize: 18,
-            color: colors.foreground,
-          }}
-        >
+        <Text className="font-semibold text-lg text-foreground">
           {title}
         </Text>
-        <Text
-          style={{
-            fontFamily: "DMSans_400Regular",
-            fontSize: 13,
-            color: colors.mutedForeground,
-            marginTop: 2,
-          }}
-        >
+        <Text className="font-sans text-[13px] text-muted-foreground mt-0.5">
           {subtitle}
         </Text>
       </View>
@@ -133,16 +119,9 @@ export function DashboardSectionHeader({
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           onAction();
         }}
-        style={{ flexDirection: "row", alignItems: "center" }}
+        className="flex-row items-center"
       >
-        <Text
-          style={{
-            fontFamily: "DMSans_500Medium",
-            fontSize: 13,
-            color: colors.mutedForeground,
-            marginRight: 4,
-          }}
-        >
+        <Text className="font-medium text-[13px] text-muted-foreground mr-1">
           {actionLabel}
         </Text>
         <ChevronRight size={14} color={colors.mutedForeground} />
