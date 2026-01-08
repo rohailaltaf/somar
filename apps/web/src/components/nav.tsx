@@ -151,94 +151,172 @@ export function Nav() {
         <div className="h-8 bg-gradient-to-b from-surface-deep/50 to-transparent pointer-events-none -mt-8 relative z-[-1]" />
       </nav>
 
-      {/* ===== MOBILE BOTTOM DOCK ===== */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 px-4 pb-[calc(env(safe-area-inset-bottom)+12px)]">
-        {/* Dock container */}
-        <motion.div
-          className="relative mx-auto max-w-xs"
-          initial={{ y: 100, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ type: "spring", stiffness: 260, damping: 25, delay: 0.1 }}
-        >
-          {/* Glow effect behind dock */}
-          <div className="absolute -inset-3 bg-gradient-to-t from-primary/25 via-primary/8 to-transparent rounded-[32px] blur-2xl opacity-70" />
+      {/* ===== MOBILE BOTTOM DOCK - Liquid Crystal Design ===== */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 pointer-events-none">
+        {/* Ambient glow layer */}
+        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
 
-          {/* Main dock */}
-          <div className="relative bg-surface-elevated/95 backdrop-blur-2xl border border-border-subtle/60 rounded-2xl shadow-2xl shadow-black/50">
-            {/* Inner highlight */}
-            <div className="absolute inset-[1px] rounded-[15px] bg-gradient-to-b from-white/[0.08] to-transparent pointer-events-none" />
+        <div className="relative px-5 pb-[calc(env(safe-area-inset-bottom)+16px)] pointer-events-auto">
+          <motion.nav
+            className="relative mx-auto max-w-[320px]"
+            initial={{ y: 80, opacity: 0, scale: 0.9 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            transition={{
+              type: "spring",
+              stiffness: 200,
+              damping: 20,
+              delay: 0.15,
+              mass: 0.8
+            }}
+          >
+            {/* Outer glow - golden ambient */}
+            <div className="absolute -inset-4 bg-gradient-to-t from-gold/20 via-primary/10 to-transparent rounded-[40px] blur-3xl opacity-60" />
 
-            {/* Navigation items */}
-            <div className="relative flex items-center justify-around px-2 py-2">
-              {mobileNavItems.map((item) => {
-                const isActive = item.matchPaths
-                  ? item.matchPaths.some(path => pathname.startsWith(path)) || pathname === item.href
-                  : pathname === item.href;
-                const Icon = item.icon;
+            {/* Crystal shadow stack - creates depth */}
+            <div className="absolute inset-0 rounded-[22px] bg-black/40 blur-xl translate-y-4" />
+            <div className="absolute inset-0 rounded-[22px] bg-black/30 blur-md translate-y-2" />
 
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className="relative flex-1"
-                  >
-                    <motion.div
-                      className={cn(
-                        "relative flex flex-col items-center justify-center py-3 px-4 rounded-xl transition-colors",
-                        isActive ? "text-primary" : "text-muted-foreground"
-                      )}
-                      whileTap={{ scale: 0.92 }}
-                      transition={{ type: "spring", stiffness: 400, damping: 25 }}
+            {/* Main crystal container */}
+            <div className="relative bg-gradient-to-b from-surface-elevated/98 to-surface/95 backdrop-blur-3xl rounded-[20px] border border-white/[0.08] overflow-hidden">
+              {/* Prismatic top edge highlight */}
+              <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+
+              {/* Inner crystalline reflection */}
+              <div className="absolute inset-[1px] rounded-[19px] bg-gradient-to-br from-white/[0.07] via-transparent to-white/[0.02] pointer-events-none" />
+
+              {/* Subtle noise texture for glass feel */}
+              <div
+                className="absolute inset-0 opacity-[0.015] pointer-events-none mix-blend-overlay"
+                style={{
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
+                }}
+              />
+
+              {/* Navigation items container */}
+              <div className="relative flex items-center px-3 py-3">
+                {mobileNavItems.map((item, index) => {
+                  const isActive = item.matchPaths
+                    ? item.matchPaths.some(path => pathname.startsWith(path)) || pathname === item.href
+                    : pathname === item.href;
+                  const Icon = item.icon;
+
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className="relative flex-1 group"
                     >
-                      {/* Active background pill */}
-                      <AnimatePresence>
-                        {isActive && (
-                          <motion.div
-                            layoutId="mobile-nav-pill"
-                            className="absolute inset-1 bg-primary/12 rounded-xl"
-                            initial={{ opacity: 0, scale: 0.8 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.8 }}
-                            transition={{ type: "spring", stiffness: 350, damping: 30 }}
-                          />
-                        )}
-                      </AnimatePresence>
-
-                      {/* Icon container */}
                       <motion.div
-                        className="relative z-10"
-                        animate={{
-                          scale: isActive ? 1.15 : 1,
-                          y: isActive ? -2 : 0
-                        }}
-                        transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                        className="relative flex flex-col items-center justify-center py-2.5 px-3"
+                        whileTap={{ scale: 0.94 }}
+                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
                       >
-                        <Icon
-                          className="w-6 h-6 transition-colors duration-200"
-                          strokeWidth={isActive ? 2.5 : 2}
-                        />
-                      </motion.div>
+                        {/* Active indicator - crystalline light beam */}
+                        <AnimatePresence mode="wait">
+                          {isActive && (
+                            <motion.div
+                              layoutId="crystal-indicator"
+                              className="absolute inset-x-2 -top-3 bottom-0"
+                              initial={{ opacity: 0, y: 8 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: 8 }}
+                              transition={{ type: "spring", stiffness: 400, damping: 35 }}
+                            >
+                              {/* Vertical light beam */}
+                              <div className="absolute inset-x-0 top-0 h-full bg-gradient-to-b from-gold/25 via-gold/10 to-transparent rounded-t-full" />
 
-                      {/* Label */}
-                      <motion.span
-                        className={cn(
-                          "relative z-10 text-xs font-medium mt-1.5 transition-colors duration-200",
-                          isActive ? "text-primary" : "text-foreground-muted"
+                              {/* Top accent line - gold */}
+                              <motion.div
+                                className="absolute -top-0 inset-x-3 h-[2px] rounded-full"
+                                style={{
+                                  background: 'linear-gradient(90deg, transparent, oklch(0.78 0.12 75), transparent)',
+                                  boxShadow: '0 0 12px 2px oklch(0.78 0.12 75 / 0.5)'
+                                }}
+                                initial={{ scaleX: 0, opacity: 0 }}
+                                animate={{ scaleX: 1, opacity: 1 }}
+                                transition={{ delay: 0.1, duration: 0.3 }}
+                              />
+
+                              {/* Ambient glow behind icon */}
+                              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-gold/15 rounded-full blur-xl" />
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+
+                        {/* Icon with crystal effect */}
+                        <motion.div
+                          className="relative z-10"
+                          animate={{
+                            scale: isActive ? 1.12 : 1,
+                            y: isActive ? -1 : 0
+                          }}
+                          transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                        >
+                          {/* Icon glow when active */}
+                          {isActive && (
+                            <motion.div
+                              className="absolute inset-0 blur-md"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              style={{ color: 'oklch(0.78 0.12 75)' }}
+                            >
+                              <Icon className="w-6 h-6" strokeWidth={2.5} />
+                            </motion.div>
+                          )}
+
+                          <Icon
+                            className={cn(
+                              "w-6 h-6 transition-all duration-300 relative z-10",
+                              isActive
+                                ? "text-gold drop-shadow-[0_0_8px_oklch(0.78_0.12_75_/_0.5)]"
+                                : "text-foreground-muted group-hover:text-foreground-secondary"
+                            )}
+                            strokeWidth={isActive ? 2.5 : 1.75}
+                          />
+                        </motion.div>
+
+                        {/* Label with refined typography */}
+                        <motion.span
+                          className={cn(
+                            "relative z-10 text-[11px] font-medium mt-1.5 tracking-wide transition-all duration-300",
+                            isActive
+                              ? "text-gold"
+                              : "text-foreground-dim group-hover:text-foreground-muted"
+                          )}
+                          animate={{
+                            y: isActive ? 0 : 1,
+                            opacity: isActive ? 1 : 0.7
+                          }}
+                          transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                        >
+                          {item.label}
+                        </motion.span>
+
+                        {/* Subtle divider between items (not on last) */}
+                        {index < mobileNavItems.length - 1 && (
+                          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[1px] h-8 bg-gradient-to-b from-transparent via-white/[0.06] to-transparent" />
                         )}
-                        animate={{
-                          opacity: isActive ? 1 : 0.6
-                        }}
-                        transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                      >
-                        {item.label}
-                      </motion.span>
-                    </motion.div>
-                  </Link>
-                );
-              })}
+                      </motion.div>
+                    </Link>
+                  );
+                })}
+              </div>
+
+              {/* Bottom edge subtle shadow */}
+              <div className="absolute inset-x-0 bottom-0 h-[1px] bg-black/20" />
             </div>
-          </div>
-        </motion.div>
+
+            {/* Reflection underneath - luxury mirror effect */}
+            <div
+              className="absolute inset-x-4 -bottom-3 h-6 rounded-[16px] opacity-20"
+              style={{
+                background: 'linear-gradient(to bottom, oklch(0.16 0.02 260 / 0.8), transparent)',
+                filter: 'blur(4px)',
+                transform: 'scaleY(-0.4) translateY(-100%)'
+              }}
+            />
+          </motion.nav>
+        </div>
       </div>
 
     </>
