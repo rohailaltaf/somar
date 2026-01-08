@@ -91,7 +91,7 @@ export default function LoginPage() {
       <CardContent className="space-y-4">
         <Button
           variant="outline"
-          className="w-full bg-white text-slate-900 hover:bg-slate-100"
+          className="w-full bg-white dark:bg-white text-slate-900 dark:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-100 border-slate-300"
           onClick={handleGoogleLogin}
           disabled={isLoading}
         >
