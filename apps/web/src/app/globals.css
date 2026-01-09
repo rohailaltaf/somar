@@ -3,6 +3,11 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Auto-generated from @somar/shared theme colors.
+ * DO NOT EDIT MANUALLY - run: pnpm --filter web generate:theme
+ */
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -70,6 +75,12 @@
   --color-gold: var(--gold);
   --color-gold-muted: var(--gold-muted);
 
+  /* Navigation */
+  --color-nav-dock: var(--nav-dock);
+  --color-nav-indicator: var(--nav-indicator);
+  --color-nav-inactive-icon: var(--nav-inactive-icon);
+  --color-nav-inactive-label: var(--nav-inactive-label);
+
 }
 
 :root {
@@ -89,9 +100,20 @@
   --accent: oklch(0.92 0.02 260);
   --accent-foreground: oklch(0.25 0.02 260);
   --destructive: oklch(0.55 0.22 25);
+  --success: oklch(0.6 0.18 145);
+  --warning: oklch(0.75 0.18 85);
   --border: oklch(0.9 0.01 260);
+  --border-subtle: oklch(0.95 0.01 260);
   --input: oklch(0.9 0.01 260);
   --ring: oklch(0.45 0.18 260);
+  --surface: oklch(0.97 0.005 260);
+  --surface-elevated: oklch(1 0 0);
+  --gold: oklch(0.65 0.15 75);
+  --gold-muted: oklch(0.45 0.1 75);
+  --primary-muted: oklch(0.92 0.08 260);
+  --destructive-muted: oklch(0.95 0.08 25);
+  --success-muted: oklch(0.95 0.08 145);
+  --warning-muted: oklch(0.95 0.08 85);
   --chart-1: oklch(0.55 0.2 260);
   --chart-2: oklch(0.65 0.18 160);
   --chart-3: oklch(0.6 0.2 30);
@@ -105,32 +127,49 @@
   --sidebar-accent-foreground: oklch(0.25 0.02 260);
   --sidebar-border: oklch(0.9 0.01 260);
   --sidebar-ring: oklch(0.45 0.18 260);
-  
-  /* Status colors */
-  --success: oklch(0.6 0.18 145);
-  --warning: oklch(0.75 0.18 85);
   --danger: oklch(0.55 0.22 25);
 }
 
 .dark {
-  --background: oklch(0.13 0.02 260);
+  --background: oklch(0.08 0.015 260);
   --foreground: oklch(0.95 0.01 260);
-  --card: oklch(0.18 0.02 260);
+  --card: oklch(0.11 0.02 260);
   --card-foreground: oklch(0.95 0.01 260);
   --popover: oklch(0.18 0.02 260);
   --popover-foreground: oklch(0.95 0.01 260);
   --primary: oklch(0.65 0.18 260);
-  --primary-foreground: oklch(0.1 0.02 260);
+  --primary-foreground: oklch(0.08 0.015 260);
   --secondary: oklch(0.25 0.02 260);
   --secondary-foreground: oklch(0.95 0.01 260);
   --muted: oklch(0.25 0.02 260);
   --muted-foreground: oklch(0.65 0.02 260);
   --accent: oklch(0.25 0.02 260);
   --accent-foreground: oklch(0.95 0.01 260);
-  --destructive: oklch(0.6 0.2 25);
+  --destructive: oklch(0.7 0.18 25);
+  --success: oklch(0.7 0.15 145);
+  --warning: oklch(0.75 0.18 75);
   --border: oklch(0.28 0.02 260);
+  --border-subtle: oklch(0.22 0.02 260);
   --input: oklch(0.28 0.02 260);
   --ring: oklch(0.65 0.18 260);
+  --surface: oklch(0.12 0.02 260);
+  --surface-elevated: oklch(0.16 0.02 260);
+  --gold: oklch(0.78 0.12 75);
+  --gold-muted: oklch(0.55 0.08 75);
+  --primary-muted: oklch(0.25 0.08 260);
+  --destructive-muted: oklch(0.25 0.08 25);
+  --success-muted: oklch(0.75 0.12 145);
+  --warning-muted: oklch(0.25 0.08 75);
+  --surface-deep: oklch(0.08 0.015 260);
+  --surface-overlay: oklch(0.18 0.02 260);
+  --foreground-bright: oklch(0.98 0.01 260);
+  --foreground-secondary: oklch(0.85 0.02 260);
+  --foreground-muted: oklch(0.65 0.02 260);
+  --foreground-dim: oklch(0.45 0.02 260);
+  --nav-dock: oklch(0.13 0.02 260);
+  --nav-indicator: oklch(0.22 0.025 260);
+  --nav-inactive-icon: oklch(0.55 0.02 260);
+  --nav-inactive-label: oklch(0.45 0.02 260);
   --chart-1: oklch(0.65 0.2 260);
   --chart-2: oklch(0.7 0.18 160);
   --chart-3: oklch(0.7 0.2 30);
@@ -144,33 +183,9 @@
   --sidebar-accent-foreground: oklch(0.95 0.01 260);
   --sidebar-border: oklch(0.28 0.02 260);
   --sidebar-ring: oklch(0.65 0.18 260);
-
-  /* Surface hierarchy - matched to mobile */
-  --surface-deep: oklch(0.08 0.015 260);
-  --surface: oklch(0.12 0.02 260);
-  --surface-elevated: oklch(0.16 0.02 260);
-  --surface-overlay: oklch(0.18 0.02 260);
-
-  /* Extended text hierarchy */
-  --foreground-bright: oklch(0.98 0.01 260);
-  --foreground-secondary: oklch(0.85 0.02 260);
-  --foreground-muted: oklch(0.65 0.02 260);
-  --foreground-dim: oklch(0.45 0.02 260);
-
-  /* Extended border hierarchy */
-  --border-subtle: oklch(0.25 0.02 260 / 0.5);
-  --border-strong: oklch(0.35 0.02 260);
-
-  /* Status colors */
-  --success: oklch(0.7 0.15 145);
-  --success-muted: oklch(0.75 0.12 145);
-  --warning: oklch(0.75 0.18 85);
   --danger: oklch(0.6 0.2 25);
   --danger-muted: oklch(0.7 0.15 25);
-
-  /* Premium accent (gold) */
-  --gold: oklch(0.78 0.12 75);
-  --gold-muted: oklch(0.55 0.08 75);
+  --border-strong: oklch(0.35 0.02 260);
 }
 
 @layer base {

@@ -42,6 +42,17 @@ const colorMapping = {
   success: "success",
   warning: "warning",
   accent: "accent",
+  // Premium accent (gold)
+  gold: "gold",
+  goldMuted: "gold-muted",
+} as const;
+
+// Dark-mode only colors (nav, etc.)
+const darkOnlyColorMapping = {
+  navDock: "nav-dock",
+  navIndicator: "nav-indicator",
+  navInactiveIcon: "nav-inactive-icon",
+  navInactiveLabel: "nav-inactive-label",
 } as const;
 
 const extendedColorMapping = {
@@ -115,6 +126,14 @@ function generateCSS(): string {
   for (const [key, cssVar] of Object.entries(extendedColorMapping)) {
     const rgb =
       extendedRgbColors.dark[key as keyof typeof extendedRgbColors.dark];
+    if (rgb) {
+      lines.push(`    --color-${cssVar}: ${rgb};`);
+    }
+  }
+
+  // Dark-only colors (nav, etc.)
+  for (const [key, cssVar] of Object.entries(darkOnlyColorMapping)) {
+    const rgb = rgbColors.dark[key as keyof typeof rgbColors.dark];
     if (rgb) {
       lines.push(`    --color-${cssVar}: ${rgb};`);
     }

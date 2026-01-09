@@ -22,6 +22,7 @@ pnpm --filter web db:generate   # Generate Prisma Client
 pnpm --filter web lint          # Run ESLint
 pnpm --filter web test          # Run tests
 pnpm --filter web test:watch    # Tests in watch mode
+pnpm --filter web generate:theme # Regenerate globals.css from shared theme
 ```
 
 ### Production

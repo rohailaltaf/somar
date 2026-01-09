@@ -102,7 +102,7 @@ function DashboardContent() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.6 }}
-        className="grid grid-cols-12 gap-4 lg:gap-6"
+        className="grid grid-cols-12 gap-3 lg:gap-6"
       >
         {/* Main Spending Card - Large */}
         <motion.div
@@ -194,7 +194,7 @@ function DashboardContent() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-          className="col-span-12 sm:col-span-6 lg:col-span-5"
+          className="col-span-6 lg:col-span-5"
         >
           <Link href="/tagger" className="block h-full">
             <div className="relative h-full min-h-[160px] rounded-2xl overflow-hidden group transition-all duration-300">
@@ -221,19 +221,19 @@ function DashboardContent() {
               )}
 
               {/* Content */}
-              <div className="relative h-full p-6 flex flex-col justify-between">
+              <div className="relative h-full p-[16px] flex flex-col justify-between">
                 <div className="flex items-start justify-between">
-                  <div className={`p-3 rounded-xl ${unconfirmedCount > 0 ? 'bg-primary/20' : 'bg-muted'}`}>
+                  <div className={`w-11 h-11 rounded-xl items-center justify-center flex ${unconfirmedCount > 0 ? 'bg-primary/20' : 'bg-muted'}`}>
                     <Zap className={`w-5 h-5 ${unconfirmedCount > 0 ? 'text-primary' : 'text-muted-foreground'}`} />
                   </div>
-                  <ChevronRight className="w-5 h-5 text-foreground-dim group-hover:translate-x-1 transition-all" />
+                  <ChevronRight className="w-[16px] h-[16px] text-foreground-dim group-hover:translate-x-1 transition-all" />
                 </div>
 
-                <div>
-                  <p className={`text-3xl font-bold ${unconfirmedCount > 0 ? 'text-foreground' : 'text-muted-foreground'}`}>
+                <div className="pt-5">
+                  <p className={`text-[28px] font-bold ${unconfirmedCount > 0 ? 'text-foreground' : 'text-muted-foreground'}`}>
                     {unconfirmedCount}
                   </p>
-                  <p className="text-sm mt-1 text-muted-foreground">
+                  <p className="text-xs mt-0.5 text-muted-foreground">
                     {unconfirmedCount === 1 ? 'Transaction' : 'Transactions'} to categorize
                   </p>
                 </div>
@@ -247,7 +247,7 @@ function DashboardContent() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-          className="col-span-12 sm:col-span-6 lg:col-span-5"
+          className="col-span-6 lg:col-span-5"
         >
           <Link href="/accounts" className="block h-full">
             <div className="relative h-full min-h-[160px] rounded-2xl overflow-hidden group transition-all duration-300 hover:scale-[1.01] bg-background">
@@ -263,19 +263,19 @@ function DashboardContent() {
               <div className="absolute inset-0 rounded-2xl border border-border-subtle" />
 
               {/* Content */}
-              <div className="relative h-full p-6 flex flex-col justify-between">
+              <div className="relative h-full p-[16px] flex flex-col justify-between">
                 <div className="flex items-start justify-between">
-                  <div className="p-3 rounded-xl bg-gold/15">
+                  <div className="w-11 h-11 rounded-xl items-center justify-center flex bg-gold/15">
                     <Wallet className="w-5 h-5 text-gold" />
                   </div>
-                  <ChevronRight className="w-5 h-5 text-foreground-dim group-hover:translate-x-1 transition-all" />
+                  <ChevronRight className="w-[16px] h-[16px] text-foreground-dim group-hover:translate-x-1 transition-all" />
                 </div>
 
-                <div>
-                  <p className="text-3xl font-bold text-foreground">
+                <div className="pt-5">
+                  <p className="text-[28px] font-bold text-foreground">
                     {accounts.length}
                   </p>
-                  <p className="text-sm mt-1 text-muted-foreground">
+                  <p className="text-xs mt-0.5 text-muted-foreground">
                     Connected {accounts.length === 1 ? 'Account' : 'Accounts'}
                   </p>
                 </div>
@@ -800,10 +800,10 @@ function DashboardSkeleton() {
         <div className="col-span-12 lg:col-span-7 row-span-2">
           <div className="h-[380px] rounded-3xl bg-surface animate-pulse" />
         </div>
-        <div className="col-span-12 sm:col-span-6 lg:col-span-5">
+        <div className="col-span-6 lg:col-span-5">
           <div className="h-[160px] rounded-2xl bg-surface animate-pulse" />
         </div>
-        <div className="col-span-12 sm:col-span-6 lg:col-span-5">
+        <div className="col-span-6 lg:col-span-5">
           <div className="h-[160px] rounded-2xl bg-surface animate-pulse" />
         </div>
       </div>

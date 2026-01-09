@@ -209,10 +209,10 @@ export default function Dashboard() {
             }}
             className="flex-1"
           >
-            <BentoCard colors={colors} isDark={isDark} accentColor={colors.warning}>
+            <BentoCard colors={colors} isDark={isDark} accentColor={colors.gold}>
               <View className="flex-row justify-between items-start">
-                <View className="w-11 h-11 rounded-xl items-center justify-center bg-warning/10">
-                  <Wallet size={20} color={colors.warning} />
+                <View className="w-11 h-11 rounded-xl items-center justify-center bg-gold/15">
+                  <Wallet size={20} color={colors.gold} />
                 </View>
                 <ChevronRight
                   size={16}

@@ -30,6 +30,8 @@
   --color-success: 24 154 48;
   --color-warning: 225 162 0;
   --color-accent: 221 229 242;
+  --color-gold: 195 127 0;
+  --color-gold-muted: 117 75 0;
   --color-primary-muted: 198 230 255;
   --color-destructive-muted: 255 218 212;
   --color-success-muted: 206 253 206;
@@ -66,10 +68,16 @@
     --color-success: 91 182 97;
     --color-warning: 239 153 0;
     --color-accent: 28 34 43;
+    --color-gold: 228 172 89;
+    --color-gold-muted: 141 107 57;
     --color-primary-muted: 8 32 71;
     --color-destructive-muted: 64 12 12;
-    --color-success-muted: 0 43 5;
+    --color-success-muted: 123 194 126;
     --color-warning-muted: 55 25 0;
+    --color-nav-dock: 4 7 15;
+    --color-nav-indicator: 20 27 38;
+    --color-nav-inactive-icon: 107 114 126;
+    --color-nav-inactive-label: 79 86 97;
 
     /* Text hierarchy */
     --color-text-primary: 235 239 245;

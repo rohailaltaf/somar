@@ -57,6 +57,10 @@ export const oklchColors = {
     // Surface (light mode uses card-like surfaces)
     surface: "oklch(0.97 0.005 260)",
     surfaceElevated: "oklch(1 0 0)",
+
+    // Premium accent (gold)
+    gold: "oklch(0.65 0.15 75)",
+    goldMuted: "oklch(0.45 0.1 75)",
   },
 
   dark: {
@@ -112,6 +116,12 @@ export const oklchColors = {
     // Premium accent (gold)
     gold: "oklch(0.78 0.12 75)",
     goldMuted: "oklch(0.55 0.08 75)",
+
+    // Navigation (floating dock)
+    navDock: "oklch(0.13 0.02 260)",
+    navIndicator: "oklch(0.22 0.025 260)",
+    navInactiveIcon: "oklch(0.55 0.02 260)",
+    navInactiveLabel: "oklch(0.45 0.02 260)",
   },
 } as const;
 
@@ -210,7 +220,7 @@ export const extendedColors = {
   dark: {
     primaryMuted: "oklch(0.25 0.08 260)",
     destructiveMuted: "oklch(0.25 0.08 25)",
-    successMuted: "oklch(0.25 0.08 145)",
+    successMuted: "oklch(0.75 0.12 145)",
     warningMuted: "oklch(0.25 0.08 75)",
   },
 } as const;

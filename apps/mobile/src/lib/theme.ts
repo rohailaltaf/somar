@@ -33,6 +33,11 @@ export const themeColors = {
     card: hexColors.light.card,
     border: hexColors.light.border,
     borderSubtle: hexColors.light.borderSubtle,
+    surface: hexColors.light.surface,
+    surfaceElevated: hexColors.light.surfaceElevated,
+    // Premium accent
+    gold: hexColors.light.gold,
+    goldMuted: hexColors.light.goldMuted,
   },
   dark: {
     // Base
@@ -52,10 +57,14 @@ export const themeColors = {
     destructiveMuted: extendedHexColors.dark.destructiveMuted,
     warning: hexColors.dark.warning,
     warningMuted: extendedHexColors.dark.warningMuted,
-    // Surface
+    // Surface hierarchy
     card: hexColors.dark.card,
     border: hexColors.dark.border,
     borderSubtle: hexColors.dark.borderSubtle,
+    surface: hexColors.dark.surface,
+    surfaceElevated: hexColors.dark.surfaceElevated,
+    // Text hierarchy
+    foregroundDim: hexColors.dark.foregroundDim,
     // Premium (dark only)
     gold: hexColors.dark.gold,
     goldMuted: hexColors.dark.goldMuted,

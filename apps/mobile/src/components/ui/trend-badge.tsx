@@ -25,7 +25,7 @@ export function TrendBadge({
   return (
     <View
       className={`flex-row items-center self-start px-3 py-1.5 rounded-full ${
-        isDown ? "bg-success-muted" : "bg-destructive-muted"
+        isDown ? "bg-success/15" : "bg-destructive/15"
       }`}
     >
       {isDown ? (
@@ -35,13 +35,17 @@ export function TrendBadge({
       )}
       <Text
         className={`font-semibold text-xs ml-1.5 ${
-          isDown ? "text-success" : "text-destructive"
+          isDown ? "text-success-muted" : "text-destructive-muted"
         }`}
       >
         {Math.abs(percentChange)}%
       </Text>
       {suffix && (
-        <Text className="font-sans text-[11px] text-muted-foreground ml-1.5">
+        <Text
+          className={`text-[11px] ml-1.5 opacity-70 ${
+            isDown ? "text-success-muted" : "text-destructive-muted"
+          }`}
+        >
           {suffix}
         </Text>
       )}

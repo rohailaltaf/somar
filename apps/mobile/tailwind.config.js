@@ -54,6 +54,16 @@ module.exports = {
 
         // Overlay
         overlay: "rgb(var(--color-overlay) / <alpha-value>)",
+
+        // Navigation (dark mode only)
+        "nav-dock": "rgb(var(--color-nav-dock) / <alpha-value>)",
+        "nav-indicator": "rgb(var(--color-nav-indicator) / <alpha-value>)",
+        "nav-inactive-icon": "rgb(var(--color-nav-inactive-icon) / <alpha-value>)",
+        "nav-inactive-label": "rgb(var(--color-nav-inactive-label) / <alpha-value>)",
+
+        // Premium accent (gold)
+        gold: "rgb(var(--color-gold) / <alpha-value>)",
+        "gold-muted": "rgb(var(--color-gold-muted) / <alpha-value>)",
       },
       // Custom spacing for premium feel
       spacing: {

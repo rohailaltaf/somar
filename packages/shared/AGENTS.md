@@ -94,7 +94,9 @@ rgbColors.light.primary    // "4 76 182"
 ### Adding Colors
 1. Add to `oklchColors` in `src/theme/colors.ts`
 2. Hex/RGB auto-computed at import time
-3. Run `pnpm --filter mobile generate:theme`
+3. Regenerate CSS for both platforms:
+   - `pnpm --filter web generate:theme`
+   - `pnpm --filter mobile generate:theme`
 
 ## Deduplication (Tier 1)
 

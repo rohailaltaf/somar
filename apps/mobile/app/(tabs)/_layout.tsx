@@ -1,11 +1,12 @@
 import { Tabs } from "expo-router";
 import { View, Text, ActivityIndicator, Pressable, Alert } from "react-native";
 import { useColorScheme } from "nativewind";
-import { LogOut, LayoutGrid, Receipt } from "lucide-react-native";
+import { LogOut, House, Activity, Wallet } from "lucide-react-native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { useAuth, DatabaseProvider } from "@/src/providers";
 import { themeColors } from "@/src/lib/theme";
+import { FloatingTabBar } from "@/src/components/ui/floating-tab-bar";
 
 /**
  * Sign out button for header.
@@ -92,6 +93,7 @@ function TabNavigator() {
   return (
     <DatabaseGate>
       <Tabs
+        tabBar={(props) => <FloatingTabBar {...props as any} />}
         screenOptions={{
           headerShown: true,
           headerStyle: {
@@ -105,29 +107,24 @@ function TabNavigator() {
           },
           headerTintColor: colors.foreground,
           tabBarStyle: {
-            backgroundColor: colors.card,
-            borderTopColor: colors.border,
-            paddingTop: 8,
-            height: 88,
+            position: "absolute",
+            backgroundColor: "transparent",
+            borderTopWidth: 0,
+            elevation: 0,
           },
-          tabBarLabelStyle: {
-            fontSize: 11,
-            fontWeight: "500",
-            marginTop: 4,
-          },
-          tabBarActiveTintColor: colors.primary,
+          tabBarActiveTintColor: colors.foreground,
           tabBarInactiveTintColor: colors.mutedForeground,
         }}
       >
         <Tabs.Screen
           name="index"
           options={{
-            title: "Dashboard",
+            title: "Home",
             tabBarIcon: ({ color, focused }) => (
-              <LayoutGrid
-                size={24}
+              <House
+                size={20}
                 color={color}
-                strokeWidth={focused ? 2.5 : 1.5}
+                strokeWidth={focused ? 2.25 : 1.75}
               />
             ),
             headerRight: () => <SignOutButton />,
@@ -136,12 +133,25 @@ function TabNavigator() {
         <Tabs.Screen
           name="transactions"
           options={{
-            title: "Transactions",
+            title: "Activity",
             tabBarIcon: ({ color, focused }) => (
-              <Receipt
-                size={24}
+              <Activity
+                size={20}
                 color={color}
-                strokeWidth={focused ? 2.5 : 1.5}
+                strokeWidth={focused ? 2.25 : 1.75}
+              />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="wallet"
+          options={{
+            title: "Wallet",
+            tabBarIcon: ({ color, focused }) => (
+              <Wallet
+                size={20}
+                color={color}
+                strokeWidth={focused ? 2.25 : 1.75}
               />
             ),
           }}
