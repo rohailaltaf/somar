@@ -3,7 +3,6 @@ import { useEffect, useState, useCallback } from "react";
 import { Stack, useRouter, useSegments, type Href } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import {
-  useColorScheme,
   View,
   Text,
   TouchableOpacity,
@@ -177,12 +176,9 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 }
 
 function RootLayoutContent() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
-
   return (
     <AuthGuard>
-      <StatusBar style={isDark ? "light" : "dark"} />
+      <StatusBar style="light" />
       <Stack
         screenOptions={{
           headerShown: false,

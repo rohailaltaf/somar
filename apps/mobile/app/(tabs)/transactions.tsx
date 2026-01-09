@@ -7,7 +7,6 @@ import {
   TextInput,
   Pressable,
 } from "react-native";
-import { useColorScheme } from "nativewind";
 import { Search, X } from "lucide-react-native";
 import { useTransactions, useTotalSpending } from "@somar/shared/hooks";
 import type { TransactionWithRelations } from "@somar/shared";
@@ -19,7 +18,7 @@ import {
   DateSectionHeader,
 } from "../../src/components/ui";
 import { TransactionRow } from "../../src/components/transactions";
-import { themeColors } from "../../src/lib/theme";
+import { colors } from "../../src/lib/theme";
 
 interface TransactionSection {
   date: string;
@@ -48,9 +47,6 @@ function groupTransactionsByDate(
 }
 
 export default function Transactions() {
-  const { colorScheme } = useColorScheme();
-  const colors = themeColors[colorScheme ?? "light"];
-
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchVisible, setSearchVisible] = useState(false);

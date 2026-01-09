@@ -2,7 +2,7 @@
  * Generate web's globals.css from the shared theme colors.
  *
  * This script reads the oklch color definitions from @somar/shared
- * and generates CSS variables for both light and dark modes.
+ * and generates CSS variables for dark mode.
  *
  * Run: pnpm --filter web generate:theme
  */
@@ -59,7 +59,7 @@ const colorMapping: Record<string, string> = {
   goldMuted: "gold-muted",
 };
 
-// Dark-only colors
+// Dark-only colors (surface hierarchy, text hierarchy, nav)
 const darkOnlyColorMapping: Record<string, string> = {
   // Surface hierarchy
   surfaceDeep: "surface-deep",
@@ -87,24 +87,7 @@ const extendedColorMapping: Record<string, string> = {
 };
 
 // Static colors that aren't in shared theme (charts, sidebar)
-const staticLightColors: Record<string, string> = {
-  "chart-1": "oklch(0.55 0.2 260)",
-  "chart-2": "oklch(0.65 0.18 160)",
-  "chart-3": "oklch(0.6 0.2 30)",
-  "chart-4": "oklch(0.7 0.15 80)",
-  "chart-5": "oklch(0.55 0.18 330)",
-  "sidebar": "oklch(0.98 0.005 260)",
-  "sidebar-foreground": "oklch(0.15 0.02 260)",
-  "sidebar-primary": "oklch(0.45 0.18 260)",
-  "sidebar-primary-foreground": "oklch(0.98 0 0)",
-  "sidebar-accent": "oklch(0.92 0.02 260)",
-  "sidebar-accent-foreground": "oklch(0.25 0.02 260)",
-  "sidebar-border": "oklch(0.9 0.01 260)",
-  "sidebar-ring": "oklch(0.45 0.18 260)",
-  "danger": "oklch(0.55 0.22 25)",
-};
-
-const staticDarkColors: Record<string, string> = {
+const staticColors: Record<string, string> = {
   "chart-1": "oklch(0.65 0.2 260)",
   "chart-2": "oklch(0.7 0.18 160)",
   "chart-3": "oklch(0.7 0.2 30)",
@@ -131,7 +114,7 @@ function generateCSS(): string {
     `@custom-variant dark (&:is(.dark *));`,
     ``,
     `/*`,
-    ` * Auto-generated from @somar/shared theme colors.`,
+    ` * Auto-generated from @somar/shared theme colors (dark mode only).`,
     ` * DO NOT EDIT MANUALLY - run: pnpm --filter web generate:theme`,
     ` */`,
     ``,
@@ -212,13 +195,13 @@ function generateCSS(): string {
     ``,
   ];
 
-  // Light mode (:root)
+  // All colors in :root (dark mode only)
   lines.push(`:root {`);
   lines.push(`  --radius: 0.625rem;`);
 
   // From shared theme
   for (const [key, cssVar] of Object.entries(colorMapping)) {
-    const oklch = oklchColors.light[key as keyof typeof oklchColors.light];
+    const oklch = oklchColors[key as keyof typeof oklchColors];
     if (oklch) {
       lines.push(`  --${cssVar}: ${oklch};`);
     }
@@ -226,34 +209,7 @@ function generateCSS(): string {
 
   // Extended colors
   for (const [key, cssVar] of Object.entries(extendedColorMapping)) {
-    const oklch = extendedColors.light[key as keyof typeof extendedColors.light];
-    if (oklch) {
-      lines.push(`  --${cssVar}: ${oklch};`);
-    }
-  }
-
-  // Static light colors
-  for (const [cssVar, oklch] of Object.entries(staticLightColors)) {
-    lines.push(`  --${cssVar}: ${oklch};`);
-  }
-
-  lines.push(`}`);
-  lines.push(``);
-
-  // Dark mode (.dark)
-  lines.push(`.dark {`);
-
-  // From shared theme
-  for (const [key, cssVar] of Object.entries(colorMapping)) {
-    const oklch = oklchColors.dark[key as keyof typeof oklchColors.dark];
-    if (oklch) {
-      lines.push(`  --${cssVar}: ${oklch};`);
-    }
-  }
-
-  // Extended colors
-  for (const [key, cssVar] of Object.entries(extendedColorMapping)) {
-    const oklch = extendedColors.dark[key as keyof typeof extendedColors.dark];
+    const oklch = extendedColors[key as keyof typeof extendedColors];
     if (oklch) {
       lines.push(`  --${cssVar}: ${oklch};`);
     }
@@ -261,14 +217,14 @@ function generateCSS(): string {
 
   // Dark-only colors from shared theme
   for (const [key, cssVar] of Object.entries(darkOnlyColorMapping)) {
-    const oklch = oklchColors.dark[key as keyof typeof oklchColors.dark];
+    const oklch = oklchColors[key as keyof typeof oklchColors];
     if (oklch) {
       lines.push(`  --${cssVar}: ${oklch};`);
     }
   }
 
-  // Static dark colors
-  for (const [cssVar, oklch] of Object.entries(staticDarkColors)) {
+  // Static colors
+  for (const [cssVar, oklch] of Object.entries(staticColors)) {
     lines.push(`  --${cssVar}: ${oklch};`);
   }
 
@@ -460,9 +416,9 @@ const outputPath = path.join(__dirname, "..", "src", "app", "globals.css");
 fs.writeFileSync(outputPath, css, "utf-8");
 
 console.log(`Generated ${outputPath}`);
-console.log(
-  `  Light mode: ${Object.keys(colorMapping).length + Object.keys(extendedColorMapping).length + Object.keys(staticLightColors).length} colors`
-);
-console.log(
-  `  Dark mode: ${Object.keys(colorMapping).length + Object.keys(extendedColorMapping).length + Object.keys(darkOnlyColorMapping).length + Object.keys(staticDarkColors).length} colors`
-);
+const totalColors =
+  Object.keys(colorMapping).length +
+  Object.keys(extendedColorMapping).length +
+  Object.keys(darkOnlyColorMapping).length +
+  Object.keys(staticColors).length;
+console.log(`  Total colors: ${totalColors}`);

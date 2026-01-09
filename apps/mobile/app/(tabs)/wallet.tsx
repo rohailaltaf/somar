@@ -6,7 +6,6 @@ import {
   RefreshControl,
   Pressable,
 } from "react-native";
-import { useColorScheme } from "nativewind";
 import {
   Wallet,
   Building2,
@@ -18,13 +17,9 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { useAccounts } from "@somar/shared/hooks";
 import { oklchToHex } from "@somar/shared/utils";
-import { themeColors } from "@/src/lib/theme";
+import { colors } from "@/src/lib/theme";
 
 export default function WalletScreen() {
-  const { colorScheme } = useColorScheme();
-  const isDark = colorScheme === "dark";
-  const colors = themeColors[isDark ? "dark" : "light"];
-
   const { data: accounts = [], isLoading, refetch } = useAccounts();
 
   // Separate accounts into connected and manual
@@ -64,7 +59,7 @@ export default function WalletScreen() {
   if (isLoading) {
     return (
       <View className="flex-1 bg-background p-4">
-        <WalletSkeleton colors={colors} />
+        <WalletSkeleton />
       </View>
     );
   }
@@ -74,27 +69,25 @@ export default function WalletScreen() {
   return (
     <View className="flex-1 bg-background">
       {/* Atmospheric Background */}
-      {isDark && (
-        <View className="absolute inset-0 pointer-events-none overflow-hidden">
-          <View
-            className="absolute w-[70vw] h-[70vh] rounded-full opacity-20"
-            style={{
-              top: "-20%",
-              left: "-10%",
-              backgroundColor: oklchToHex("oklch(0.25 0.15 280)"),
-              transform: [{ scale: 1.5 }],
-            }}
-          />
-          <View
-            className="absolute w-[50vw] h-[60vh] rounded-full opacity-15"
-            style={{
-              top: "20%",
-              right: "-15%",
-              backgroundColor: oklchToHex("oklch(0.35 0.12 200)"),
-            }}
-          />
-        </View>
-      )}
+      <View className="absolute inset-0 pointer-events-none overflow-hidden">
+        <View
+          className="absolute w-[70vw] h-[70vh] rounded-full opacity-20"
+          style={{
+            top: "-20%",
+            left: "-10%",
+            backgroundColor: oklchToHex("oklch(0.25 0.15 280)"),
+            transform: [{ scale: 1.5 }],
+          }}
+        />
+        <View
+          className="absolute w-[50vw] h-[60vh] rounded-full opacity-15"
+          style={{
+            top: "20%",
+            right: "-15%",
+            backgroundColor: oklchToHex("oklch(0.35 0.12 200)"),
+          }}
+        />
+      </View>
 
       <ScrollView
         className="flex-1"
@@ -130,10 +123,8 @@ export default function WalletScreen() {
             <View
               className="rounded-2xl p-8 items-center border"
               style={{
-                backgroundColor: isDark
-                  ? oklchToHex("oklch(0.12 0.02 260)")
-                  : colors.card,
-                borderColor: isDark ? "rgba(46, 50, 66, 0.5)" : colors.border,
+                backgroundColor: oklchToHex("oklch(0.12 0.02 260)"),
+                borderColor: "rgba(46, 50, 66, 0.5)",
               }}
             >
               <View className="w-16 h-16 rounded-2xl bg-muted items-center justify-center mb-5">
@@ -183,10 +174,8 @@ export default function WalletScreen() {
             <View
               className="rounded-2xl overflow-hidden border"
               style={{
-                backgroundColor: isDark
-                  ? oklchToHex("oklch(0.12 0.02 260)")
-                  : colors.card,
-                borderColor: isDark ? "rgba(46, 50, 66, 0.5)" : colors.border,
+                backgroundColor: oklchToHex("oklch(0.12 0.02 260)"),
+                borderColor: "rgba(46, 50, 66, 0.5)",
               }}
             >
               {connectedAccounts.map((account, index) => {
@@ -205,9 +194,7 @@ export default function WalletScreen() {
                       className="flex-row items-center px-4 py-3.5"
                       style={{
                         borderBottomWidth: isLast ? 0 : 1,
-                        borderBottomColor: isDark
-                          ? "rgba(46, 50, 66, 0.5)"
-                          : colors.border,
+                        borderBottomColor: "rgba(46, 50, 66, 0.5)",
                       }}
                     >
                       <View className="w-10 h-10 rounded-xl items-center justify-center bg-primary/10 mr-3">
@@ -259,10 +246,8 @@ export default function WalletScreen() {
             <View
               className="rounded-2xl overflow-hidden border"
               style={{
-                backgroundColor: isDark
-                  ? oklchToHex("oklch(0.12 0.02 260)")
-                  : colors.card,
-                borderColor: isDark ? "rgba(46, 50, 66, 0.5)" : colors.border,
+                backgroundColor: oklchToHex("oklch(0.12 0.02 260)"),
+                borderColor: "rgba(46, 50, 66, 0.5)",
               }}
             >
               {manualAccounts.map((account, index) => {
@@ -281,9 +266,7 @@ export default function WalletScreen() {
                       className="flex-row items-center px-4 py-3.5"
                       style={{
                         borderBottomWidth: isLast ? 0 : 1,
-                        borderBottomColor: isDark
-                          ? "rgba(46, 50, 66, 0.5)"
-                          : colors.border,
+                        borderBottomColor: "rgba(46, 50, 66, 0.5)",
                       }}
                     >
                       <View className="w-10 h-10 rounded-xl items-center justify-center bg-warning/10 mr-3">
@@ -319,9 +302,7 @@ export default function WalletScreen() {
             <View
               className="flex-row items-center gap-3 px-4 py-3.5 rounded-xl"
               style={{
-                backgroundColor: isDark
-                  ? oklchToHex("oklch(0.15 0.02 260)")
-                  : colors.muted,
+                backgroundColor: oklchToHex("oklch(0.15 0.02 260)"),
               }}
             >
               <Globe size={18} color={colors.mutedForeground} />
@@ -336,7 +317,7 @@ export default function WalletScreen() {
   );
 }
 
-function WalletSkeleton({ colors }: { colors: typeof themeColors.light }) {
+function WalletSkeleton() {
   return (
     <View className="space-y-6">
       {/* Header skeleton */}

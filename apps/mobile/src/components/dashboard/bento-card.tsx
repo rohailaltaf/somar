@@ -25,7 +25,6 @@ export const BENTO_COLORS = {
 interface BentoCardProps {
   children: React.ReactNode;
   colors: ThemeColors;
-  isDark: boolean;
   /** Show highlight styling with pulsing glow */
   isHighlight?: boolean;
   /** Optional accent color for subtle gradient overlay */
@@ -39,7 +38,6 @@ interface BentoCardProps {
 export function BentoCard({
   children,
   colors,
-  isDark,
   isHighlight = false,
   accentColor,
 }: BentoCardProps) {
@@ -71,7 +69,7 @@ export function BentoCard({
       <View style={{ minHeight: 160 }}>
         {/* Background layer - oklch(0.22 0.08 260) to oklch(0.14 0.04 280) */}
         <LinearGradient
-          colors={isDark ? [BENTO_COLORS.bgStart, BENTO_COLORS.bgEnd] : [colors.card, colors.card]}
+          colors={[BENTO_COLORS.bgStart, BENTO_COLORS.bgEnd]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={{
@@ -86,10 +84,7 @@ export function BentoCard({
 
         {/* Border gradient layer at 60% opacity - oklch(0.5 0.18 260) via oklch(0.4 0.15 280) */}
         <LinearGradient
-          colors={isDark
-            ? [BENTO_COLORS.borderStart + "99", BENTO_COLORS.borderVia + "99", BENTO_COLORS.borderStart + "99"]
-            : [colors.primary + "99", "#8b5cf699", colors.primary + "99"]
-          }
+          colors={[BENTO_COLORS.borderStart + "99", BENTO_COLORS.borderVia + "99", BENTO_COLORS.borderStart + "99"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={{
@@ -120,7 +115,7 @@ export function BentoCard({
 
         {/* Inner content area with background - inset by 1px */}
         <LinearGradient
-          colors={isDark ? [BENTO_COLORS.bgStart, BENTO_COLORS.bgEnd] : [colors.card, colors.card]}
+          colors={[BENTO_COLORS.bgStart, BENTO_COLORS.bgEnd]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={{
@@ -130,7 +125,7 @@ export function BentoCard({
             padding: 16,
             shadowColor: BENTO_COLORS.borderStart,
             shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: isDark ? 0.2 : 0.1,
+            shadowOpacity: 0.2,
             shadowRadius: 30,
             elevation: 8,
           }}
@@ -145,7 +140,7 @@ export function BentoCard({
     <View
       style={{
         flex: 1,
-        backgroundColor: isDark ? BENTO_COLORS.cardBg : colors.card,
+        backgroundColor: BENTO_COLORS.cardBg,
         borderRadius: 16,
         padding: 16,
         minHeight: 160,

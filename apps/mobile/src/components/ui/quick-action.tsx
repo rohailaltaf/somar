@@ -10,7 +10,6 @@ interface QuickActionProps {
   label: string;
   sublabel: string;
   colors: ThemeColors;
-  isDark: boolean;
   /** Highlight style for emphasized actions */
   isHighlight?: boolean;
   onPress: () => void;
@@ -25,7 +24,6 @@ export function QuickAction({
   label,
   sublabel,
   colors,
-  isDark,
   isHighlight = false,
   onPress,
 }: QuickActionProps) {
@@ -38,38 +36,26 @@ export function QuickAction({
       className="w-[48%] rounded-2xl p-4 flex-row items-center border"
       style={{
         backgroundColor: isHighlight
-          ? isDark
-            ? "rgba(58, 45, 112, 0.3)"
-            : colors.primaryMuted
+          ? "rgba(58, 45, 112, 0.3)"
           : colors.card,
         borderColor: isHighlight
-          ? isDark
-            ? "rgba(99, 102, 241, 0.3)"
-            : colors.primary + "40"
-          : isDark
-            ? "rgba(46, 50, 66, 0.5)"
-            : colors.border,
+          ? "rgba(99, 102, 241, 0.3)"
+          : "rgba(46, 50, 66, 0.5)",
       }}
     >
       <View
         className="w-8 h-8 rounded-lg items-center justify-center mr-3"
         style={{
           backgroundColor: isHighlight
-            ? isDark
-              ? "rgba(99, 102, 241, 0.3)"
-              : colors.primary + "30"
-            : isDark
-              ? oklchToHex("oklch(0.18 0.02 260)")
-              : colors.muted,
+            ? "rgba(99, 102, 241, 0.3)"
+            : oklchToHex("oklch(0.18 0.02 260)"),
         }}
       >
         <Icon
           size={16}
           color={
             isHighlight
-              ? isDark
-                ? oklchToHex("oklch(0.75 0.15 260)")
-                : colors.primary
+              ? oklchToHex("oklch(0.75 0.15 260)")
               : colors.mutedForeground
           }
         />

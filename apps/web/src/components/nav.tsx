@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 
 // Hex colors for Lucide icon color prop (doesn't support className)
-const NAV_COLORS = hexColors.dark;
+const NAV_COLORS = hexColors;
 
 // Desktop nav - all items
 const desktopNavItems = [

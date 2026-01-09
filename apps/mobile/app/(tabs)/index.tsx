@@ -7,7 +7,6 @@ import {
   RefreshControl,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { useColorScheme } from "nativewind";
 import {
   Zap,
   ChevronRight,
@@ -35,7 +34,7 @@ import {
   getBudgetRemaining,
 } from "@somar/shared";
 import { oklchToHex } from "@somar/shared/utils";
-import { themeColors } from "@/src/lib/theme";
+import { colors } from "@/src/lib/theme";
 import { DashboardSectionHeader, QuickAction } from "@/src/components/ui";
 import { TransactionRowAnimated } from "@/src/components/transactions";
 import { CategoryRow } from "@/src/components/categories";
@@ -48,10 +47,6 @@ import {
 
 export default function Dashboard() {
   const router = useRouter();
-  const { colorScheme } = useColorScheme();
-  const isDark = colorScheme === "dark";
-  // colors needed for: RefreshControl, Lucide icons, child component props
-  const colors = themeColors[isDark ? "dark" : "light"];
   const { isReady: dbReady } = useDatabaseAdapter();
   const currentMonth = useMemo(() => getCurrentMonth(), []);
   const previousMonth = useMemo(() => getPreviousMonth(), []);
@@ -125,7 +120,7 @@ export default function Dashboard() {
   return (
     <View className="flex-1 bg-background">
       {/* Atmospheric Background - Deep Space Effect */}
-      {isDark && <AtmosphericBackground />}
+      <AtmosphericBackground />
 
       <ScrollView
         className="flex-1"
@@ -149,7 +144,6 @@ export default function Dashboard() {
           budgetProgress={budgetProgress}
           budgetRemaining={budgetRemaining}
           colors={colors}
-          isDark={isDark}
         />
 
         {/* Bento Grid - Cards Row */}
@@ -167,7 +161,6 @@ export default function Dashboard() {
           >
             <BentoCard
               colors={colors}
-              isDark={isDark}
               isHighlight={unconfirmedCount > 0}
             >
               <View className="flex-row justify-between items-start">
@@ -209,7 +202,7 @@ export default function Dashboard() {
             }}
             className="flex-1"
           >
-            <BentoCard colors={colors} isDark={isDark} accentColor={colors.gold}>
+            <BentoCard colors={colors} accentColor={colors.gold}>
               <View className="flex-row justify-between items-start">
                 <View className="w-11 h-11 rounded-xl items-center justify-center bg-gold/15">
                   <Wallet size={20} color={colors.gold} />
@@ -248,8 +241,8 @@ export default function Dashboard() {
             <View
               className="rounded-2xl overflow-hidden border mt-4"
               style={{
-                backgroundColor: isDark ? oklchToHex("oklch(0.12 0.02 260)") : colors.card,
-                borderColor: isDark ? "rgba(46, 50, 66, 0.5)" : colors.border,
+                backgroundColor: oklchToHex("oklch(0.12 0.02 260)"),
+                borderColor: "rgba(46, 50, 66, 0.5)",
               }}
             >
               {categoryProgress.map((cat, index) => (
@@ -286,8 +279,8 @@ export default function Dashboard() {
             <View
               className="rounded-2xl overflow-hidden border mt-4"
               style={{
-                backgroundColor: isDark ? oklchToHex("oklch(0.12 0.02 260)") : colors.card,
-                borderColor: isDark ? "rgba(46, 50, 66, 0.5)" : colors.border,
+                backgroundColor: oklchToHex("oklch(0.12 0.02 260)"),
+                borderColor: "rgba(46, 50, 66, 0.5)",
               }}
             >
               {recentTransactions.map((tx, index) => (
@@ -338,7 +331,6 @@ export default function Dashboard() {
             label="Upload"
             sublabel="Import CSV"
             colors={colors}
-            isDark={isDark}
             onPress={() => {}}
           />
           <QuickAction
@@ -346,7 +338,6 @@ export default function Dashboard() {
             label="Categorize"
             sublabel="Quick tagger"
             colors={colors}
-            isDark={isDark}
             isHighlight={unconfirmedCount > 0}
             onPress={() => router.push("/(tabs)/transactions")}
           />
@@ -355,7 +346,6 @@ export default function Dashboard() {
             label="Reports"
             sublabel="Analytics"
             colors={colors}
-            isDark={isDark}
             onPress={() => {}}
           />
           <QuickAction
@@ -363,7 +353,6 @@ export default function Dashboard() {
             label="Accounts"
             sublabel="Manage"
             colors={colors}
-            isDark={isDark}
             onPress={() => {}}
           />
         </Animated.View>

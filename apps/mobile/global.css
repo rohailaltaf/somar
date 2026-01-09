@@ -3,89 +3,49 @@
 @tailwind utilities;
 
 /*
- * Auto-generated from @somar/shared theme colors.
+ * Auto-generated from @somar/shared theme colors (dark mode only).
  * DO NOT EDIT MANUALLY - run: pnpm --filter mobile generate:theme
  *
  * All colors are RGB equivalents of the web's oklch values
  * to ensure perfect visual consistency across platforms.
  */
 
-/* Light mode (default) */
 :root {
-  --color-background: 246 249 252;
-  --color-foreground: 7 11 20;
-  --color-card: 255 255 255;
-  --color-card-foreground: 7 11 20;
-  --color-surface: 243 245 249;
-  --color-surface-elevated: 255 255 255;
-  --color-muted: 235 239 245;
-  --color-muted-foreground: 93 100 111;
-  --color-secondary: 235 239 245;
-  --color-secondary-foreground: 28 34 43;
-  --color-primary: 4 76 182;
-  --color-primary-foreground: 248 248 248;
-  --color-border: 218 222 229;
-  --color-border-subtle: 235 239 245;
-  --color-destructive: 212 9 36;
-  --color-success: 24 154 48;
-  --color-warning: 225 162 0;
-  --color-accent: 221 229 242;
-  --color-gold: 195 127 0;
-  --color-gold-muted: 117 75 0;
-  --color-primary-muted: 198 230 255;
-  --color-destructive-muted: 255 218 212;
-  --color-success-muted: 206 253 206;
-  --color-warning-muted: 255 235 177;
+  --color-background: 1 2 4;
+  --color-foreground: 235 239 245;
+  --color-card: 2 4 11;
+  --color-card-foreground: 235 239 245;
+  --color-surface: 3 6 13;
+  --color-surface-elevated: 8 13 22;
+  --color-muted: 28 34 43;
+  --color-muted-foreground: 136 144 156;
+  --color-secondary: 28 34 43;
+  --color-secondary-foreground: 235 239 245;
+  --color-primary: 72 139 251;
+  --color-primary-foreground: 1 2 4;
+  --color-border: 35 41 51;
+  --color-border-subtle: 21 27 36;
+  --color-destructive: 250 104 99;
+  --color-success: 91 182 97;
+  --color-warning: 239 153 0;
+  --color-accent: 28 34 43;
+  --color-gold: 228 172 89;
+  --color-gold-muted: 141 107 57;
+  --color-primary-muted: 8 32 71;
+  --color-destructive-muted: 64 12 12;
+  --color-success-muted: 123 194 126;
+  --color-warning-muted: 55 25 0;
+  --color-nav-dock: 4 7 15;
+  --color-nav-indicator: 20 27 38;
+  --color-nav-inactive-icon: 107 114 126;
+  --color-nav-inactive-label: 79 86 97;
 
   /* Text hierarchy */
-  --color-text-primary: 7 11 20;
-  --color-text-secondary: 93 100 111;
-  --color-text-tertiary: 93 100 111;
-  --color-text-inverse: 248 248 248;
+  --color-text-primary: 235 239 245;
+  --color-text-secondary: 136 144 156;
+  --color-text-tertiary: 136 144 156;
+  --color-text-inverse: 1 2 4;
 
   /* Overlay */
   --color-overlay: 0 0 0;
-}
-
-/* Dark mode - Premium Financial Observatory theme */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-background: 1 2 4;
-    --color-foreground: 235 239 245;
-    --color-card: 2 4 11;
-    --color-card-foreground: 235 239 245;
-    --color-surface: 3 6 13;
-    --color-surface-elevated: 8 13 22;
-    --color-muted: 28 34 43;
-    --color-muted-foreground: 136 144 156;
-    --color-secondary: 28 34 43;
-    --color-secondary-foreground: 235 239 245;
-    --color-primary: 72 139 251;
-    --color-primary-foreground: 1 2 4;
-    --color-border: 35 41 51;
-    --color-border-subtle: 21 27 36;
-    --color-destructive: 250 104 99;
-    --color-success: 91 182 97;
-    --color-warning: 239 153 0;
-    --color-accent: 28 34 43;
-    --color-gold: 228 172 89;
-    --color-gold-muted: 141 107 57;
-    --color-primary-muted: 8 32 71;
-    --color-destructive-muted: 64 12 12;
-    --color-success-muted: 123 194 126;
-    --color-warning-muted: 55 25 0;
-    --color-nav-dock: 4 7 15;
-    --color-nav-indicator: 20 27 38;
-    --color-nav-inactive-icon: 107 114 126;
-    --color-nav-inactive-label: 79 86 97;
-
-    /* Text hierarchy */
-    --color-text-primary: 235 239 245;
-    --color-text-secondary: 136 144 156;
-    --color-text-tertiary: 136 144 156;
-    --color-text-inverse: 1 2 4;
-
-    /* Overlay */
-    --color-overlay: 0 0 0;
-  }
 }

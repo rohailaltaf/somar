@@ -1,11 +1,10 @@
 import { Tabs } from "expo-router";
 import { View, Text, ActivityIndicator, Pressable, Alert } from "react-native";
-import { useColorScheme } from "nativewind";
 import { LogOut, House, Activity, Wallet } from "lucide-react-native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { useAuth, DatabaseProvider } from "@/src/providers";
-import { themeColors } from "@/src/lib/theme";
+import { colors } from "@/src/lib/theme";
 import { FloatingTabBar } from "@/src/components/ui/floating-tab-bar";
 
 /**
@@ -13,8 +12,6 @@ import { FloatingTabBar } from "@/src/components/ui/floating-tab-bar";
  */
 function SignOutButton() {
   const { logout } = useAuth();
-  const { colorScheme } = useColorScheme();
-  const colors = themeColors[colorScheme ?? "light"];
 
   const handleSignOut = () => {
     Alert.alert(
@@ -42,9 +39,6 @@ function SignOutButton() {
  * Loading screen shown while database is initializing.
  */
 function LoadingScreen() {
-  const { colorScheme } = useColorScheme();
-  const colors = themeColors[colorScheme ?? "light"];
-
   return (
     <View className="flex-1 items-center justify-center bg-background">
       <View className="w-16 h-16 rounded-2xl bg-primary/10 items-center justify-center mb-4">
@@ -87,9 +81,6 @@ function DatabaseGate({ children }: { children: React.ReactNode }) {
  * Tab navigator content with icons and styling.
  */
 function TabNavigator() {
-  const { colorScheme } = useColorScheme();
-  const colors = themeColors[colorScheme ?? "light"];
-
   return (
     <DatabaseGate>
       <Tabs

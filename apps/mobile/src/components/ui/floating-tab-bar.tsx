@@ -1,14 +1,10 @@
 import { View, Pressable, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useColorScheme } from "nativewind";
 import Animated from "react-native-reanimated";
 import { useAnimatedStyle, withSpring, useSharedValue } from "react-native-reanimated";
 import { useEffect } from "react";
 import { hexColors } from "@somar/shared/theme";
-import { themeColors } from "@/src/lib/theme";
-
-// Hex colors still needed for Lucide icon color prop (doesn't support className)
-const NAV_COLORS = hexColors.dark;
+import { colors } from "@/src/lib/theme";
 
 // Type for Expo Router tab bar props
 interface TabRoute {
@@ -46,8 +42,6 @@ const SPRING_CONFIG = {
  */
 export function FloatingTabBar({ state, descriptors, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
-  const { colorScheme } = useColorScheme();
-  const colors = themeColors[colorScheme ?? "dark"];
 
   const tabCount = state.routes.length;
   const indicatorPosition = useSharedValue(state.index);
@@ -126,7 +120,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: TabBarProps) 
               >
                 {options.tabBarIcon?.({
                   focused: isFocused,
-                  color: isFocused ? colors.foreground : NAV_COLORS.navInactiveIcon,
+                  color: isFocused ? colors.foreground : hexColors.navInactiveIcon,
                   size: 20,
                 })}
                 <Text

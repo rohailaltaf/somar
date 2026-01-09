@@ -18,7 +18,6 @@ interface HeroCardProps {
   budgetProgress: number;
   budgetRemaining: number;
   colors: ThemeColors;
-  isDark: boolean;
 }
 
 /**
@@ -34,7 +33,6 @@ export function HeroCard({
   budgetProgress,
   budgetRemaining,
   colors,
-  isDark,
 }: HeroCardProps) {
   return (
     <Animated.View
@@ -42,14 +40,11 @@ export function HeroCard({
       style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 }}
     >
       <LinearGradient
-        colors={isDark
-          ? [
-              oklchToHex("oklch(0.35 0.15 260)"),
-              oklchToHex("oklch(0.25 0.1 280)"),
-              oklchToHex("oklch(0.2 0.08 300)"),
-            ]
-          : [colors.primary + "40", colors.primary + "20", colors.primary + "10"]
-        }
+        colors={[
+          oklchToHex("oklch(0.35 0.15 260)"),
+          oklchToHex("oklch(0.25 0.1 280)"),
+          oklchToHex("oklch(0.2 0.08 300)"),
+        ]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={{
@@ -59,28 +54,26 @@ export function HeroCard({
       >
         <View
           style={{
-            backgroundColor: isDark ? oklchToHex("oklch(0.11 0.02 260)") : colors.card,
+            backgroundColor: oklchToHex("oklch(0.11 0.02 260)"),
             borderRadius: 23,
             padding: 24,
             minHeight: 280,
           }}
         >
           {/* Inner glow overlay */}
-          {isDark && (
-            <LinearGradient
-              colors={[oklchToHex("oklch(0.4 0.15 260)") + "1A", "transparent"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                borderRadius: 23,
-              }}
-            />
-          )}
+          <LinearGradient
+            colors={[oklchToHex("oklch(0.4 0.15 260)") + "1A", "transparent"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              borderRadius: 23,
+            }}
+          />
 
           {/* Header row */}
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
