@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/providers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,34 +18,38 @@ import {
 } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { loginSchema, type LoginFormData } from "@somar/shared/validation";
 
 export default function LoginPage() {
   const { login } = useAuth();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [isOAuthLoading, setIsOAuthLoading] = useState(false);
 
-  async function handleEmailLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
 
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters");
-      return;
-    }
+  const isDisabled = isSubmitting || isOAuthLoading;
 
-    setIsLoading(true);
-
+  async function onSubmit(data: LoginFormData) {
     try {
-      await login(email, password);
+      await login(data.email, data.password);
       // login() handles navigation via window.location.href
       // Show redirecting state while browser navigates
       setIsRedirecting(true);
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Failed to sign in");
-      setIsLoading(false);
+      setError("root", {
+        message: error instanceof Error ? error.message : "Failed to sign in",
+      });
     }
   }
 
@@ -63,19 +69,10 @@ export default function LoginPage() {
   async function handleGoogleLogin() {
     // Google OAuth doesn't give us the password, so we can't derive encryption key.
     // For now, show a message. Later: use a separate "data password" prompt.
-    setError(
-      "Google login coming soon. For now, please use email/password to access your encrypted data."
-    );
+    setError("root", {
+      message: "Google login coming soon. For now, please use email/password to access your encrypted data.",
+    });
     return;
-
-    // When ready:
-    // setIsLoading(true);
-    // try {
-    //   await signIn.social({ provider: "google", callbackURL: "/" });
-    // } catch (error) {
-    //   setError("Failed to sign in with Google");
-    //   setIsLoading(false);
-    // }
   }
 
   return (
@@ -93,7 +90,7 @@ export default function LoginPage() {
           variant="outline"
           className="w-full bg-white dark:bg-white text-slate-900 dark:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-100 border-slate-300"
           onClick={handleGoogleLogin}
-          disabled={isLoading}
+          disabled={isDisabled}
         >
           <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
             <path
@@ -127,13 +124,13 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <form onSubmit={handleEmailLogin} className="space-y-4">
-          {error && (
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {errors.root && (
             <Alert variant="destructive" className="border-red-500/50 bg-red-950/20">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Sign in failed</AlertTitle>
               <AlertDescription className="text-red-200">
-                {error}
+                {errors.root.message}
               </AlertDescription>
             </Alert>
           )}
@@ -145,14 +142,12 @@ export default function LoginPage() {
               id="email"
               type="email"
               placeholder="you@example.com"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                setError(null); // Clear error when user types
-              }}
-              required
+              {...register("email")}
               className="border-border bg-surface-elevated text-foreground placeholder:text-foreground-dim"
             />
+            {errors.email && (
+              <p className="text-destructive text-xs">{errors.email.message}</p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="password" className="text-foreground-secondary">
@@ -162,22 +157,19 @@ export default function LoginPage() {
               id="password"
               type="password"
               placeholder="••••••••"
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                setError(null); // Clear error when user types
-              }}
-              required
-              minLength={8}
+              {...register("password")}
               className="border-border bg-surface-elevated text-foreground placeholder:text-foreground-dim"
             />
+            {errors.password && (
+              <p className="text-destructive text-xs">{errors.password.message}</p>
+            )}
           </div>
           <Button
             type="submit"
             className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
-            disabled={isLoading}
+            disabled={isDisabled}
           >
-            {isLoading ? "Signing in..." : "Sign in"}
+            {isSubmitting ? "Signing in..." : "Sign in"}
           </Button>
         </form>
       </CardContent>

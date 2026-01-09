@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+/**
+ * Auth validation schemas.
+ * Shared between web and mobile for consistent validation.
+ */
+
 // Login form schema
 export const loginSchema = z.object({
   email: z
@@ -32,7 +37,7 @@ export const registerSchema = z
 
 export type RegisterFormData = z.infer<typeof registerSchema>;
 
-// Unlock form schema
+// Unlock form schema (for re-authenticating when encryption key is missing)
 export const unlockSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });

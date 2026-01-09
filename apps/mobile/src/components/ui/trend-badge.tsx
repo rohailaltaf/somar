@@ -1,54 +1,45 @@
 import React from "react";
 import { View, Text } from "react-native";
 import { ArrowUpRight, ArrowDownRight } from "lucide-react-native";
-import type { ThemeColors } from "../../lib/theme";
-
-interface TrendBadgeProps {
-  /** Percentage change (negative = down, positive = up) */
-  percentChange: number;
-  colors: ThemeColors;
-  /** Optional suffix text */
-  suffix?: string;
-}
+import { hexColors } from "@somar/shared/theme";
+import {
+  trendBadgeStyles,
+  getTrendVariant,
+  getTrendBadgeContainerClass,
+  getTrendBadgeTextClass,
+  type TrendBadgeProps,
+} from "@somar/shared/styles";
 
 /**
- * Badge showing percentage change with directional arrow.
- * Green for decrease (good for spending), red for increase.
+ * Trend indicator badge showing percentage change.
+ * For spending: up is bad (red), down is good (green).
+ * Uses shared styles from @somar/shared/styles.
  */
-export function TrendBadge({
-  percentChange,
-  colors,
-  suffix = "vs last mo",
-}: TrendBadgeProps) {
-  const isDown = percentChange <= 0;
+export function TrendBadge({ change }: TrendBadgeProps) {
+  if (change === null) return null;
+
+  const direction = getTrendVariant(change);
+  const textClass = getTrendBadgeTextClass(direction);
+
+  // Get icon color based on direction
+  const iconColor =
+    direction === "up"
+      ? hexColors.destructive
+      : direction === "down"
+      ? hexColors.success
+      : hexColors.mutedForeground;
 
   return (
-    <View
-      className={`flex-row items-center self-start px-3 py-1.5 rounded-full ${
-        isDown ? "bg-success/15" : "bg-destructive/15"
-      }`}
-    >
-      {isDown ? (
-        <ArrowDownRight size={14} color={colors.success} />
-      ) : (
-        <ArrowUpRight size={14} color={colors.destructive} />
-      )}
-      <Text
-        className={`font-semibold text-xs ml-1.5 ${
-          isDown ? "text-success-muted" : "text-destructive-muted"
-        }`}
-      >
-        {Math.abs(percentChange)}%
+    <View className={getTrendBadgeContainerClass(direction)}>
+      {direction === "up" ? (
+        <ArrowUpRight size={trendBadgeStyles.iconSize} color={iconColor} />
+      ) : direction === "down" ? (
+        <ArrowDownRight size={trendBadgeStyles.iconSize} color={iconColor} />
+      ) : null}
+      <Text className={textClass}>{Math.abs(change)}%</Text>
+      <Text className={`${trendBadgeStyles.suffix} ${trendBadgeStyles.textColor[direction]}`}>
+        vs last mo
       </Text>
-      {suffix && (
-        <Text
-          className={`text-[11px] ml-1.5 opacity-70 ${
-            isDown ? "text-success-muted" : "text-destructive-muted"
-          }`}
-        >
-          {suffix}
-        </Text>
-      )}
     </View>
   );
 }

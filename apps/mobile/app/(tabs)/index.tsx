@@ -3,20 +3,17 @@ import {
   View,
   Text,
   ScrollView,
-  Pressable,
   RefreshControl,
 } from "react-native";
 import { useRouter } from "expo-router";
 import {
   Zap,
-  ChevronRight,
   Wallet,
   Upload,
   TrendingUp,
   CreditCard,
 } from "lucide-react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import * as Haptics from "expo-haptics";
 import {
   useTotalSpending,
   useSpendingByCategory,
@@ -35,15 +32,18 @@ import {
 } from "@somar/shared";
 import { oklchToHex } from "@somar/shared/utils";
 import { colors } from "@/src/lib/theme";
-import { DashboardSectionHeader, QuickAction } from "@/src/components/ui";
-import { TransactionRowAnimated } from "@/src/components/transactions";
-import { CategoryRow } from "@/src/components/categories";
+import { hexColors } from "@somar/shared/theme";
 import {
-  BentoCard,
+  StatCard,
   HeroCard,
   AtmosphericBackground,
   DashboardSkeleton,
+  CategoryRow,
+  TransactionRow,
+  QuickAction,
+  DashboardSectionHeader,
 } from "@/src/components/dashboard";
+import { EmptyState } from "@/src/components/ui/empty-state";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -98,8 +98,6 @@ export default function Dashboard() {
     });
   }, [spendingByCategory, categoriesWithBudgets]);
 
-  const totalCategorySpending = categoryProgress.reduce((sum, cat) => sum + cat.spent, 0);
-
   const handleRefresh = async () => {
     await Promise.all([refetchCurrent(), refetchByCategory(), refetchTransactions()]);
   };
@@ -137,13 +135,11 @@ export default function Dashboard() {
         {/* Hero Section */}
         <HeroCard
           currentMonth={currentMonth}
-          spendingValue={spendingValue}
-          previousSpending={previousSpending}
-          percentChange={percentChange}
-          totalBudget={totalBudget}
+          totalSpending={spendingValue}
+          spendingChange={percentChange}
           budgetProgress={budgetProgress}
           budgetRemaining={budgetRemaining}
-          colors={colors}
+          hasBudget={totalBudget > 0}
         />
 
         {/* Bento Grid - Cards Row */}
@@ -152,76 +148,25 @@ export default function Dashboard() {
           className="flex-row px-4 gap-3 mt-2"
         >
           {/* Uncategorized Card */}
-          <Pressable
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push("/(tabs)/transactions");
-            }}
-            className="flex-1"
-          >
-            <BentoCard
-              colors={colors}
-              isHighlight={unconfirmedCount > 0}
-            >
-              <View className="flex-row justify-between items-start">
-                <View
-                  className={`w-11 h-11 rounded-xl items-center justify-center ${
-                    unconfirmedCount > 0 ? "bg-primary/20" : "bg-muted"
-                  }`}
-                >
-                  <Zap
-                    size={20}
-                    color={unconfirmedCount > 0 ? colors.primary : colors.mutedForeground}
-                  />
-                </View>
-                <ChevronRight
-                  size={16}
-                  color={colors.mutedForeground}
-                />
-              </View>
-              <View className="mt-auto pt-5">
-                <Text
-                  className={`font-bold text-[28px] ${
-                    unconfirmedCount > 0 ? "text-foreground" : "text-muted-foreground"
-                  }`}
-                >
-                  {unconfirmedCount}
-                </Text>
-                <Text className="font-sans text-xs text-muted-foreground mt-0.5">
-                  {unconfirmedCount === 1 ? 'Transaction' : 'Transactions'} to categorize
-                </Text>
-              </View>
-            </BentoCard>
-          </Pressable>
+          <StatCard
+            icon={Zap}
+            iconColorClass={unconfirmedCount > 0 ? "text-primary" : "text-muted-foreground"}
+            value={unconfirmedCount}
+            label={unconfirmedCount === 1 ? "Transaction to categorize" : "Transactions to categorize"}
+            highlight={unconfirmedCount > 0}
+            onPress={() => router.push("/(tabs)/transactions")}
+          />
 
           {/* Accounts Card */}
-          <Pressable
+          <StatCard
+            icon={Wallet}
+            iconColorClass="text-gold"
+            value={accounts.length}
+            label={accounts.length === 1 ? "Connected Account" : "Connected Accounts"}
             onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               // Navigate to accounts when available
             }}
-            className="flex-1"
-          >
-            <BentoCard colors={colors} accentColor={colors.gold}>
-              <View className="flex-row justify-between items-start">
-                <View className="w-11 h-11 rounded-xl items-center justify-center bg-gold/15">
-                  <Wallet size={20} color={colors.gold} />
-                </View>
-                <ChevronRight
-                  size={16}
-                  color={colors.mutedForeground}
-                />
-              </View>
-              <View className="mt-auto pt-5">
-                <Text className="font-bold text-foreground text-[28px]">
-                  {accounts.length}
-                </Text>
-                <Text className="font-sans text-xs text-muted-foreground mt-0.5">
-                  Connected {accounts.length === 1 ? "Account" : "Accounts"}
-                </Text>
-              </View>
-            </BentoCard>
-          </Pressable>
+          />
         </Animated.View>
 
         {/* Category Breakdown */}
@@ -235,25 +180,16 @@ export default function Dashboard() {
               subtitle="Where your money went"
               actionLabel="Manage"
               onAction={() => router.push("/categories" as never)}
-              colors={colors}
             />
 
-            <View
-              className="rounded-2xl overflow-hidden border mt-4"
-              style={{
-                backgroundColor: oklchToHex("oklch(0.12 0.02 260)"),
-                borderColor: "rgba(46, 50, 66, 0.5)",
-              }}
-            >
+            <View className="rounded-2xl overflow-hidden border border-border-subtle bg-surface mt-4">
               {categoryProgress.map((cat, index) => (
                 <CategoryRow
                   key={cat.id}
                   name={cat.name}
-                  spent={cat.spent}
-                  budget={cat.budget}
+                  amount={cat.spent}
+                  budget={cat.budget > 0 ? cat.budget : null}
                   color={cat.color}
-                  percentage={totalCategorySpending > 0 ? (cat.spent / totalCategorySpending) * 100 : 0}
-                  colors={colors}
                   isLast={index === categoryProgress.length - 1}
                   index={index}
                 />
@@ -273,29 +209,27 @@ export default function Dashboard() {
               subtitle="Latest transactions"
               actionLabel="View all"
               onAction={() => router.push("/(tabs)/transactions")}
-              colors={colors}
             />
 
-            <View
-              className="rounded-2xl overflow-hidden border mt-4"
-              style={{
-                backgroundColor: oklchToHex("oklch(0.12 0.02 260)"),
-                borderColor: "rgba(46, 50, 66, 0.5)",
-              }}
-            >
+            <View className="rounded-2xl overflow-hidden border border-border-subtle bg-surface mt-4">
               {recentTransactions.map((tx, index) => (
-                <TransactionRowAnimated
+                <View
                   key={tx.id}
-                  description={tx.description}
-                  amount={tx.amount}
-                  date={tx.date}
-                  categoryName={tx.category?.name}
-                  categoryColor={tx.category?.color ? oklchToHex(tx.category.color) : undefined}
-                  isConfirmed={tx.isConfirmed}
-                  colors={colors}
-                  isLast={index === recentTransactions.length - 1}
-                  index={index}
-                />
+                  style={{
+                    borderBottomWidth: index === recentTransactions.length - 1 ? 0 : 1,
+                    borderBottomColor: hexColors.borderSubtle,
+                  }}
+                >
+                  <TransactionRow
+                    description={tx.description}
+                    amount={tx.amount}
+                    date={tx.date}
+                    categoryName={tx.category?.name}
+                    categoryColor={tx.category?.color ? oklchToHex(tx.category.color) : undefined}
+                    isConfirmed={tx.isConfirmed}
+                    index={index}
+                  />
+                </View>
               ))}
             </View>
           </Animated.View>
@@ -307,16 +241,13 @@ export default function Dashboard() {
             entering={FadeInDown.duration(600).delay(300)}
             className="mx-4 mt-8"
           >
-            <View className="bg-card rounded-2xl p-10 items-center border border-border">
-              <View className="w-16 h-16 rounded-2xl bg-muted items-center justify-center mb-5">
-                <Wallet size={28} color={colors.mutedForeground} />
-              </View>
-              <Text className="font-semibold text-foreground text-[17px] text-center mb-2">
-                No transactions yet
-              </Text>
-              <Text className="font-sans text-muted-foreground text-sm text-center leading-5 max-w-[240px]">
-                Connect your bank or import transactions on the web app to see your spending here.
-              </Text>
+            <View className="bg-card rounded-2xl border border-border">
+              <EmptyState
+                icon="Wallet"
+                title="No transactions yet"
+                description="Connect your bank or import transactions on the web app to see your spending here."
+                size="compact"
+              />
             </View>
           </Animated.View>
         )}
@@ -330,29 +261,25 @@ export default function Dashboard() {
             icon={Upload}
             label="Upload"
             sublabel="Import CSV"
-            colors={colors}
             onPress={() => {}}
           />
           <QuickAction
             icon={Zap}
             label="Categorize"
             sublabel="Quick tagger"
-            colors={colors}
-            isHighlight={unconfirmedCount > 0}
+            highlight={unconfirmedCount > 0}
             onPress={() => router.push("/(tabs)/transactions")}
           />
           <QuickAction
             icon={TrendingUp}
             label="Reports"
             sublabel="Analytics"
-            colors={colors}
             onPress={() => {}}
           />
           <QuickAction
             icon={CreditCard}
             label="Accounts"
             sublabel="Manage"
-            colors={colors}
             onPress={() => {}}
           />
         </Animated.View>

@@ -82,21 +82,93 @@ Single source of truth in `packages/shared/src/theme/colors.ts`:
 
 ```typescript
 // oklchColors - Source, used by web CSS
-oklchColors.light.primary  // "oklch(0.45 0.18 260)"
+oklchColors.primary  // "oklch(0.65 0.18 260)"
 
 // hexColors - Pre-computed, used by mobile native components
-hexColors.light.primary    // "#044CB6"
+hexColors.primary    // "#488bfb"
 
 // rgbColors - Pre-computed, used by NativeWind CSS variables
-rgbColors.light.primary    // "4 76 182"
+rgbColors.primary    // "72 139 251"
+
+// staticColors - Charts, sidebar, danger variants
+staticColors.chart1  // "oklch(0.65 0.2 260)"
+
+// All colors combined
+allHexColors, allRgbColors, allOklchColors
 ```
 
 ### Adding Colors
-1. Add to `oklchColors` in `src/theme/colors.ts`
+1. Add to the appropriate object in `src/theme/colors.ts`:
+   - `oklchColors` for core semantic colors
+   - `extendedColors` for muted variants
+   - `staticColors` for charts, sidebar, danger
 2. Hex/RGB auto-computed at import time
 3. Regenerate CSS for both platforms:
-   - `pnpm --filter web generate:theme`
-   - `pnpm --filter mobile generate:theme`
+   ```bash
+   pnpm generate:theme  # Single command updates both
+   ```
+
+## UI Logic Hooks
+
+Shared calculation and formatting logic in `@somar/shared/ui-logic`:
+
+```typescript
+import {
+  useBudgetProgress,
+  useAmountDisplay,
+  useDateSection,
+  groupByDate,
+} from "@somar/shared/ui-logic";
+
+// Budget progress - used by both web's BudgetProgress and mobile's CategoryRow
+const { percentCapped, colorToken, isOverBudget, hasBudget } = useBudgetProgress(spent, budget);
+
+// Amount display - formatting and color logic
+const { display, colorClass, isExpense } = useAmountDisplay(amount, { showSign: true });
+
+// Date section - for grouping transactions by date
+const { primary, secondary, isToday } = useDateSection("2025-01-15");
+
+// Group items by date
+const groups = groupByDate(transactions, (tx) => tx.date);
+```
+
+**Color tokens returned:**
+- `useBudgetProgress` returns: `primary`, `warning`, `destructive`
+- `useAmountDisplay` returns: `expense`, `income`, `neutral`
+
+These hooks ensure identical calculation logic across web and mobile.
+
+## Component Contracts
+
+Shared prop interfaces in `@somar/shared/components`:
+
+```typescript
+import type {
+  BudgetRowProps,
+  TransactionRowProps,
+  EmptyStateProps,
+  AmountDisplayProps,
+  SectionHeaderProps,
+  DateSectionHeaderProps,
+  PageHeaderProps,
+} from "@somar/shared/components";
+
+// Components implement these contracts for consistent APIs
+function BudgetRow(props: BudgetRowProps) { ... }
+function EmptyState(props: EmptyStateProps) { ... }
+```
+
+**Available contracts:**
+- `BudgetRowProps` - Category spending vs budget display
+- `TransactionRowProps` - Transaction list item
+- `EmptyStateProps` - No data placeholder
+- `AmountDisplayProps` - Currency amount with colors
+- `SectionHeaderProps` - Generic section header
+- `DateSectionHeaderProps` - Date-grouped section header
+- `PageHeaderProps` - Page title and actions
+
+Contracts define the API; each platform implements rendering with its own UI toolkit.
 
 ## Deduplication (Tier 1)
 

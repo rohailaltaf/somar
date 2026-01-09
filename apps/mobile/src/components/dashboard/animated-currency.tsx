@@ -1,28 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { View, Text } from "react-native";
-import Animated, {
-  useSharedValue,
-  withTiming,
-  Easing,
-} from "react-native-reanimated";
+import { useSharedValue, withTiming, Easing } from "react-native-reanimated";
 import { formatCurrency } from "@somar/shared";
-import type { ThemeColors } from "../../lib/theme";
-
-interface AnimatedCurrencyProps {
-  value: number;
-  colors: ThemeColors;
-  /** Animation duration in ms */
-  duration?: number;
-}
+import type { AnimatedCurrencyProps } from "@somar/shared/components";
+import { animatedCurrencyStyles } from "@somar/shared/styles";
 
 /**
  * Animated currency display with counting animation.
- * Uses Instrument Serif font for visual hierarchy.
+ * Uses shared styles from @somar/shared/styles.
  */
 export function AnimatedCurrency({
   value,
-  colors,
-  duration = 1200,
+  duration = 1500,
 }: AnimatedCurrencyProps) {
   const animatedValue = useSharedValue(0);
   const [displayValue, setDisplayValue] = useState(0);
@@ -32,7 +21,7 @@ export function AnimatedCurrency({
       duration,
       easing: Easing.out(Easing.cubic),
     });
-  }, [value, duration]);
+  }, [value, duration, animatedValue]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -55,17 +44,17 @@ export function AnimatedCurrency({
   const [dollars, cents] = formatted.split(".");
 
   return (
-    <View className="flex-row items-baseline">
+    <View className={animatedCurrencyStyles.container}>
       <Text
-        className="text-foreground text-[64px] tracking-[-2px] leading-[68px]"
-        style={{ fontFamily: "InstrumentSerif_400Regular" }}
+        className={`${animatedCurrencyStyles.sizes.hero.dollars} ${animatedCurrencyStyles.dollars} ${animatedCurrencyStyles.dollarsColor}`}
+        style={{ fontFamily: animatedCurrencyStyles.fontFamily.mobile }}
       >
         {dollars}
       </Text>
       {cents && (
         <Text
-          className="text-muted-foreground text-[32px] ml-1"
-          style={{ fontFamily: "InstrumentSerif_400Regular" }}
+          className={`${animatedCurrencyStyles.sizes.hero.cents} ${animatedCurrencyStyles.cents} ${animatedCurrencyStyles.centsColor}`}
+          style={{ fontFamily: animatedCurrencyStyles.fontFamily.mobile }}
         >
           .{cents}
         </Text>

@@ -1,11 +1,14 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* Include shared package for Tailwind v4 class scanning */
+@source "../../../../packages/shared/src/**/*.ts";
+
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Auto-generated from @somar/shared theme colors (dark mode only).
- * DO NOT EDIT MANUALLY - run: pnpm --filter web generate:theme
+ * Auto-generated from @somar/shared/theme (dark mode only).
+ * DO NOT EDIT MANUALLY - run: pnpm generate:theme
  */
 
 @theme inline {
@@ -14,73 +17,65 @@
   --font-sans: var(--font-sans), "DM Sans", system-ui, sans-serif;
   --font-serif: var(--font-serif), "Instrument Serif", Georgia, serif;
   --font-mono: ui-monospace, monospace;
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-
-  /* Surface hierarchy (dark premium theme) */
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-border: var(--border);
+  --color-border-subtle: var(--border-subtle);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
   --color-surface-deep: var(--surface-deep);
   --color-surface: var(--surface);
   --color-surface-elevated: var(--surface-elevated);
   --color-surface-overlay: var(--surface-overlay);
-
-  /* Extended text hierarchy */
   --color-foreground-bright: var(--foreground-bright);
   --color-foreground-secondary: var(--foreground-secondary);
   --color-foreground-muted: var(--foreground-muted);
   --color-foreground-dim: var(--foreground-dim);
-
-  /* Extended border hierarchy */
-  --color-border-subtle: var(--border-subtle);
-  --color-border-strong: var(--border-strong);
-
-  /* Status colors */
-  --color-success: var(--success);
-  --color-success-muted: var(--success-muted);
-  --color-warning: var(--warning);
-  --color-danger: var(--danger);
-  --color-danger-muted: var(--danger-muted);
-
-  /* Premium accent (gold) */
   --color-gold: var(--gold);
   --color-gold-muted: var(--gold-muted);
-
-  /* Navigation */
   --color-nav-dock: var(--nav-dock);
   --color-nav-indicator: var(--nav-indicator);
   --color-nav-inactive-icon: var(--nav-inactive-icon);
   --color-nav-inactive-label: var(--nav-inactive-label);
-
+  --color-primary-muted: var(--primary-muted);
+  --color-destructive-muted: var(--destructive-muted);
+  --color-success-muted: var(--success-muted);
+  --color-warning-muted: var(--warning-muted);
+  --color-chart1: var(--chart1);
+  --color-chart2: var(--chart2);
+  --color-chart3: var(--chart3);
+  --color-chart4: var(--chart4);
+  --color-chart5: var(--chart5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-danger: var(--danger);
+  --color-danger-muted: var(--danger-muted);
+  --color-border-strong: var(--border-strong);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 }
 
 :root {
@@ -106,29 +101,29 @@
   --border-subtle: oklch(0.22 0.02 260);
   --input: oklch(0.28 0.02 260);
   --ring: oklch(0.65 0.18 260);
+  --surface-deep: oklch(0.08 0.015 260);
   --surface: oklch(0.12 0.02 260);
   --surface-elevated: oklch(0.16 0.02 260);
-  --gold: oklch(0.78 0.12 75);
-  --gold-muted: oklch(0.55 0.08 75);
-  --primary-muted: oklch(0.25 0.08 260);
-  --destructive-muted: oklch(0.25 0.08 25);
-  --success-muted: oklch(0.75 0.12 145);
-  --warning-muted: oklch(0.25 0.08 75);
-  --surface-deep: oklch(0.08 0.015 260);
   --surface-overlay: oklch(0.18 0.02 260);
   --foreground-bright: oklch(0.98 0.01 260);
   --foreground-secondary: oklch(0.85 0.02 260);
   --foreground-muted: oklch(0.65 0.02 260);
   --foreground-dim: oklch(0.45 0.02 260);
+  --gold: oklch(0.78 0.12 75);
+  --gold-muted: oklch(0.55 0.08 75);
   --nav-dock: oklch(0.13 0.02 260);
   --nav-indicator: oklch(0.22 0.025 260);
   --nav-inactive-icon: oklch(0.55 0.02 260);
   --nav-inactive-label: oklch(0.45 0.02 260);
-  --chart-1: oklch(0.65 0.2 260);
-  --chart-2: oklch(0.7 0.18 160);
-  --chart-3: oklch(0.7 0.2 30);
-  --chart-4: oklch(0.75 0.15 80);
-  --chart-5: oklch(0.65 0.18 330);
+  --primary-muted: oklch(0.25 0.08 260);
+  --destructive-muted: oklch(0.25 0.08 25);
+  --success-muted: oklch(0.75 0.12 145);
+  --warning-muted: oklch(0.25 0.08 75);
+  --chart1: oklch(0.65 0.2 260);
+  --chart2: oklch(0.7 0.18 160);
+  --chart3: oklch(0.7 0.2 30);
+  --chart4: oklch(0.75 0.15 80);
+  --chart5: oklch(0.65 0.18 330);
   --sidebar: oklch(0.15 0.02 260);
   --sidebar-foreground: oklch(0.95 0.01 260);
   --sidebar-primary: oklch(0.65 0.18 260);
@@ -145,6 +140,9 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+  }
+  html {
+    font-size: 14px; /* Match NativeWind's rem base for cross-platform consistency */
   }
   html, body {
     @apply bg-background text-foreground overflow-x-hidden;

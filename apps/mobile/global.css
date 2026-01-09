@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 /*
- * Auto-generated from @somar/shared theme colors (dark mode only).
- * DO NOT EDIT MANUALLY - run: pnpm --filter mobile generate:theme
+ * Auto-generated from @somar/shared/theme (dark mode only).
+ * DO NOT EDIT MANUALLY - run: pnpm generate:theme
  *
  * All colors are RGB equivalents of the web's oklch values
  * to ensure perfect visual consistency across platforms.
@@ -15,30 +15,57 @@
   --color-foreground: 235 239 245;
   --color-card: 2 4 11;
   --color-card-foreground: 235 239 245;
-  --color-surface: 3 6 13;
-  --color-surface-elevated: 8 13 22;
-  --color-muted: 28 34 43;
-  --color-muted-foreground: 136 144 156;
-  --color-secondary: 28 34 43;
-  --color-secondary-foreground: 235 239 245;
+  --color-popover: 12 18 26;
+  --color-popover-foreground: 235 239 245;
   --color-primary: 72 139 251;
   --color-primary-foreground: 1 2 4;
-  --color-border: 35 41 51;
-  --color-border-subtle: 21 27 36;
+  --color-secondary: 28 34 43;
+  --color-secondary-foreground: 235 239 245;
+  --color-muted: 28 34 43;
+  --color-muted-foreground: 136 144 156;
+  --color-accent: 28 34 43;
+  --color-accent-foreground: 235 239 245;
   --color-destructive: 250 104 99;
   --color-success: 91 182 97;
   --color-warning: 239 153 0;
-  --color-accent: 28 34 43;
+  --color-border: 35 41 51;
+  --color-border-subtle: 21 27 36;
+  --color-input: 35 41 51;
+  --color-ring: 72 139 251;
+  --color-surface-deep: 1 2 4;
+  --color-surface: 3 6 13;
+  --color-surface-elevated: 8 13 22;
+  --color-surface-overlay: 12 18 26;
+  --color-foreground-bright: 245 249 255;
+  --color-foreground-secondary: 198 206 219;
+  --color-foreground-muted: 136 144 156;
+  --color-foreground-dim: 79 86 97;
   --color-gold: 228 172 89;
   --color-gold-muted: 141 107 57;
-  --color-primary-muted: 8 32 71;
-  --color-destructive-muted: 64 12 12;
-  --color-success-muted: 123 194 126;
-  --color-warning-muted: 55 25 0;
   --color-nav-dock: 4 7 15;
   --color-nav-indicator: 20 27 38;
   --color-nav-inactive-icon: 107 114 126;
   --color-nav-inactive-label: 79 86 97;
+  --color-primary-muted: 8 32 71;
+  --color-destructive-muted: 64 12 12;
+  --color-success-muted: 123 194 126;
+  --color-warning-muted: 55 25 0;
+  --color-chart1: 62 137 255;
+  --color-chart2: 0 191 118;
+  --color-chart3: 255 97 77;
+  --color-chart4: 223 161 26;
+  --color-chart5: 201 95 194;
+  --color-sidebar: 7 11 20;
+  --color-sidebar-foreground: 235 239 245;
+  --color-sidebar-primary: 72 139 251;
+  --color-sidebar-primary-foreground: 1 3 9;
+  --color-sidebar-accent: 28 34 43;
+  --color-sidebar-accent-foreground: 235 239 245;
+  --color-sidebar-border: 35 41 51;
+  --color-sidebar-ring: 72 139 251;
+  --color-danger: 222 59 61;
+  --color-danger-muted: 237 117 110;
+  --color-border-strong: 52 59 69;
 
   /* Text hierarchy */
   --color-text-primary: 235 239 245;

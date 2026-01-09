@@ -2,7 +2,8 @@ import React from "react";
 import { View, Text } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { formatCurrency } from "@somar/shared";
-import type { ThemeColors } from "../../lib/theme";
+import { hexColors } from "@somar/shared/theme";
+import { transactionRowCompactStyles } from "@somar/shared/styles";
 
 interface TransactionRowAnimatedProps {
   description: string;
@@ -11,7 +12,6 @@ interface TransactionRowAnimatedProps {
   categoryName?: string;
   categoryColor?: string;
   isConfirmed: boolean;
-  colors: ThemeColors;
   isLast: boolean;
   /** Index for staggered animation */
   index: number;
@@ -19,7 +19,7 @@ interface TransactionRowAnimatedProps {
 
 /**
  * Animated transaction row for dashboard "recent activity" sections.
- * Features staggered fade-in animation and inline styles for theme control.
+ * Uses shared styles from @somar/shared/styles.
  */
 export function TransactionRowAnimated({
   description,
@@ -28,7 +28,6 @@ export function TransactionRowAnimated({
   categoryName,
   categoryColor,
   isConfirmed,
-  colors,
   isLast,
   index,
 }: TransactionRowAnimatedProps) {
@@ -38,48 +37,48 @@ export function TransactionRowAnimated({
   return (
     <Animated.View
       entering={FadeInDown.duration(300).delay(400 + index * 50)}
-      className="flex-row items-center px-5 py-3.5"
+      className={transactionRowCompactStyles.container}
       style={{
         borderBottomWidth: isLast ? 0 : 1,
-        borderBottomColor: colors.borderSubtle,
+        borderBottomColor: hexColors.borderSubtle,
       }}
     >
       {/* Category color bar */}
       <View
-        className="w-[3px] h-9 rounded mr-3.5"
-        style={{ backgroundColor: categoryColor || colors.muted }}
+        className={transactionRowCompactStyles.colorBar}
+        style={{ backgroundColor: categoryColor || hexColors.muted }}
       />
 
       {/* Details */}
       <View className="flex-1 mr-3">
-        <Text className="font-medium text-sm text-foreground" numberOfLines={1}>
+        <Text className={transactionRowCompactStyles.description} numberOfLines={1}>
           {description}
         </Text>
-        <View className="flex-row items-center mt-1">
-          <Text className="font-sans text-xs text-muted-foreground">
+        <View className={transactionRowCompactStyles.meta}>
+          <Text className={transactionRowCompactStyles.date}>
             {new Date(2024, parseInt(month) - 1, parseInt(day)).toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",
             })}
           </Text>
           {categoryName ? (
-            <Text className="font-sans text-xs text-muted-foreground ml-1.5 capitalize">
+            <Text className={transactionRowCompactStyles.category}>
               · {categoryName}
             </Text>
           ) : (
-            <Text className="font-sans text-xs text-primary ml-1.5">
+            <Text className={transactionRowCompactStyles.uncategorized}>
               · Uncategorized
             </Text>
           )}
           {!isConfirmed && (
-            <View className="w-1.5 h-1.5 rounded-full bg-primary ml-1.5" />
+            <View className={transactionRowCompactStyles.unconfirmedDot} />
           )}
         </View>
       </View>
 
       {/* Amount */}
       <Text
-        className={`font-semibold text-sm ${isExpense ? "text-foreground" : "text-success"}`}
+        className={`${transactionRowCompactStyles.amount} ${isExpense ? transactionRowCompactStyles.amountExpense : transactionRowCompactStyles.amountIncome}`}
       >
         {isExpense ? "-" : "+"}
         {formatCurrency(Math.abs(amount))}

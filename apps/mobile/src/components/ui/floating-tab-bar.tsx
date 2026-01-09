@@ -3,7 +3,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated from "react-native-reanimated";
 import { useAnimatedStyle, withSpring, useSharedValue } from "react-native-reanimated";
 import { useEffect } from "react";
-import { hexColors } from "@somar/shared/theme";
+import { hexColors, spring, shadows } from "@somar/shared/theme";
 import { colors } from "@/src/lib/theme";
 
 // Type for Expo Router tab bar props
@@ -30,11 +30,8 @@ interface TabBarProps {
   };
 }
 
-const SPRING_CONFIG = {
-  damping: 30,
-  stiffness: 400,
-  mass: 0.8,
-};
+// Use shared dock shadow token
+const dockShadow = shadows.native.dock;
 
 /**
  * Custom floating tab bar - "Sculptural Float" design.
@@ -47,7 +44,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: TabBarProps) 
   const indicatorPosition = useSharedValue(state.index);
 
   useEffect(() => {
-    indicatorPosition.value = withSpring(state.index, SPRING_CONFIG);
+    indicatorPosition.value = withSpring(state.index, spring.snappy);
   }, [state.index, indicatorPosition]);
 
   const indicatorStyle = useAnimatedStyle(() => {
@@ -56,7 +53,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: TabBarProps) 
         {
           translateX: withSpring(
             indicatorPosition.value * (280 - 12) / tabCount,
-            SPRING_CONFIG
+            spring.snappy
           ),
         },
       ],
@@ -72,13 +69,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: TabBarProps) 
       {/* Floating dock */}
       <View
         className="w-[280px] bg-nav-dock rounded-2xl p-1.5"
-        style={{
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: 0.4,
-          shadowRadius: 20,
-          elevation: 20,
-        }}
+        style={dockShadow}
       >
         {/* Outer border highlight */}
         <View className="absolute inset-0 rounded-2xl border border-white/[0.04]" />

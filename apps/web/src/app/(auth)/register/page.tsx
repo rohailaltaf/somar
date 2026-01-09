@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/providers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,41 +18,40 @@ import {
 } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { registerSchema, type RegisterFormData } from "@somar/shared/validation";
 
 export default function RegisterPage() {
-  const { register } = useAuth();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const { register: authRegister } = useAuth();
   const [isRedirecting, setIsRedirecting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [isOAuthLoading, setIsOAuthLoading] = useState(false);
 
-  async function handleEmailRegister(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<RegisterFormData>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+    },
+  });
 
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
-      return;
-    }
+  const isDisabled = isSubmitting || isOAuthLoading;
 
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters");
-      return;
-    }
-
-    setIsLoading(true);
-
+  async function onSubmit(data: RegisterFormData) {
     try {
-      await register(email, password, name);
+      await authRegister(data.email, data.password, data.name);
       // register() handles navigation via window.location.href
       // Show redirecting state while browser navigates
       setIsRedirecting(true);
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Failed to create account");
-      setIsLoading(false);
+      setError("root", {
+        message: error instanceof Error ? error.message : "Failed to create account",
+      });
     }
   }
 
@@ -69,9 +70,9 @@ export default function RegisterPage() {
 
   async function handleGoogleRegister() {
     // Google OAuth doesn't give us the password, so we can't derive encryption key.
-    setError(
-      "Google login coming soon. For now, please use email/password to encrypt your data."
-    );
+    setError("root", {
+      message: "Google login coming soon. For now, please use email/password to encrypt your data.",
+    });
   }
 
   return (
@@ -89,7 +90,7 @@ export default function RegisterPage() {
           variant="outline"
           className="w-full bg-white text-slate-900 hover:bg-slate-100"
           onClick={handleGoogleRegister}
-          disabled={isLoading}
+          disabled={isDisabled}
         >
           <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
             <path
@@ -123,13 +124,13 @@ export default function RegisterPage() {
           </div>
         </div>
 
-        <form onSubmit={handleEmailRegister} className="space-y-4">
-          {error && (
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {errors.root && (
             <Alert variant="destructive" className="border-red-500/50 bg-red-950/20">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Registration failed</AlertTitle>
               <AlertDescription className="text-red-200">
-                {error}
+                {errors.root.message}
               </AlertDescription>
             </Alert>
           )}
@@ -141,14 +142,12 @@ export default function RegisterPage() {
               id="name"
               type="text"
               placeholder="John Doe"
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                setError(null); // Clear error when user types
-              }}
-              required
+              {...register("name")}
               className="border-border bg-surface-elevated text-foreground placeholder:text-foreground-dim"
             />
+            {errors.name && (
+              <p className="text-destructive text-xs">{errors.name.message}</p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="email" className="text-foreground-secondary">
@@ -158,14 +157,12 @@ export default function RegisterPage() {
               id="email"
               type="email"
               placeholder="you@example.com"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                setError(null); // Clear error when user types
-              }}
-              required
+              {...register("email")}
               className="border-border bg-surface-elevated text-foreground placeholder:text-foreground-dim"
             />
+            {errors.email && (
+              <p className="text-destructive text-xs">{errors.email.message}</p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="password" className="text-foreground-secondary">
@@ -175,15 +172,12 @@ export default function RegisterPage() {
               id="password"
               type="password"
               placeholder="••••••••"
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                setError(null); // Clear error when user types
-              }}
-              required
-              minLength={8}
+              {...register("password")}
               className="border-border bg-surface-elevated text-foreground placeholder:text-foreground-dim"
             />
+            {errors.password && (
+              <p className="text-destructive text-xs">{errors.password.message}</p>
+            )}
             <p className="text-xs text-foreground-dim">
               This password encrypts your data. If you forget it, your data cannot be recovered.
             </p>
@@ -196,21 +190,19 @@ export default function RegisterPage() {
               id="confirmPassword"
               type="password"
               placeholder="••••••••"
-              value={confirmPassword}
-              onChange={(e) => {
-                setConfirmPassword(e.target.value);
-                setError(null); // Clear error when user types
-              }}
-              required
+              {...register("confirmPassword")}
               className="border-border bg-surface-elevated text-foreground placeholder:text-foreground-dim"
             />
+            {errors.confirmPassword && (
+              <p className="text-destructive text-xs">{errors.confirmPassword.message}</p>
+            )}
           </div>
           <Button
             type="submit"
             className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
-            disabled={isLoading}
+            disabled={isDisabled}
           >
-            {isLoading ? "Creating account..." : "Create account"}
+            {isSubmitting ? "Creating account..." : "Create account"}
           </Button>
         </form>
       </CardContent>

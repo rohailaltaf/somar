@@ -1,66 +1,27 @@
 /**
  * Generate mobile's global.css from the shared theme colors.
  *
- * This script reads the oklch color definitions from @somar/shared
+ * This script reads color definitions from @somar/shared/theme
  * and generates a CSS file with RGB triplets for NativeWind.
  *
  * Run: pnpm --filter mobile generate:theme
+ * Or from root: pnpm generate:theme
  */
 
 import * as fs from "fs";
 import * as path from "path";
-import { rgbColors, extendedRgbColors } from "@somar/shared/theme";
+import {
+  rgbColors,
+  extendedRgbColors,
+  staticRgbColors,
+} from "@somar/shared/theme";
 
-// Map our color keys to CSS variable names
-const colorMapping = {
-  // Base
-  background: "background",
-  foreground: "foreground",
-
-  // Card
-  card: "card",
-  cardForeground: "card-foreground",
-
-  // Surface
-  surface: "surface",
-  surfaceElevated: "surface-elevated",
-
-  // Muted/Secondary
-  muted: "muted",
-  mutedForeground: "muted-foreground",
-  secondary: "secondary",
-  secondaryForeground: "secondary-foreground",
-
-  // Primary
-  primary: "primary",
-  primaryForeground: "primary-foreground",
-
-  // Semantic
-  border: "border",
-  borderSubtle: "border-subtle",
-  destructive: "destructive",
-  success: "success",
-  warning: "warning",
-  accent: "accent",
-  // Premium accent (gold)
-  gold: "gold",
-  goldMuted: "gold-muted",
-} as const;
-
-// Navigation colors
-const navColorMapping = {
-  navDock: "nav-dock",
-  navIndicator: "nav-indicator",
-  navInactiveIcon: "nav-inactive-icon",
-  navInactiveLabel: "nav-inactive-label",
-} as const;
-
-const extendedColorMapping = {
-  primaryMuted: "primary-muted",
-  destructiveMuted: "destructive-muted",
-  successMuted: "success-muted",
-  warningMuted: "warning-muted",
-} as const;
+/**
+ * Maps camelCase keys to kebab-case CSS variable names.
+ */
+function toKebabCase(str: string): string {
+  return str.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase();
+}
 
 function generateCSS(): string {
   const lines: string[] = [
@@ -69,8 +30,8 @@ function generateCSS(): string {
     "@tailwind utilities;",
     "",
     "/*",
-    " * Auto-generated from @somar/shared theme colors (dark mode only).",
-    " * DO NOT EDIT MANUALLY - run: pnpm --filter mobile generate:theme",
+    " * Auto-generated from @somar/shared/theme (dark mode only).",
+    " * DO NOT EDIT MANUALLY - run: pnpm generate:theme",
     " *",
     " * All colors are RGB equivalents of the web's oklch values",
     " * to ensure perfect visual consistency across platforms.",
@@ -79,28 +40,22 @@ function generateCSS(): string {
     ":root {",
   ];
 
-  // Base colors
-  for (const [key, cssVar] of Object.entries(colorMapping)) {
-    const rgb = rgbColors[key as keyof typeof rgbColors];
-    if (rgb) {
-      lines.push(`  --color-${cssVar}: ${rgb};`);
-    }
+  // Core colors
+  for (const [key, value] of Object.entries(rgbColors)) {
+    const cssVar = toKebabCase(key);
+    lines.push(`  --color-${cssVar}: ${value};`);
   }
 
-  // Extended colors
-  for (const [key, cssVar] of Object.entries(extendedColorMapping)) {
-    const rgb = extendedRgbColors[key as keyof typeof extendedRgbColors];
-    if (rgb) {
-      lines.push(`  --color-${cssVar}: ${rgb};`);
-    }
+  // Extended colors (muted variants)
+  for (const [key, value] of Object.entries(extendedRgbColors)) {
+    const cssVar = toKebabCase(key);
+    lines.push(`  --color-${cssVar}: ${value};`);
   }
 
-  // Navigation colors
-  for (const [key, cssVar] of Object.entries(navColorMapping)) {
-    const rgb = rgbColors[key as keyof typeof rgbColors];
-    if (rgb) {
-      lines.push(`  --color-${cssVar}: ${rgb};`);
-    }
+  // Static colors (charts, sidebar, danger) - useful for consistency
+  for (const [key, value] of Object.entries(staticRgbColors)) {
+    const cssVar = toKebabCase(key);
+    lines.push(`  --color-${cssVar}: ${value};`);
   }
 
   // Text hierarchy (derived from base colors)
@@ -126,9 +81,10 @@ const outputPath = path.join(__dirname, "..", "global.css");
 
 fs.writeFileSync(outputPath, css, "utf-8");
 
-console.log(`Generated ${outputPath}`);
 const totalColors =
-  Object.keys(colorMapping).length +
-  Object.keys(extendedColorMapping).length +
-  Object.keys(navColorMapping).length;
+  Object.keys(rgbColors).length +
+  Object.keys(extendedRgbColors).length +
+  Object.keys(staticRgbColors).length;
+
+console.log(`Generated ${outputPath}`);
 console.log(`  Total colors: ${totalColors}`);

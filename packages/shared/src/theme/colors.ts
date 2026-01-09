@@ -145,3 +145,67 @@ export const extendedRgbColors = Object.fromEntries(
     oklchToRgbTriplet(value),
   ])
 ) as Record<ExtendedColorKey, string>;
+
+/**
+ * Static colors - charts, sidebar, danger variants
+ * Previously hardcoded in web generation script, now centralized here.
+ */
+export const staticColors = {
+  // Chart colors
+  chart1: "oklch(0.65 0.2 260)",
+  chart2: "oklch(0.7 0.18 160)",
+  chart3: "oklch(0.7 0.2 30)",
+  chart4: "oklch(0.75 0.15 80)",
+  chart5: "oklch(0.65 0.18 330)",
+
+  // Sidebar
+  sidebar: "oklch(0.15 0.02 260)",
+  sidebarForeground: "oklch(0.95 0.01 260)",
+  sidebarPrimary: "oklch(0.65 0.18 260)",
+  sidebarPrimaryForeground: "oklch(0.1 0.02 260)",
+  sidebarAccent: "oklch(0.25 0.02 260)",
+  sidebarAccentForeground: "oklch(0.95 0.01 260)",
+  sidebarBorder: "oklch(0.28 0.02 260)",
+  sidebarRing: "oklch(0.65 0.18 260)",
+
+  // Danger variants
+  danger: "oklch(0.6 0.2 25)",
+  dangerMuted: "oklch(0.7 0.15 25)",
+
+  // Border variant
+  borderStrong: "oklch(0.35 0.02 260)",
+} as const;
+
+type StaticColorKey = keyof typeof staticColors;
+
+export const staticHexColors = Object.fromEntries(
+  Object.entries(staticColors).map(([key, value]) => [key, oklchToHex(value)])
+) as Record<StaticColorKey, string>;
+
+export const staticRgbColors = Object.fromEntries(
+  Object.entries(staticColors).map(([key, value]) => [
+    key,
+    oklchToRgbTriplet(value),
+  ])
+) as Record<StaticColorKey, string>;
+
+/**
+ * All colors combined - useful for iteration
+ */
+export const allOklchColors = {
+  ...oklchColors,
+  ...extendedColors,
+  ...staticColors,
+} as const;
+
+export const allHexColors = {
+  ...hexColors,
+  ...extendedHexColors,
+  ...staticHexColors,
+} as const;
+
+export const allRgbColors = {
+  ...rgbColors,
+  ...extendedRgbColors,
+  ...staticRgbColors,
+} as const;

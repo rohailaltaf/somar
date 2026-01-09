@@ -1,4 +1,9 @@
-export { BentoCard, BENTO_COLORS } from "./bento-card";
+export { StatCard } from "./stat-card";
 export { HeroCard } from "./hero-card";
 export { AtmosphericBackground } from "./atmospheric-background";
 export { DashboardSkeleton } from "./dashboard-skeleton";
+export { CategoryRow } from "./category-row";
+export { TransactionRow } from "./transaction-row";
+export { QuickAction } from "./quick-action";
+export { AnimatedCurrency } from "./animated-currency";
+export { DashboardSectionHeader } from "./section-header";

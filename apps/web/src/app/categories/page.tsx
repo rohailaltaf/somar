@@ -6,7 +6,8 @@ import { useCategories, useCategoriesWithBudgets } from "@somar/shared/hooks";
 import { Nav } from "@/components/nav";
 import { CategoriesList } from "./categories-list";
 import { CreateCategoryDialog } from "./create-category-dialog";
-import { getCurrentMonth } from "@somar/shared";
+import { getCurrentMonth, type Category } from "@somar/shared";
+import { spring } from "@somar/shared/theme";
 import {
   Wallet,
   TrendingUp,
@@ -32,13 +33,13 @@ export default function CategoriesPage() {
   const isLoading = loadingSpending || loadingIncome || loadingTransfer;
 
   // Convert income and transfer categories to match the expected format
-  const incomeCategoriesWithBudgets = incomeCategories.map(cat => ({
+  const incomeCategoriesWithBudgets = incomeCategories.map((cat: Category) => ({
     ...cat,
     currentBudget: null,
     allBudgets: [],
   }));
 
-  const transferCategoriesWithBudgets = transferCategories.map(cat => ({
+  const transferCategoriesWithBudgets = transferCategories.map((cat: Category) => ({
     ...cat,
     currentBudget: null,
     allBudgets: [],
@@ -116,7 +117,7 @@ export default function CategoriesPage() {
                   left: `${tabs.findIndex(t => t.id === activeTab) * (100 / tabs.length)}%`,
                   width: `${100 / tabs.length}%`,
                 }}
-                transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                transition={{ type: "spring", ...spring.snappy }}
               />
 
               {/* Glow effect for active tab */}
@@ -129,7 +130,7 @@ export default function CategoriesPage() {
                   opacity: 0.15,
                 }}
                 layoutId="activeTabGlow"
-                transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                transition={{ type: "spring", ...spring.snappy }}
               />
 
               {tabs.map((tab) => {

@@ -3,6 +3,8 @@ module.exports = {
   content: [
     "./app/**/*.{js,jsx,ts,tsx}",
     "./src/**/*.{js,jsx,ts,tsx}",
+    // Include shared package so NativeWind generates styles for shared className strings
+    "../../packages/shared/src/**/*.{js,jsx,ts,tsx}",
   ],
   presets: [require("nativewind/preset")],
   theme: {
@@ -29,6 +31,12 @@ module.exports = {
         "muted-foreground": "rgb(var(--color-muted-foreground) / <alpha-value>)",
         secondary: "rgb(var(--color-secondary) / <alpha-value>)",
         "secondary-foreground": "rgb(var(--color-secondary-foreground) / <alpha-value>)",
+
+        // Foreground hierarchy
+        "foreground-secondary": "rgb(var(--color-foreground-secondary) / <alpha-value>)",
+        "foreground-muted": "rgb(var(--color-foreground-muted) / <alpha-value>)",
+        "foreground-dim": "rgb(var(--color-foreground-dim) / <alpha-value>)",
+        "foreground-bright": "rgb(var(--color-foreground-bright) / <alpha-value>)",
 
         // Brand
         primary: "rgb(var(--color-primary) / <alpha-value>)",

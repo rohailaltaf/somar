@@ -1,231 +1,101 @@
 /**
  * Generate web's globals.css from the shared theme colors.
  *
- * This script reads the oklch color definitions from @somar/shared
- * and generates CSS variables for dark mode.
+ * This script reads color definitions from @somar/shared/theme
+ * and generates CSS variables for the dark-only theme.
  *
  * Run: pnpm --filter web generate:theme
+ * Or from root: pnpm generate:theme
  */
 
 import * as fs from "fs";
 import * as path from "path";
-import { oklchColors, extendedColors } from "@somar/shared/theme";
+import {
+  oklchColors,
+  extendedColors,
+  staticColors,
+} from "@somar/shared/theme";
 
-// Color mapping: shared theme key -> CSS variable name
-const colorMapping: Record<string, string> = {
-  // Base
-  background: "background",
-  foreground: "foreground",
-
-  // Card/Popover
-  card: "card",
-  cardForeground: "card-foreground",
-  popover: "popover",
-  popoverForeground: "popover-foreground",
-
-  // Primary
-  primary: "primary",
-  primaryForeground: "primary-foreground",
-
-  // Secondary
-  secondary: "secondary",
-  secondaryForeground: "secondary-foreground",
-
-  // Muted
-  muted: "muted",
-  mutedForeground: "muted-foreground",
-
-  // Accent
-  accent: "accent",
-  accentForeground: "accent-foreground",
-
-  // Semantic
-  destructive: "destructive",
-  success: "success",
-  warning: "warning",
-
-  // Border/Input
-  border: "border",
-  borderSubtle: "border-subtle",
-  input: "input",
-  ring: "ring",
-
-  // Surface
-  surface: "surface",
-  surfaceElevated: "surface-elevated",
-
-  // Premium accent (gold)
-  gold: "gold",
-  goldMuted: "gold-muted",
-};
-
-// Dark-only colors (surface hierarchy, text hierarchy, nav)
-const darkOnlyColorMapping: Record<string, string> = {
-  // Surface hierarchy
-  surfaceDeep: "surface-deep",
-  surfaceOverlay: "surface-overlay",
-
-  // Extended text
-  foregroundBright: "foreground-bright",
-  foregroundSecondary: "foreground-secondary",
-  foregroundMuted: "foreground-muted",
-  foregroundDim: "foreground-dim",
-
-  // Navigation (mobile dock - also used on web mobile view)
-  navDock: "nav-dock",
-  navIndicator: "nav-indicator",
-  navInactiveIcon: "nav-inactive-icon",
-  navInactiveLabel: "nav-inactive-label",
-};
-
-// Extended colors (muted variants)
-const extendedColorMapping: Record<string, string> = {
-  primaryMuted: "primary-muted",
-  destructiveMuted: "destructive-muted",
-  successMuted: "success-muted",
-  warningMuted: "warning-muted",
-};
-
-// Static colors that aren't in shared theme (charts, sidebar)
-const staticColors: Record<string, string> = {
-  "chart-1": "oklch(0.65 0.2 260)",
-  "chart-2": "oklch(0.7 0.18 160)",
-  "chart-3": "oklch(0.7 0.2 30)",
-  "chart-4": "oklch(0.75 0.15 80)",
-  "chart-5": "oklch(0.65 0.18 330)",
-  "sidebar": "oklch(0.15 0.02 260)",
-  "sidebar-foreground": "oklch(0.95 0.01 260)",
-  "sidebar-primary": "oklch(0.65 0.18 260)",
-  "sidebar-primary-foreground": "oklch(0.1 0.02 260)",
-  "sidebar-accent": "oklch(0.25 0.02 260)",
-  "sidebar-accent-foreground": "oklch(0.95 0.01 260)",
-  "sidebar-border": "oklch(0.28 0.02 260)",
-  "sidebar-ring": "oklch(0.65 0.18 260)",
-  "danger": "oklch(0.6 0.2 25)",
-  "danger-muted": "oklch(0.7 0.15 25)",
-  "border-strong": "oklch(0.35 0.02 260)",
-};
+/**
+ * Maps camelCase keys to kebab-case CSS variable names.
+ * Only keys listed here will be output to CSS.
+ */
+function toKebabCase(str: string): string {
+  return str.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase();
+}
 
 function generateCSS(): string {
   const lines: string[] = [
     `@import "tailwindcss";`,
     `@import "tw-animate-css";`,
     ``,
+    `/* Include shared package for Tailwind v4 class scanning */`,
+    `@source "../../../../packages/shared/src/**/*.ts";`,
+    ``,
     `@custom-variant dark (&:is(.dark *));`,
     ``,
     `/*`,
-    ` * Auto-generated from @somar/shared theme colors (dark mode only).`,
-    ` * DO NOT EDIT MANUALLY - run: pnpm --filter web generate:theme`,
+    ` * Auto-generated from @somar/shared/theme (dark mode only).`,
+    ` * DO NOT EDIT MANUALLY - run: pnpm generate:theme`,
     ` */`,
-    ``,
-    `@theme inline {`,
-    `  --color-background: var(--background);`,
-    `  --color-foreground: var(--foreground);`,
-    `  --font-sans: var(--font-sans), "DM Sans", system-ui, sans-serif;`,
-    `  --font-serif: var(--font-serif), "Instrument Serif", Georgia, serif;`,
-    `  --font-mono: ui-monospace, monospace;`,
-    `  --color-sidebar-ring: var(--sidebar-ring);`,
-    `  --color-sidebar-border: var(--sidebar-border);`,
-    `  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);`,
-    `  --color-sidebar-accent: var(--sidebar-accent);`,
-    `  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);`,
-    `  --color-sidebar-primary: var(--sidebar-primary);`,
-    `  --color-sidebar-foreground: var(--sidebar-foreground);`,
-    `  --color-sidebar: var(--sidebar);`,
-    `  --color-chart-5: var(--chart-5);`,
-    `  --color-chart-4: var(--chart-4);`,
-    `  --color-chart-3: var(--chart-3);`,
-    `  --color-chart-2: var(--chart-2);`,
-    `  --color-chart-1: var(--chart-1);`,
-    `  --color-ring: var(--ring);`,
-    `  --color-input: var(--input);`,
-    `  --color-border: var(--border);`,
-    `  --color-destructive: var(--destructive);`,
-    `  --color-accent-foreground: var(--accent-foreground);`,
-    `  --color-accent: var(--accent);`,
-    `  --color-muted-foreground: var(--muted-foreground);`,
-    `  --color-muted: var(--muted);`,
-    `  --color-secondary-foreground: var(--secondary-foreground);`,
-    `  --color-secondary: var(--secondary);`,
-    `  --color-primary-foreground: var(--primary-foreground);`,
-    `  --color-primary: var(--primary);`,
-    `  --color-popover-foreground: var(--popover-foreground);`,
-    `  --color-popover: var(--popover);`,
-    `  --color-card-foreground: var(--card-foreground);`,
-    `  --color-card: var(--card);`,
-    `  --radius-sm: calc(var(--radius) - 4px);`,
-    `  --radius-md: calc(var(--radius) - 2px);`,
-    `  --radius-lg: var(--radius);`,
-    `  --radius-xl: calc(var(--radius) + 4px);`,
-    ``,
-    `  /* Surface hierarchy (dark premium theme) */`,
-    `  --color-surface-deep: var(--surface-deep);`,
-    `  --color-surface: var(--surface);`,
-    `  --color-surface-elevated: var(--surface-elevated);`,
-    `  --color-surface-overlay: var(--surface-overlay);`,
-    ``,
-    `  /* Extended text hierarchy */`,
-    `  --color-foreground-bright: var(--foreground-bright);`,
-    `  --color-foreground-secondary: var(--foreground-secondary);`,
-    `  --color-foreground-muted: var(--foreground-muted);`,
-    `  --color-foreground-dim: var(--foreground-dim);`,
-    ``,
-    `  /* Extended border hierarchy */`,
-    `  --color-border-subtle: var(--border-subtle);`,
-    `  --color-border-strong: var(--border-strong);`,
-    ``,
-    `  /* Status colors */`,
-    `  --color-success: var(--success);`,
-    `  --color-success-muted: var(--success-muted);`,
-    `  --color-warning: var(--warning);`,
-    `  --color-danger: var(--danger);`,
-    `  --color-danger-muted: var(--danger-muted);`,
-    ``,
-    `  /* Premium accent (gold) */`,
-    `  --color-gold: var(--gold);`,
-    `  --color-gold-muted: var(--gold-muted);`,
-    ``,
-    `  /* Navigation */`,
-    `  --color-nav-dock: var(--nav-dock);`,
-    `  --color-nav-indicator: var(--nav-indicator);`,
-    `  --color-nav-inactive-icon: var(--nav-inactive-icon);`,
-    `  --color-nav-inactive-label: var(--nav-inactive-label);`,
-    ``,
-    `}`,
     ``,
   ];
 
-  // All colors in :root (dark mode only)
+  // Build @theme inline block with all color mappings
+  lines.push(`@theme inline {`);
+  lines.push(`  --color-background: var(--background);`);
+  lines.push(`  --color-foreground: var(--foreground);`);
+  lines.push(`  --font-sans: var(--font-sans), "DM Sans", system-ui, sans-serif;`);
+  lines.push(`  --font-serif: var(--font-serif), "Instrument Serif", Georgia, serif;`);
+  lines.push(`  --font-mono: ui-monospace, monospace;`);
+
+  // Core colors
+  for (const key of Object.keys(oklchColors)) {
+    const cssVar = toKebabCase(key);
+    lines.push(`  --color-${cssVar}: var(--${cssVar});`);
+  }
+
+  // Extended colors (muted variants)
+  for (const key of Object.keys(extendedColors)) {
+    const cssVar = toKebabCase(key);
+    lines.push(`  --color-${cssVar}: var(--${cssVar});`);
+  }
+
+  // Static colors (charts, sidebar, danger)
+  for (const key of Object.keys(staticColors)) {
+    const cssVar = toKebabCase(key);
+    lines.push(`  --color-${cssVar}: var(--${cssVar});`);
+  }
+
+  // Radius tokens
+  lines.push(`  --radius-sm: calc(var(--radius) - 4px);`);
+  lines.push(`  --radius-md: calc(var(--radius) - 2px);`);
+  lines.push(`  --radius-lg: var(--radius);`);
+  lines.push(`  --radius-xl: calc(var(--radius) + 4px);`);
+
+  lines.push(`}`);
+  lines.push(``);
+
+  // :root with all oklch values
   lines.push(`:root {`);
   lines.push(`  --radius: 0.625rem;`);
 
-  // From shared theme
-  for (const [key, cssVar] of Object.entries(colorMapping)) {
-    const oklch = oklchColors[key as keyof typeof oklchColors];
-    if (oklch) {
-      lines.push(`  --${cssVar}: ${oklch};`);
-    }
+  // Core colors
+  for (const [key, value] of Object.entries(oklchColors)) {
+    const cssVar = toKebabCase(key);
+    lines.push(`  --${cssVar}: ${value};`);
   }
 
   // Extended colors
-  for (const [key, cssVar] of Object.entries(extendedColorMapping)) {
-    const oklch = extendedColors[key as keyof typeof extendedColors];
-    if (oklch) {
-      lines.push(`  --${cssVar}: ${oklch};`);
-    }
-  }
-
-  // Dark-only colors from shared theme
-  for (const [key, cssVar] of Object.entries(darkOnlyColorMapping)) {
-    const oklch = oklchColors[key as keyof typeof oklchColors];
-    if (oklch) {
-      lines.push(`  --${cssVar}: ${oklch};`);
-    }
+  for (const [key, value] of Object.entries(extendedColors)) {
+    const cssVar = toKebabCase(key);
+    lines.push(`  --${cssVar}: ${value};`);
   }
 
   // Static colors
-  for (const [cssVar, oklch] of Object.entries(staticColors)) {
-    lines.push(`  --${cssVar}: ${oklch};`);
+  for (const [key, value] of Object.entries(staticColors)) {
+    const cssVar = toKebabCase(key);
+    lines.push(`  --${cssVar}: ${value};`);
   }
 
   lines.push(`}`);
@@ -235,6 +105,9 @@ function generateCSS(): string {
   lines.push(`@layer base {`);
   lines.push(`  * {`);
   lines.push(`    @apply border-border outline-ring/50;`);
+  lines.push(`  }`);
+  lines.push(`  html {`);
+  lines.push(`    font-size: 14px; /* Match NativeWind's rem base for cross-platform consistency */`);
   lines.push(`  }`);
   lines.push(`  html, body {`);
   lines.push(`    @apply bg-background text-foreground overflow-x-hidden;`);
@@ -415,10 +288,10 @@ const outputPath = path.join(__dirname, "..", "src", "app", "globals.css");
 
 fs.writeFileSync(outputPath, css, "utf-8");
 
-console.log(`Generated ${outputPath}`);
 const totalColors =
-  Object.keys(colorMapping).length +
-  Object.keys(extendedColorMapping).length +
-  Object.keys(darkOnlyColorMapping).length +
+  Object.keys(oklchColors).length +
+  Object.keys(extendedColors).length +
   Object.keys(staticColors).length;
+
+console.log(`Generated ${outputPath}`);
 console.log(`  Total colors: ${totalColors}`);

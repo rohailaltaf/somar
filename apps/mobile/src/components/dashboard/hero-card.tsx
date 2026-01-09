@@ -1,68 +1,68 @@
 import React from "react";
 import { View, Text } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import Animated, { FadeInDown, FadeInRight } from "react-native-reanimated";
+import Animated, {
+  FadeInDown,
+  FadeInLeft,
+  FadeInUp,
+  FadeIn,
+} from "react-native-reanimated";
 import { formatMonth, formatCurrency } from "@somar/shared";
-import { oklchToHex } from "@somar/shared/utils";
-import type { ThemeColors } from "../../lib/theme";
-import { AnimatedCurrency } from "../ui/animated-currency";
-import { AnimatedProgressBar } from "../ui/animated-progress-bar";
+import {
+  heroCardStyles,
+  heroCardHexColors,
+  type HeroCardProps,
+} from "@somar/shared/styles";
+import { AnimatedCurrency } from "./animated-currency";
+import { ProgressBar } from "../ui/progress-bar";
 import { TrendBadge } from "../ui/trend-badge";
 
-interface HeroCardProps {
-  currentMonth: string;
-  spendingValue: number;
-  previousSpending: number;
-  percentChange: number | null;
-  totalBudget: number;
-  budgetProgress: number;
-  budgetRemaining: number;
-  colors: ThemeColors;
-}
-
 /**
- * Hero card showing total spending for the current month.
+ * Main hero card displaying total spending for the month.
  * Features gradient border, animated currency, and budget progress.
+ * Animations match web's framer-motion implementation.
  */
 export function HeroCard({
   currentMonth,
-  spendingValue,
-  previousSpending,
-  percentChange,
-  totalBudget,
+  totalSpending,
+  spendingChange,
   budgetProgress,
   budgetRemaining,
-  colors,
+  hasBudget,
 }: HeroCardProps) {
   return (
     <Animated.View
-      entering={FadeInDown.duration(600).delay(100)}
-      style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 }}
+      entering={FadeInDown.duration(700).delay(100)}
+      style={{
+        paddingHorizontal: heroCardStyles.outerPadding.horizontal,
+        paddingTop: heroCardStyles.outerPadding.top,
+        paddingBottom: heroCardStyles.outerPadding.bottom,
+      }}
     >
       <LinearGradient
         colors={[
-          oklchToHex("oklch(0.35 0.15 260)"),
-          oklchToHex("oklch(0.25 0.1 280)"),
-          oklchToHex("oklch(0.2 0.08 300)"),
+          heroCardHexColors.gradientStart,
+          heroCardHexColors.gradientMid,
+          heroCardHexColors.gradientEnd,
         ]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={{
-          borderRadius: 24,
+          borderRadius: heroCardStyles.borderRadius.outer,
           padding: 1,
         }}
       >
         <View
           style={{
-            backgroundColor: oklchToHex("oklch(0.11 0.02 260)"),
-            borderRadius: 23,
-            padding: 24,
-            minHeight: 280,
+            backgroundColor: heroCardHexColors.surface,
+            borderRadius: heroCardStyles.borderRadius.inner,
+            padding: heroCardStyles.padding.mobile,
+            minHeight: heroCardStyles.heights.mobile,
           }}
         >
           {/* Inner glow overlay */}
           <LinearGradient
-            colors={[oklchToHex("oklch(0.4 0.15 260)") + "1A", "transparent"]}
+            colors={[heroCardHexColors.glow + "26", "transparent"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={{
@@ -71,47 +71,60 @@ export function HeroCard({
               left: 0,
               right: 0,
               bottom: 0,
-              borderRadius: 23,
+              borderRadius: heroCardStyles.borderRadius.inner,
             }}
           />
 
-          {/* Header row */}
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+          {/* Header */}
+          <View className={heroCardStyles.header.container}>
             <View>
-              <Text className="font-medium text-[11px] text-muted-foreground uppercase tracking-[1.65px] mb-1">
+              {/* Month label - fade in from left with delay */}
+              <Animated.Text
+                entering={FadeInLeft.duration(500).delay(200)}
+                className={heroCardStyles.header.monthLabel}
+              >
                 {formatMonth(currentMonth)}
-              </Text>
-              <Text className="font-sans text-xs text-muted-foreground">
+              </Animated.Text>
+              {/* Subtitle - fade in from left with slightly more delay */}
+              <Animated.Text
+                entering={FadeInLeft.duration(500).delay(250)}
+                className={heroCardStyles.header.subtitle}
+              >
                 Total Spending
-              </Text>
+              </Animated.Text>
             </View>
 
-            {/* Trend Badge */}
-            {previousSpending !== 0 && percentChange !== null && (
-              <Animated.View entering={FadeInRight.duration(400).delay(400)}>
-                <TrendBadge percentChange={percentChange} colors={colors} />
+            {/* Trend Badge - fade in with scale effect */}
+            {spendingChange !== null && (
+              <Animated.View
+                entering={FadeIn.duration(400).delay(400)}
+              >
+                <TrendBadge change={spendingChange} />
               </Animated.View>
             )}
           </View>
 
-          {/* Large Amount Display - centered */}
-          <View style={{ flex: 1, justifyContent: "center", paddingVertical: 24 }}>
-            <AnimatedCurrency value={spendingValue} colors={colors} />
+          {/* Main Amount */}
+          <View className={heroCardStyles.amount.container}>
+            <AnimatedCurrency value={totalSpending} />
           </View>
 
-          {/* Budget Progress - at bottom */}
-          {totalBudget > 0 && (
-            <View>
-              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <Text className="font-medium text-[13px] text-muted-foreground">
+          {/* Budget Progress - fade in from bottom */}
+          {hasBudget && (
+            <Animated.View
+              entering={FadeInUp.duration(500).delay(500)}
+              className={heroCardStyles.budgetProgress.container}
+            >
+              <View className={heroCardStyles.budgetProgress.labelRow}>
+                <Text className={heroCardStyles.budgetProgress.label}>
                   Budget Progress
                 </Text>
-                <Text className="font-semibold text-[13px] text-foreground">
+                <Text className={heroCardStyles.budgetProgress.remaining}>
                   {formatCurrency(budgetRemaining)} left
                 </Text>
               </View>
-              <AnimatedProgressBar progress={budgetProgress} />
-            </View>
+              <ProgressBar percentage={budgetProgress * 100} />
+            </Animated.View>
           )}
         </View>
       </LinearGradient>

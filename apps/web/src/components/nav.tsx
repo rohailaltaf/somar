@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { hexColors } from "@somar/shared/theme";
+import { spring } from "@somar/shared/theme";
 import {
   LayoutDashboard,
   CreditCard,
@@ -15,13 +15,8 @@ import {
   BarChart3,
   LogOut,
   Sparkles,
-  House,
-  Activity,
-  Wallet,
 } from "lucide-react";
-
-// Hex colors for Lucide icon color prop (doesn't support className)
-const NAV_COLORS = hexColors;
+import { FloatingTabBar } from "@/components/ui/floating-tab-bar";
 
 // Desktop nav - all items
 const desktopNavItems = [
@@ -32,13 +27,6 @@ const desktopNavItems = [
   { href: "/transactions", label: "Transactions", icon: Receipt },
   { href: "/tagger", label: "Tagger", icon: Zap, highlight: true },
   { href: "/upload", label: "Upload", icon: Upload },
-];
-
-// Mobile nav - simplified hierarchy
-const mobileNavItems = [
-  { href: "/", label: "Home", icon: House },
-  { href: "/transactions", label: "Activity", icon: Activity, matchPaths: ["/transactions", "/reports"] },
-  { href: "/accounts", label: "Wallet", icon: Wallet, matchPaths: ["/accounts", "/categories", "/upload"] },
 ];
 
 export function Nav() {
@@ -110,7 +98,7 @@ export function Nav() {
                           <motion.div
                             layoutId="nav-indicator"
                             className="absolute -bottom-[1px] left-2 right-2 h-[2px]"
-                            transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                            transition={{ type: "spring", ...spring.snappy }}
                           >
                             <div className="w-full h-full bg-gradient-to-r from-primary via-primary/80 to-primary" />
                             <div className="absolute inset-0 bg-gradient-to-r from-primary via-primary/80 to-primary blur-sm" />
@@ -156,85 +144,7 @@ export function Nav() {
       </nav>
 
       {/* ===== MOBILE BOTTOM NAV - Sculptural Float ===== */}
-      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 px-4 pb-[calc(env(safe-area-inset-bottom)+8px)]">
-        {/* Floating dock */}
-        <div
-          className="relative mx-auto max-w-[280px] bg-nav-dock rounded-2xl p-1.5"
-          style={{
-            boxShadow: `
-              0 0 0 1px oklch(1 0 0 / 0.04),
-              0 2px 4px -1px oklch(0 0 0 / 0.3),
-              0 8px 20px -4px oklch(0 0 0 / 0.4),
-              0 20px 40px -8px oklch(0 0 0 / 0.3)
-            `
-          }}
-        >
-          {/* Inner container with subtle top highlight */}
-          <div className="relative flex items-center">
-            {/* Sliding indicator - the hero */}
-            {mobileNavItems.map((item, index) => {
-              const isActive = item.matchPaths
-                ? item.matchPaths.some(path => pathname.startsWith(path)) || pathname === item.href
-                : pathname === item.href;
-
-              return isActive ? (
-                <motion.div
-                  key="indicator"
-                  className="absolute inset-y-0 bg-nav-indicator rounded-xl"
-                  layoutId="nav-indicator-mobile"
-                  style={{
-                    width: `${100 / mobileNavItems.length}%`,
-                    left: `${(index * 100) / mobileNavItems.length}%`,
-                    boxShadow: 'inset 0 1px 0 0 oklch(1 0 0 / 0.06)'
-                  }}
-                  transition={{
-                    type: "spring",
-                    stiffness: 400,
-                    damping: 30
-                  }}
-                />
-              ) : null;
-            })}
-
-            {/* Nav items */}
-            {mobileNavItems.map((item) => {
-              const isActive = item.matchPaths
-                ? item.matchPaths.some(path => pathname.startsWith(path)) || pathname === item.href
-                : pathname === item.href;
-              const Icon = item.icon;
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="relative flex-1 z-10"
-                >
-                  <motion.div
-                    className="flex flex-col items-center justify-center py-2.5 gap-1"
-                    whileTap={{ scale: 0.92 }}
-                    transition={{ duration: 0.1 }}
-                  >
-                    <Icon
-                      className="w-5 h-5 transition-colors duration-200"
-                      color={isActive ? undefined : NAV_COLORS.navInactiveIcon}
-                      strokeWidth={isActive ? 2.25 : 1.75}
-                    />
-                    <span
-                      className={cn(
-                        "text-[10px] font-medium tracking-wide transition-colors duration-200",
-                        isActive ? "text-foreground" : "text-nav-inactive-label"
-                      )}
-                    >
-                      {item.label}
-                    </span>
-                  </motion.div>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      </nav>
-
+      <FloatingTabBar />
     </>
   );
 }

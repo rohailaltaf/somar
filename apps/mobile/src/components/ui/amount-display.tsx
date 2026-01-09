@@ -1,5 +1,5 @@
-import { Text, View } from "react-native";
-import { useMemo } from "react";
+import { Text } from "react-native";
+import { useAmountDisplay, type AmountColorMode } from "@somar/shared/ui-logic";
 
 interface AmountDisplayProps {
   amount: number;
@@ -8,7 +8,7 @@ interface AmountDisplayProps {
   /** Size variant */
   size?: "sm" | "md" | "lg" | "display";
   /** Override color behavior - always show as expense/income/neutral */
-  colorMode?: "auto" | "expense" | "income" | "neutral";
+  colorMode?: AmountColorMode;
 }
 
 const sizeStyles = {
@@ -31,32 +31,16 @@ export function AmountDisplay({
   size = "md",
   colorMode = "auto",
 }: AmountDisplayProps) {
-  const formatted = useMemo(() => {
-    const absAmount = Math.abs(amount);
-    const str = absAmount.toLocaleString("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 2,
-    });
-
-    if (showSign) {
-      return amount < 0 ? `-${str}` : `+${str}`;
-    }
-    return str;
-  }, [amount, showSign]);
-
-  const colorClass = useMemo(() => {
-    if (colorMode === "neutral") return "text-foreground";
-    if (colorMode === "expense") return "text-destructive";
-    if (colorMode === "income") return "text-success";
-    // auto mode: negative = expense (red), positive = income (green)
-    return amount < 0 ? "text-destructive" : "text-success";
-  }, [amount, colorMode]);
+  // Use shared hook for amount display logic
+  const { display, colorClass } = useAmountDisplay(amount, {
+    showSign,
+    showCents: true,
+    colorMode,
+  });
 
   return (
     <Text className={`${sizeStyles[size]} ${fontWeightStyles[size]} ${colorClass}`}>
-      {formatted}
+      {display}
     </Text>
   );
 }
-

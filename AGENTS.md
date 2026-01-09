@@ -97,9 +97,10 @@ import { hexColors, oklchColors } from "@somar/shared/theme";
 
 5. **Timezone dates**: Never use `new Date(dateString).toISOString()` - causes day shifts.
 
-6. **Theme colors in shared**: All colors defined in `@somar/shared/theme`. After changes, run both:
-   - `pnpm --filter web generate:theme`
-   - `pnpm --filter mobile generate:theme`
+6. **Theme colors in shared**: All colors defined in `@somar/shared/theme`. After changes, run:
+   ```bash
+   pnpm generate:theme  # Updates both web and mobile
+   ```
 
 ## Documentation
 

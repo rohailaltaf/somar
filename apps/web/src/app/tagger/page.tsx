@@ -52,7 +52,7 @@ export default function TaggerPage() {
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-16">
                 <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mb-4">
-                  <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+                  <CheckCircle2 className="w-8 h-8 text-success" />
                 </div>
                 <h3 className="text-xl font-medium">All transactions reviewed!</h3>
                 <p className="text-muted-foreground mt-2 text-center">

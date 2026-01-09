@@ -97,7 +97,7 @@ export function TaggerInterface({
     confirmTransaction.mutate(
       { transactionId: currentTransaction.id, categoryId: categoryToConfirm },
       {
-        onSuccess: (result) => {
+        onSuccess: (result: { autoTaggedCount: number } | undefined) => {
           const autoTaggedCount = result?.autoTaggedCount || 0;
           if (autoTaggedCount > 0) {
             toast.success(`Transaction categorized. ${autoTaggedCount} similar transaction${autoTaggedCount > 1 ? 's' : ''} auto-tagged.`);
@@ -310,8 +310,8 @@ export function TaggerInterface({
                     className={cn(
                       "text-4xl font-bold",
                       currentTransaction.amount < 0
-                        ? "text-red-600"
-                        : "text-emerald-600"
+                        ? "text-destructive"
+                        : "text-success"
                     )}
                   >
                     {currentTransaction.amount < 0 ? "-" : "+"}
