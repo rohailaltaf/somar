@@ -108,6 +108,7 @@ import { hexColors, oklchColors } from "@somar/shared/theme";
 
 | File | Description |
 |------|-------------|
+| [docs/component-philosophy.md](docs/component-philosophy.md) | **REQUIRED** before any frontend work |
 | [docs/architecture.md](docs/architecture.md) | E2EE model, security, database design |
 | [docs/schema.md](docs/schema.md) | Database tables and indexes |
 | [docs/commands.md](docs/commands.md) | Full command reference |
