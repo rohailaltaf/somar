@@ -7,8 +7,9 @@ import { headers } from "next/headers";
  * GET /api/transactions/stats
  * Get spending statistics.
  * Query params:
- * - month: Month in YYYY-MM format (required)
- * - stat: Type of stat (total, byCategory, cumulative) - default: all
+ * - startDate: Start date in YYYY-MM-DD format (required)
+ * - endDate: End date in YYYY-MM-DD format (required)
+ * - stat: Type of stat (total, byCategory, cumulative, income) - default: all
  */
 export async function GET(request: Request) {
   const session = await auth.api.getSession({
@@ -24,20 +25,16 @@ export async function GET(request: Request) {
 
   try {
     const url = new URL(request.url);
-    const month = url.searchParams.get("month");
+    const startDate = url.searchParams.get("startDate");
+    const endDate = url.searchParams.get("endDate");
     const stat = url.searchParams.get("stat");
 
-    if (!month) {
+    if (!startDate || !endDate) {
       return NextResponse.json(
-        { success: false, error: { code: "INVALID_INPUT", message: "month parameter is required (YYYY-MM)" } },
+        { success: false, error: { code: "INVALID_INPUT", message: "startDate and endDate parameters are required (YYYY-MM-DD)" } },
         { status: 400 }
       );
     }
-
-    // Parse month to get date range
-    const [year, monthNum] = month.split("-").map(Number);
-    const startDate = `${year}-${String(monthNum).padStart(2, "0")}-01`;
-    const endDate = `${year}-${String(monthNum).padStart(2, "0")}-31`;
 
     const baseWhere = {
       userId: session.user.id,
@@ -94,14 +91,14 @@ export async function GET(request: Request) {
         dailyTotals[txn.date] = (dailyTotals[txn.date] || 0) + Math.abs(txn.amount);
       }
 
-      // Build cumulative data
+      // Build cumulative data for each day in range
       let cumulative = 0;
       const cumulativeData: Array<{ date: string; daily: number; cumulative: number }> = [];
 
-      // Get all days in month
-      const daysInMonth = new Date(year, monthNum, 0).getDate();
-      for (let day = 1; day <= daysInMonth; day++) {
-        const dateStr = `${year}-${String(monthNum).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      const start = new Date(startDate + "T00:00:00");
+      const end = new Date(endDate + "T00:00:00");
+      for (let d = start; d <= end; d.setDate(d.getDate() + 1)) {
+        const dateStr = d.toISOString().split("T")[0];
         const daily = dailyTotals[dateStr] || 0;
         cumulative += daily;
         cumulativeData.push({ date: dateStr, daily, cumulative });
