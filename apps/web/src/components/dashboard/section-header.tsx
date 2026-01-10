@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import type { DashboardSectionHeaderProps } from "@somar/shared/components";
 import { sectionHeaderStyles } from "@somar/shared/styles";

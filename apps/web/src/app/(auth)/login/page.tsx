@@ -66,13 +66,12 @@ export default function LoginPage() {
     );
   }
 
-  async function handleGoogleLogin() {
+  function handleGoogleLogin(): void {
     // Google OAuth doesn't give us the password, so we can't derive encryption key.
     // For now, show a message. Later: use a separate "data password" prompt.
     setError("root", {
       message: "Google login coming soon. For now, please use email/password to access your encrypted data.",
     });
-    return;
   }
 
   return (

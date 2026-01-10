@@ -68,7 +68,7 @@ export default function RegisterPage() {
     );
   }
 
-  async function handleGoogleRegister() {
+  function handleGoogleRegister(): void {
     // Google OAuth doesn't give us the password, so we can't derive encryption key.
     setError("root", {
       message: "Google login coming soon. For now, please use email/password to encrypt your data.",

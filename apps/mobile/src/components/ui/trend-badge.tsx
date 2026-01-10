@@ -8,34 +8,48 @@ import {
   getTrendBadgeContainerClass,
   getTrendBadgeTextClass,
   type TrendBadgeProps,
+  type TrendDirection,
 } from "@somar/shared/styles";
+
+function getIconColor(direction: TrendDirection): string {
+  switch (direction) {
+    case "up":
+      return hexColors.destructive;
+    case "down":
+      return hexColors.success;
+    case "neutral":
+      return hexColors.mutedForeground;
+  }
+}
+
+function TrendIcon({ direction }: { direction: TrendDirection }): React.ReactNode {
+  const color = getIconColor(direction);
+  const size = trendBadgeStyles.iconSize;
+
+  switch (direction) {
+    case "up":
+      return <ArrowUpRight size={size} color={color} />;
+    case "down":
+      return <ArrowDownRight size={size} color={color} />;
+    case "neutral":
+      return null;
+  }
+}
 
 /**
  * Trend indicator badge showing percentage change.
  * For spending: up is bad (red), down is good (green).
  * Uses shared styles from @somar/shared/styles.
  */
-export function TrendBadge({ change }: TrendBadgeProps) {
+export function TrendBadge({ change }: TrendBadgeProps): React.ReactNode {
   if (change === null) return null;
 
   const direction = getTrendVariant(change);
   const textClass = getTrendBadgeTextClass(direction);
 
-  // Get icon color based on direction
-  const iconColor =
-    direction === "up"
-      ? hexColors.destructive
-      : direction === "down"
-      ? hexColors.success
-      : hexColors.mutedForeground;
-
   return (
     <View className={getTrendBadgeContainerClass(direction)}>
-      {direction === "up" ? (
-        <ArrowUpRight size={trendBadgeStyles.iconSize} color={iconColor} />
-      ) : direction === "down" ? (
-        <ArrowDownRight size={trendBadgeStyles.iconSize} color={iconColor} />
-      ) : null}
+      <TrendIcon direction={direction} />
       <Text className={textClass}>{Math.abs(change)}%</Text>
       <Text className={`${trendBadgeStyles.suffix} ${trendBadgeStyles.textColor[direction]}`}>
         vs last mo

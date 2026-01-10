@@ -3,7 +3,6 @@
  * Used by web StatCard and mobile BentoCard.
  */
 
-import { hexColors } from "../../theme/colors";
 import { oklchToHex } from "../../utils/color";
 
 export const bentoCardStyles = {
@@ -39,8 +38,7 @@ export const bentoCardStyles = {
   /** Value section */
   valueSection: "pt-5",
   value: "text-[28px] font-bold",
-  valueHighlight: "text-foreground",
-  valueNormal: "text-foreground",
+  valueDefault: "text-foreground",
   valueZero: "text-muted-foreground",
   label: "text-xs mt-0.5 text-muted-foreground",
 
@@ -80,11 +78,11 @@ export const bentoCardHexColors = {
 } as const;
 
 /**
- * Get value text class based on highlight state and value.
+ * Get value text class based on value.
+ * Zero values use muted color; non-zero values use default foreground.
  */
-export function getBentoValueClass(highlight: boolean, value: number): string {
-  if (value === 0) return bentoCardStyles.valueZero;
-  return highlight ? bentoCardStyles.valueHighlight : bentoCardStyles.valueNormal;
+export function getBentoValueClass(_highlight: boolean, value: number): string {
+  return value === 0 ? bentoCardStyles.valueZero : bentoCardStyles.valueDefault;
 }
 
 /**

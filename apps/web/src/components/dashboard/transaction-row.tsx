@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { formatDate } from "@somar/shared";
 import { useAmountDisplay } from "@somar/shared/ui-logic";
 import { transactionRowStyles } from "@somar/shared/styles";
 
@@ -26,9 +27,9 @@ export function TransactionRow({
   categoryColor,
   isConfirmed,
   index,
-}: TransactionRowProps) {
+}: TransactionRowProps): React.ReactNode {
   const { display, colorClass } = useAmountDisplay(amount, { showSign: true });
-  const [, month, day] = date.split("-");
+  const formattedDate = formatDate(date);
 
   return (
     <motion.div
@@ -47,12 +48,7 @@ export function TransactionRow({
       <div className={transactionRowStyles.content}>
         <p className={transactionRowStyles.description}>{description}</p>
         <div className={transactionRowStyles.meta}>
-          <span className={transactionRowStyles.date}>
-            {new Date(2024, parseInt(month) - 1, parseInt(day)).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-            })}
-          </span>
+          <span className={transactionRowStyles.date}>{formattedDate}</span>
           {categoryName ? (
             <span className={transactionRowStyles.category}>· {categoryName}</span>
           ) : (

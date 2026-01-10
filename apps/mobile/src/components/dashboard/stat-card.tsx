@@ -71,14 +71,16 @@ export function StatCard({
     opacity: glowOpacity.value,
   }));
 
-  // Parse icon color class to get color value
-  // iconColorClass is like "text-primary" or "text-muted-foreground"
-  const getIconColor = () => {
+  /**
+   * Map iconColorClass to hex color for native components.
+   * iconColorClass is like "text-primary" or "text-muted-foreground".
+   */
+  function getIconColor(): string {
     if (iconColorClass.includes("primary")) return hexColors.primary;
-    if (iconColorClass.includes("muted")) return hexColors.mutedForeground;
     if (iconColorClass.includes("gold")) return hexColors.gold;
+    if (iconColorClass.includes("muted")) return hexColors.mutedForeground;
     return hexColors.foreground;
-  };
+  }
 
   const content = (
     <View style={{ minHeight: container.minHeight, flex: 1 }}>

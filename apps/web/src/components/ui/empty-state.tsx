@@ -6,12 +6,23 @@ import type { EmptyStateProps } from "@somar/shared/components";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+type ButtonVariant = "default" | "ghost" | "outline";
+
 /**
  * Resolve icon name to Lucide component.
  */
-function resolveIcon(iconName: string) {
+function resolveIcon(iconName: string): LucideIcons.LucideIcon {
   const Icon = (LucideIcons as unknown as Record<string, LucideIcons.LucideIcon>)[iconName];
   return Icon || LucideIcons.HelpCircle;
+}
+
+/**
+ * Map action variant to button variant.
+ */
+function getButtonVariant(variant?: string): ButtonVariant {
+  if (variant === "ghost") return "ghost";
+  if (variant === "outline") return "outline";
+  return "default";
 }
 
 const sizeConfig = {
@@ -66,24 +77,22 @@ export function EmptyState({
       </div>
       <p className={cn("text-foreground-secondary", config.title)}>{title}</p>
       <p className={cn("text-foreground-dim mt-1 max-w-[200px]", config.description)}>{description}</p>
-      {action && action.href ? (
+      {action && action.href && (
         <Link href={action.href}>
-          <Button
-            variant={action.variant === "ghost" ? "ghost" : action.variant === "outline" ? "outline" : "default"}
-            className="mt-4"
-          >
+          <Button variant={getButtonVariant(action.variant)} className="mt-4">
             {action.label}
           </Button>
         </Link>
-      ) : action ? (
+      )}
+      {action && !action.href && (
         <Button
-          variant={action.variant === "ghost" ? "ghost" : action.variant === "outline" ? "outline" : "default"}
+          variant={getButtonVariant(action.variant)}
           className="mt-4"
           onClick={action.onPress}
         >
           {action.label}
         </Button>
-      ) : null}
+      )}
     </div>
   );
 }

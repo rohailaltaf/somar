@@ -43,7 +43,7 @@ export function CategoryRow({
         })
       );
     }
-  }, [budgetUsed, index]);
+  }, [budgetUsed, index, animatedWidth]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     width: `${animatedWidth.value}%`,

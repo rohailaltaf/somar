@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
+import { formatDate } from "@somar/shared";
 import { useAmountDisplay } from "@somar/shared/ui-logic";
 import { hexColors } from "@somar/shared/theme";
 import { transactionRowCompactStyles } from "@somar/shared/styles";
@@ -28,10 +29,9 @@ export function TransactionRow({
   categoryColor,
   isConfirmed,
   index,
-}: TransactionRowProps) {
-  // Use shared hook for amount display - uses display for parity with web
+}: TransactionRowProps): React.ReactNode {
   const { display, colorClass } = useAmountDisplay(amount, { showSign: true });
-  const [, month, day] = date.split("-");
+  const formattedDate = formatDate(date);
 
   return (
     <Animated.View
@@ -50,12 +50,7 @@ export function TransactionRow({
           {description}
         </Text>
         <View className={transactionRowCompactStyles.meta}>
-          <Text className={transactionRowCompactStyles.date}>
-            {new Date(2024, parseInt(month) - 1, parseInt(day)).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-            })}
-          </Text>
+          <Text className={transactionRowCompactStyles.date}>{formattedDate}</Text>
           {categoryName ? (
             <Text className={transactionRowCompactStyles.category}>
               · {categoryName}
