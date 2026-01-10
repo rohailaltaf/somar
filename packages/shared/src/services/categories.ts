@@ -59,14 +59,6 @@ export function getCategoriesWithBudgets(
   });
 }
 
-export function getCategoryById(db: DatabaseAdapter, id: string): Category | null {
-  const row = db.get<RawCategory>(
-    "SELECT * FROM categories WHERE id = ?",
-    [id]
-  );
-  return row ? mapCategoryRow(row) : null;
-}
-
 // ============ Mutations ============
 
 export function createCategory(db: DatabaseAdapter, input: CreateCategoryInput): string {

@@ -4,6 +4,8 @@
 
 **DO NOT do more than what is asked.** Confirm with the user before implementing additional features. Stick to the specific request.
 
+**Read [docs/component-philosophy.md](docs/component-philosophy.md) before any frontend work.** This is mandatory for UI changes on web or mobile.
+
 **Use to-do lists for non-trivial tasks.** If a task involves multiple steps, create and maintain a to-do list to track progress. Mark items as in-progress when starting and completed when done. This provides visibility and ensures nothing is missed.
 
 **Check shared packages before implementing inline types.** Types like `AccountType`, `CategoryType` exist in `@somar/shared`:

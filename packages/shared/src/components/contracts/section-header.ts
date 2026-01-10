@@ -1,48 +1,14 @@
 /**
  * SectionHeader component contracts.
  *
- * These interfaces define props for various section header components
+ * These interfaces define props for section header components
  * used to divide content into logical groups.
  *
  * Implemented by:
- * - Web: apps/web/src/components/page-header.tsx
+ * - Web: apps/web/src/components/dashboard/section-header.tsx
  * - Mobile: apps/mobile/src/components/ui/section-header.tsx
+ * - Mobile: apps/mobile/src/components/dashboard/section-header.tsx
  */
-
-/**
- * Props for a basic section header.
- *
- * @example
- * ```tsx
- * <SectionHeader
- *   title="Recent Transactions"
- *   action={<Button onClick={viewAll}>View All</Button>}
- * />
- * ```
- */
-export interface SectionHeaderProps {
-  /**
-   * Section title text.
-   */
-  title: string;
-
-  /**
-   * Optional subtitle or description.
-   */
-  subtitle?: string;
-
-  /**
-   * Optional right-side action element.
-   * Can be a button, link, or any React node.
-   */
-  action?: React.ReactNode;
-
-  /**
-   * Size variant.
-   * @default "default"
-   */
-  size?: "sm" | "default" | "lg";
-}
 
 /**
  * Props for a date-based section header.
@@ -109,43 +75,3 @@ export interface DashboardSectionHeaderProps {
   onAction: () => void;
 }
 
-/**
- * Props for a page header.
- * Used at the top of pages with title and optional actions.
- *
- * @example
- * ```tsx
- * <PageHeader
- *   title="Transactions"
- *   description="View and manage all your transactions"
- *   actions={<Button>Export</Button>}
- * />
- * ```
- */
-export interface PageHeaderProps {
-  /**
-   * Page title.
-   */
-  title: string;
-
-  /**
-   * Optional page description.
-   */
-  description?: string;
-
-  /**
-   * Optional action buttons or elements.
-   */
-  actions?: React.ReactNode;
-
-  /**
-   * Whether to show a back button.
-   * @default false
-   */
-  showBack?: boolean;
-
-  /**
-   * Called when back button is pressed.
-   */
-  onBack?: () => void;
-}

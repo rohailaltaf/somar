@@ -114,6 +114,13 @@ function generateCSS(): string {
   lines.push(`  }`);
   lines.push(`}`);
   lines.push(``);
+  lines.push(`/* Mobile floating nav clearance */`);
+  lines.push(`@media (max-width: 1023px) {`);
+  lines.push(`  body {`);
+  lines.push(`    padding-bottom: calc(64px + env(safe-area-inset-bottom));`);
+  lines.push(`  }`);
+  lines.push(`}`);
+  lines.push(``);
 
   // Animations
   lines.push(`/* Animations */`);

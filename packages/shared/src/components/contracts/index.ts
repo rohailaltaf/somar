@@ -15,30 +15,18 @@
 export type { BudgetRowProps, BudgetRowCategory } from "./budget-row";
 
 // Transaction row
-export type {
-  TransactionRowProps,
-  TransactionRowCompactProps,
-} from "./transaction-row";
+export type { TransactionRowProps } from "./transaction-row";
 
 // Empty state
-export type {
-  EmptyStateProps,
-  TransactionsEmptyStateProps,
-  SearchEmptyStateProps,
-} from "./empty-state";
+export type { EmptyStateProps, SearchEmptyStateProps } from "./empty-state";
 
 // Amount display
-export type {
-  AmountDisplayProps,
-  HeroAmountDisplayProps,
-} from "./amount-display";
+export type { AmountDisplayProps } from "./amount-display";
 
 // Section headers
 export type {
-  SectionHeaderProps,
   DateSectionHeaderProps,
   DashboardSectionHeaderProps,
-  PageHeaderProps,
 } from "./section-header";
 
 // Dashboard components

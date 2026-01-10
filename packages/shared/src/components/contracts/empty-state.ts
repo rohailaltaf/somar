@@ -80,21 +80,6 @@ export interface EmptyStateProps {
 }
 
 /**
- * Pre-configured empty state for transactions.
- */
-export interface TransactionsEmptyStateProps {
-  /**
-   * Type of empty state to show.
-   */
-  type: "no-transactions" | "no-results" | "no-unconfirmed";
-
-  /**
-   * Optional action for the CTA button.
-   */
-  onAction?: () => void;
-}
-
-/**
  * Pre-configured empty state for search results.
  */
 export interface SearchEmptyStateProps {

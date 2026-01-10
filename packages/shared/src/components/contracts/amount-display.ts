@@ -68,31 +68,3 @@ export interface AmountDisplayProps {
   className?: string;
 }
 
-/**
- * Props for a hero amount display (large, animated).
- * Used for dashboard spending totals.
- */
-export interface HeroAmountDisplayProps {
-  /**
-   * The monetary amount to display.
-   */
-  amount: number;
-
-  /**
-   * Previous amount for comparison/animation.
-   * If provided, will animate from previous to current.
-   */
-  previousAmount?: number;
-
-  /**
-   * Whether to animate the count-up effect.
-   * @default true
-   */
-  animated?: boolean;
-
-  /**
-   * Label text shown below the amount.
-   * @example "Total Spending", "This Month"
-   */
-  label?: string;
-}

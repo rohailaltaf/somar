@@ -149,9 +149,8 @@ import type {
   TransactionRowProps,
   EmptyStateProps,
   AmountDisplayProps,
-  SectionHeaderProps,
   DateSectionHeaderProps,
-  PageHeaderProps,
+  DashboardSectionHeaderProps,
 } from "@somar/shared/components";
 
 // Components implement these contracts for consistent APIs
@@ -164,9 +163,8 @@ function EmptyState(props: EmptyStateProps) { ... }
 - `TransactionRowProps` - Transaction list item
 - `EmptyStateProps` - No data placeholder
 - `AmountDisplayProps` - Currency amount with colors
-- `SectionHeaderProps` - Generic section header
 - `DateSectionHeaderProps` - Date-grouped section header
-- `PageHeaderProps` - Page title and actions
+- `DashboardSectionHeaderProps` - Dashboard section with action button
 
 Contracts define the API; each platform implements rendering with its own UI toolkit.
 

@@ -42,9 +42,3 @@ export {
   type CardTitleProps,
 } from "./card";
 export { Input, Textarea, type InputProps, type TextareaProps } from "./input";
-export {
-  Progress,
-  CircularProgress,
-  type ProgressProps,
-  type CircularProgressProps,
-} from "./progress";

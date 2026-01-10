@@ -1,11 +1,6 @@
 import { View, Text } from "react-native";
 import { useDateSection, useAmountDisplay } from "@somar/shared/ui-logic";
-
-interface DateSectionHeaderProps {
-  date: string; // YYYY-MM-DD format
-  /** Optional total for this day */
-  dayTotal?: number;
-}
+import type { DateSectionHeaderProps } from "@somar/shared/components";
 
 /**
  * Date section header for grouping transactions by date.

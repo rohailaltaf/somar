@@ -81,22 +81,3 @@ export interface TransactionRowProps {
   showAccount?: boolean;
 }
 
-/**
- * Props for a compact transaction row (dashboard variant).
- */
-export interface TransactionRowCompactProps {
-  /**
-   * The transaction to display.
-   */
-  transaction: TransactionWithRelations;
-
-  /**
-   * Called when the row is pressed.
-   */
-  onPress?: () => void;
-
-  /**
-   * Animation delay index.
-   */
-  index?: number;
-}

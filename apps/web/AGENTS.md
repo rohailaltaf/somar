@@ -49,7 +49,6 @@ Connection flow:
 Key files:
 - `src/hooks/use-plaid-sync.ts` - Client-side sync (runs Tier 1 dedup)
 - `src/app/api/plaid/sync/route.ts` - Server proxy with retry
-- `src/components/auto-sync.tsx` - Auto-sync on page load
 
 API routes:
 - `POST /api/plaid/create-link-token`
@@ -120,12 +119,14 @@ OPENAI_API_KEY="..."
 
 ## Web-Specific Gotchas
 
-1. **sql.js runs in browser**: User data never touches server. Encryption/decryption happens client-side.
+1. **NEVER edit globals.css directly**: It's auto-generated from `scripts/generate-theme.ts`. Edit the generator script instead, then run `pnpm generate:theme`.
 
-2. **Plaid test credentials**: `user_good` / `pass_good` in sandbox.
+2. **sql.js runs in browser**: User data never touches server. Encryption/decryption happens client-side.
 
-3. **Recharts empty data**: Test charts with empty datasets to avoid render errors.
+3. **Plaid test credentials**: `user_good` / `pass_good` in sandbox.
 
-4. **revalidatePath after mutations**: Call this to refresh server components.
+4. **Recharts empty data**: Test charts with empty datasets to avoid render errors.
 
-5. **React 19.1.4**: Web uses patched version (different from mobile's 19.1.0).
+5. **revalidatePath after mutations**: Call this to refresh server components.
+
+6. **React 19.1.4**: Web uses patched version (different from mobile's 19.1.0).

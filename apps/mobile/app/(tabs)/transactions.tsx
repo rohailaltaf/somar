@@ -157,7 +157,7 @@ export default function Transactions() {
           />
         }
         contentContainerStyle={
-          sections.length === 0 ? { flex: 1 } : { paddingBottom: 32 }
+          sections.length === 0 ? { flex: 1 } : { paddingBottom: 100 }
         }
         showsVerticalScrollIndicator={false}
         stickySectionHeadersEnabled={false}
