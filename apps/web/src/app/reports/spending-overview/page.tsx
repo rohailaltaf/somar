@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { SpendingOverviewClient } from "./spending-overview-client";
 import * as TransactionService from "@somar/shared/services";
-import { getCurrentMonth, getPreviousMonth } from "@somar/shared";
+import { getCurrentMonth, getPreviousMonth, getMonthDateRange } from "@somar/shared";
 
 export default function SpendingOverviewPage() {
   return (
@@ -31,15 +31,18 @@ function SpendingOverviewContent() {
   const lastMonth = useMemo(() => getPreviousMonth(currentMonth), [currentMonth]);
   const currentYear = useMemo(() => new Date().getFullYear(), []);
 
+  const currentRange = useMemo(() => getMonthDateRange(currentMonth), [currentMonth]);
+  const lastRange = useMemo(() => getMonthDateRange(lastMonth), [lastMonth]);
+
   // Fetch all spending data using React Query
   const { data: currentTotal = 0 } = useQuery({
-    queryKey: ["spending", "total", currentMonth],
-    queryFn: () => TransactionService.getTotalSpending(currentMonth),
+    queryKey: ["spending", "total", currentRange.startDate, currentRange.endDate],
+    queryFn: () => TransactionService.getTotalSpending(currentRange.startDate, currentRange.endDate),
   });
 
   const { data: lastTotal = 0 } = useQuery({
-    queryKey: ["spending", "total", lastMonth],
-    queryFn: () => TransactionService.getTotalSpending(lastMonth),
+    queryKey: ["spending", "total", lastRange.startDate, lastRange.endDate],
+    queryFn: () => TransactionService.getTotalSpending(lastRange.startDate, lastRange.endDate),
   });
 
   const { data: yearTotal = 0 } = useQuery({
@@ -48,13 +51,13 @@ function SpendingOverviewContent() {
   });
 
   const { data: currentCategorySpending = [] } = useQuery({
-    queryKey: ["spending", "byCategory", currentMonth],
-    queryFn: () => TransactionService.getSpendingByCategory(currentMonth),
+    queryKey: ["spending", "byCategory", currentRange.startDate, currentRange.endDate],
+    queryFn: () => TransactionService.getSpendingByCategory(currentRange.startDate, currentRange.endDate),
   });
 
   const { data: lastCategorySpending = [] } = useQuery({
-    queryKey: ["spending", "byCategory", lastMonth],
-    queryFn: () => TransactionService.getSpendingByCategory(lastMonth),
+    queryKey: ["spending", "byCategory", lastRange.startDate, lastRange.endDate],
+    queryFn: () => TransactionService.getSpendingByCategory(lastRange.startDate, lastRange.endDate),
   });
 
   const { data: yearCategorySpending = [] } = useQuery({
@@ -63,13 +66,13 @@ function SpendingOverviewContent() {
   });
 
   const { data: currentDailyData = [] } = useQuery({
-    queryKey: ["spending", "cumulative", currentMonth],
-    queryFn: () => TransactionService.getDailyCumulativeSpending(currentMonth),
+    queryKey: ["spending", "cumulative", currentRange.startDate, currentRange.endDate],
+    queryFn: () => TransactionService.getDailyCumulativeSpending(currentRange.startDate, currentRange.endDate),
   });
 
   const { data: lastDailyData = [] } = useQuery({
-    queryKey: ["spending", "cumulative", lastMonth],
-    queryFn: () => TransactionService.getDailyCumulativeSpending(lastMonth),
+    queryKey: ["spending", "cumulative", lastRange.startDate, lastRange.endDate],
+    queryFn: () => TransactionService.getDailyCumulativeSpending(lastRange.startDate, lastRange.endDate),
   });
 
   const { data: yearMonthlyData = [] } = useQuery({
@@ -78,13 +81,13 @@ function SpendingOverviewContent() {
   });
 
   const { data: currentTransactions = [] } = useQuery({
-    queryKey: ["spending", "transactions", currentMonth],
-    queryFn: () => TransactionService.getSpendingTransactions(currentMonth),
+    queryKey: ["spending", "transactions", currentRange.startDate, currentRange.endDate],
+    queryFn: () => TransactionService.getSpendingTransactions(currentRange.startDate, currentRange.endDate),
   });
 
   const { data: lastTransactions = [] } = useQuery({
-    queryKey: ["spending", "transactions", lastMonth],
-    queryFn: () => TransactionService.getSpendingTransactions(lastMonth),
+    queryKey: ["spending", "transactions", lastRange.startDate, lastRange.endDate],
+    queryFn: () => TransactionService.getSpendingTransactions(lastRange.startDate, lastRange.endDate),
   });
 
   const { data: yearTransactions = [], isLoading } = useQuery({

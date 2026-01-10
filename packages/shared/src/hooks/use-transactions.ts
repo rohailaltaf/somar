@@ -60,12 +60,12 @@ export function useUnconfirmedCount() {
 }
 
 /**
- * Hook for getting total spending for a month.
+ * Hook for getting total spending for a date range.
  */
-export function useTotalSpending(month: string) {
+export function useTotalSpending(startDate: string, endDate: string) {
   return useQuery({
-    queryKey: ["spending", "total", month],
-    queryFn: () => TransactionService.getTotalSpending(month),
+    queryKey: ["spending", "total", startDate, endDate],
+    queryFn: () => TransactionService.getTotalSpending(startDate, endDate),
   });
 }
 
@@ -80,12 +80,12 @@ export interface SpendingByCategoryOptions {
 }
 
 /**
- * Hook for getting spending by category for a month.
+ * Hook for getting spending by category for a date range.
  */
-export function useSpendingByCategory(month: string, options?: SpendingByCategoryOptions) {
+export function useSpendingByCategory(startDate: string, endDate: string, options?: SpendingByCategoryOptions) {
   return useQuery({
-    queryKey: ["spending", "byCategory", month, options],
-    queryFn: () => TransactionService.getSpendingByCategory(month, options),
+    queryKey: ["spending", "byCategory", startDate, endDate, options],
+    queryFn: () => TransactionService.getSpendingByCategory(startDate, endDate, options),
   });
 }
 
