@@ -42,9 +42,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         throw new Error(result.error.message || "Failed to sign in");
       }
 
-      // Seed categories for new users (idempotent - won't create duplicates)
-      await fetch("/api/user/seed-categories", { method: "POST" });
-
       // Navigate to dashboard
       router.push("/");
     },
@@ -59,9 +56,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (result.error) {
         throw new Error(result.error.message || "Failed to register");
       }
-
-      // Seed default categories for new user
-      await fetch("/api/user/seed-categories", { method: "POST" });
 
       // Navigate to dashboard
       router.push("/");
