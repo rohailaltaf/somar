@@ -28,23 +28,23 @@ function getButtonVariant(variant?: string): ButtonVariant {
 const sizeConfig = {
   compact: {
     container: "py-8",
-    icon: "w-6 h-6",
-    iconContainer: "w-14 h-14 rounded-2xl",
+    icon: "w-7 h-7",
+    iconContainer: "w-14 h-14 rounded-full",
     title: "text-base",
     description: "text-sm",
   },
   default: {
     container: "py-12",
-    icon: "w-6 h-6",
-    iconContainer: "w-14 h-14 rounded-2xl",
-    title: "text-base font-medium",
-    description: "text-sm",
+    icon: "w-9 h-9",
+    iconContainer: "w-20 h-20 rounded-full",
+    title: "text-xl font-semibold",
+    description: "text-base",
   },
   large: {
     container: "py-16",
-    icon: "w-8 h-8",
-    iconContainer: "w-20 h-20 rounded-2xl",
-    title: "text-lg",
+    icon: "w-12 h-12",
+    iconContainer: "w-24 h-24 rounded-full",
+    title: "text-2xl font-semibold",
     description: "text-base",
   },
 };

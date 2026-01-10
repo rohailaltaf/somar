@@ -32,7 +32,7 @@ export function ProgressBar({ percentage }: ProgressBarProps) {
         easing: Easing.out(Easing.cubic),
       })
     );
-  }, [clampedPercentage]);
+  }, [clampedPercentage, animation.delay, animation.duration, animatedWidth]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     width: `${animatedWidth.value}%`,
