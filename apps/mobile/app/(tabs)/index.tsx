@@ -122,7 +122,7 @@ export default function Dashboard() {
 
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -163,9 +163,7 @@ export default function Dashboard() {
             iconColorClass="text-gold"
             value={accounts.length}
             label={accounts.length === 1 ? "Connected Account" : "Connected Accounts"}
-            onPress={() => {
-              // Navigate to accounts when available
-            }}
+            onPress={() => router.push("/(tabs)/wallet")}
           />
         </Animated.View>
 
@@ -175,14 +173,15 @@ export default function Dashboard() {
             entering={FadeInDown.duration(600).delay(400)}
             className="mx-4 mt-6"
           >
-            <DashboardSectionHeader
-              title="Spending Breakdown"
-              subtitle="Where your money went"
-              actionLabel="Manage"
-              onAction={() => router.push("/categories" as never)}
-            />
-
-            <View className="rounded-2xl overflow-hidden border border-border-subtle bg-surface mt-4">
+            <View className="rounded-2xl overflow-hidden border border-border-subtle bg-surface">
+              <View className="px-5 pt-5 pb-4">
+                <DashboardSectionHeader
+                  title="Spending Breakdown"
+                  subtitle="Where your money went"
+                  actionLabel="Manage"
+                  onAction={() => router.push("/categories" as never)}
+                />
+              </View>
               {categoryProgress.map((cat, index) => (
                 <CategoryRow
                   key={cat.id}
@@ -204,14 +203,15 @@ export default function Dashboard() {
             entering={FadeInDown.duration(600).delay(500)}
             className="mx-4 mt-6"
           >
-            <DashboardSectionHeader
-              title="Recent Activity"
-              subtitle="Latest transactions"
-              actionLabel="View all"
-              onAction={() => router.push("/(tabs)/transactions")}
-            />
-
-            <View className="rounded-2xl overflow-hidden border border-border-subtle bg-surface mt-4">
+            <View className="rounded-2xl overflow-hidden border border-border-subtle bg-surface">
+              <View className="px-5 pt-5 pb-4">
+                <DashboardSectionHeader
+                  title="Recent Activity"
+                  subtitle="Latest transactions"
+                  actionLabel="View all"
+                  onAction={() => router.push("/(tabs)/transactions")}
+                />
+              </View>
               {recentTransactions.map((tx, index) => (
                 <View
                   key={tx.id}
@@ -261,7 +261,6 @@ export default function Dashboard() {
             icon={Upload}
             label="Upload"
             sublabel="Import CSV"
-            onPress={() => {}}
           />
           <QuickAction
             icon={Zap}
@@ -274,13 +273,12 @@ export default function Dashboard() {
             icon={TrendingUp}
             label="Reports"
             sublabel="Analytics"
-            onPress={() => {}}
           />
           <QuickAction
             icon={CreditCard}
             label="Accounts"
             sublabel="Manage"
-            onPress={() => {}}
+            onPress={() => router.push("/(tabs)/wallet")}
           />
         </Animated.View>
       </ScrollView>

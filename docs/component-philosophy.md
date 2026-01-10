@@ -10,6 +10,8 @@ This document defines how we build and maintain components across web and mobile
 
 Every class, every style, every prop name should be identical across platforms unless there is a technical reason it cannot be.
 
+**Web and mobile must be visually identical.** If something looks different between platforms, it is a bug. No exceptions. Before writing any frontend code, open both platforms side-by-side and verify they match. If they don't match, fix the discrepancy before adding new code.
+
 ---
 
 ## Directory Structure
@@ -431,6 +433,12 @@ Examples of logic differences that require clarification:
 - Different data transformations
 
 When you find a difference, ask: "Web does X, mobile does Y. Which is correct?"
+
+---
+
+## Before Making Any Change
+
+**Read all related components first.** Don't just read the file you're changing - read every component it uses. Understand how the existing code works before modifying it.
 
 ---
 

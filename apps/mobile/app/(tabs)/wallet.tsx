@@ -16,8 +16,8 @@ import {
 import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { useAccounts } from "@somar/shared/hooks";
-import { oklchToHex } from "@somar/shared/utils";
 import { colors } from "@/src/lib/theme";
+import { hexColors } from "@somar/shared/theme";
 
 export default function WalletScreen() {
   const { data: accounts = [], isLoading, refetch } = useAccounts();
@@ -75,7 +75,7 @@ export default function WalletScreen() {
           style={{
             top: "-20%",
             left: "-10%",
-            backgroundColor: oklchToHex("oklch(0.25 0.15 280)"),
+            backgroundColor: hexColors.primary,
             transform: [{ scale: 1.5 }],
           }}
         />
@@ -84,7 +84,7 @@ export default function WalletScreen() {
           style={{
             top: "20%",
             right: "-15%",
-            backgroundColor: oklchToHex("oklch(0.35 0.12 200)"),
+            backgroundColor: hexColors.accent,
           }}
         />
       </View>
@@ -123,8 +123,8 @@ export default function WalletScreen() {
             <View
               className="rounded-2xl p-8 items-center border"
               style={{
-                backgroundColor: oklchToHex("oklch(0.12 0.02 260)"),
-                borderColor: "rgba(46, 50, 66, 0.5)",
+                backgroundColor: hexColors.surface,
+                borderColor: "hexColors.borderSubtle",
               }}
             >
               <View className="w-16 h-16 rounded-2xl bg-muted items-center justify-center mb-5">
@@ -174,8 +174,8 @@ export default function WalletScreen() {
             <View
               className="rounded-2xl overflow-hidden border"
               style={{
-                backgroundColor: oklchToHex("oklch(0.12 0.02 260)"),
-                borderColor: "rgba(46, 50, 66, 0.5)",
+                backgroundColor: hexColors.surface,
+                borderColor: "hexColors.borderSubtle",
               }}
             >
               {connectedAccounts.map((account, index) => {
@@ -194,7 +194,7 @@ export default function WalletScreen() {
                       className="flex-row items-center px-4 py-3.5"
                       style={{
                         borderBottomWidth: isLast ? 0 : 1,
-                        borderBottomColor: "rgba(46, 50, 66, 0.5)",
+                        borderBottomColor: "hexColors.borderSubtle",
                       }}
                     >
                       <View className="w-10 h-10 rounded-xl items-center justify-center bg-primary/10 mr-3">
@@ -246,8 +246,8 @@ export default function WalletScreen() {
             <View
               className="rounded-2xl overflow-hidden border"
               style={{
-                backgroundColor: oklchToHex("oklch(0.12 0.02 260)"),
-                borderColor: "rgba(46, 50, 66, 0.5)",
+                backgroundColor: hexColors.surface,
+                borderColor: "hexColors.borderSubtle",
               }}
             >
               {manualAccounts.map((account, index) => {
@@ -266,7 +266,7 @@ export default function WalletScreen() {
                       className="flex-row items-center px-4 py-3.5"
                       style={{
                         borderBottomWidth: isLast ? 0 : 1,
-                        borderBottomColor: "rgba(46, 50, 66, 0.5)",
+                        borderBottomColor: "hexColors.borderSubtle",
                       }}
                     >
                       <View className="w-10 h-10 rounded-xl items-center justify-center bg-warning/10 mr-3">
@@ -302,7 +302,7 @@ export default function WalletScreen() {
             <View
               className="flex-row items-center gap-3 px-4 py-3.5 rounded-xl"
               style={{
-                backgroundColor: oklchToHex("oklch(0.15 0.02 260)"),
+                backgroundColor: hexColors.surfaceElevated,
               }}
             >
               <Globe size={18} color={colors.mutedForeground} />

@@ -40,7 +40,8 @@ export function AnimatedCurrency({
     };
   }, [value, duration, animatedValue]);
 
-  const formatted = formatCurrency(displayValue);
+  // Use Math.abs to ensure positive values (caller should handle sign display)
+  const formatted = formatCurrency(Math.abs(displayValue));
   const [dollars, cents] = formatted.split(".");
 
   return (
