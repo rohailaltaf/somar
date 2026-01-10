@@ -429,11 +429,19 @@ export function usePlaidSync() {
         }
 
         // 5. Process removed transactions
+        // Note: Many "removed" transactions are pending txs that were never added to local DB
+        // (we filter out pending in step 3). Only count actual deletions.
         for (const removedTx of removed) {
-          adapter.run("DELETE FROM transactions WHERE plaid_transaction_id = ?", [
-            removedTx.transaction_id,
-          ]);
-          result.removed++;
+          const existing = adapter.get<{ id: string }>(
+            "SELECT id FROM transactions WHERE plaid_transaction_id = ?",
+            [removedTx.transaction_id]
+          );
+          if (existing) {
+            adapter.run("DELETE FROM transactions WHERE plaid_transaction_id = ?", [
+              removedTx.transaction_id,
+            ]);
+            result.removed++;
+          }
         }
 
         // 6. Save new cursor
