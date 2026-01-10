@@ -1,21 +1,11 @@
-import { View, Text, TextInput, type TextInputProps, useColorScheme } from "react-native";
+import { View, Text, TextInput, type TextInputProps } from "react-native";
 import {
   Controller,
   type Control,
   type FieldPath,
   type FieldValues,
 } from "react-hook-form";
-
-const colors = {
-  light: {
-    text: "#0f172a",
-    placeholder: "#94a3b8",
-  },
-  dark: {
-    text: "#f8fafc",
-    placeholder: "#64748b",
-  },
-};
+import { colors } from "@/src/lib/theme";
 
 interface FormTextInputProps<T extends FieldValues>
   extends Omit<TextInputProps, "value" | "onChangeText"> {
@@ -34,9 +24,6 @@ export function FormTextInput<T extends FieldValues>({
   label,
   ...textInputProps
 }: FormTextInputProps<T>) {
-  const colorScheme = useColorScheme();
-  const theme = colors[colorScheme ?? "light"];
-
   return (
     <Controller
       control={control}
@@ -55,9 +42,9 @@ export function FormTextInput<T extends FieldValues>({
               height: 48,
               paddingHorizontal: 16,
               fontSize: 16,
-              color: theme.text,
+              color: colors.foreground,
             }}
-            placeholderTextColor={theme.placeholder}
+            placeholderTextColor={colors.mutedForeground}
             value={value}
             onChangeText={onChange}
             onBlur={onBlur}

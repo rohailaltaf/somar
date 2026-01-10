@@ -9,19 +9,16 @@ import {
   ScrollView,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { useColorScheme } from "nativewind";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "../../src/providers";
 import { signIn } from "../../src/lib/auth-client";
 import { FormTextInput } from "../../src/components/ui";
 import { registerSchema, type RegisterFormData } from "../../src/lib/validation";
-import { themeColors } from "../../src/lib/theme";
+import { colors } from "../../src/lib/theme";
 
 export default function RegisterScreen() {
   const router = useRouter();
-  const { colorScheme } = useColorScheme();
-  const colors = themeColors[colorScheme ?? "light"];
   const { register } = useAuth();
   const [isOAuthLoading, setIsOAuthLoading] = useState(false);
 

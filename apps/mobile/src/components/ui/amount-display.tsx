@@ -1,5 +1,5 @@
-import { Text, View } from "react-native";
-import { useMemo } from "react";
+import { Text } from "react-native";
+import { useAmountDisplay, type AmountColorMode } from "@somar/shared/ui-logic";
 
 interface AmountDisplayProps {
   amount: number;
@@ -8,7 +8,7 @@ interface AmountDisplayProps {
   /** Size variant */
   size?: "sm" | "md" | "lg" | "display";
   /** Override color behavior - always show as expense/income/neutral */
-  colorMode?: "auto" | "expense" | "income" | "neutral";
+  colorMode?: AmountColorMode;
 }
 
 const sizeStyles = {
@@ -31,74 +31,16 @@ export function AmountDisplay({
   size = "md",
   colorMode = "auto",
 }: AmountDisplayProps) {
-  const formatted = useMemo(() => {
-    const absAmount = Math.abs(amount);
-    const str = absAmount.toLocaleString("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 2,
-    });
-
-    if (showSign) {
-      return amount < 0 ? `-${str}` : `+${str}`;
-    }
-    return str;
-  }, [amount, showSign]);
-
-  const colorClass = useMemo(() => {
-    if (colorMode === "neutral") return "text-foreground";
-    if (colorMode === "expense") return "text-destructive";
-    if (colorMode === "income") return "text-success";
-    // auto mode: negative = expense (red), positive = income (green)
-    return amount < 0 ? "text-destructive" : "text-success";
-  }, [amount, colorMode]);
+  // Use shared hook for amount display logic
+  const { display, colorClass } = useAmountDisplay(amount, {
+    showSign,
+    showCents: true,
+    colorMode,
+  });
 
   return (
     <Text className={`${sizeStyles[size]} ${fontWeightStyles[size]} ${colorClass}`}>
-      {formatted}
+      {display}
     </Text>
-  );
-}
-
-/**
- * Compact amount display for dashboard cards.
- * Shows the dollar and cents separately for visual hierarchy.
- */
-export function AmountDisplayLarge({
-  amount,
-  colorMode = "neutral",
-}: {
-  amount: number;
-  colorMode?: "auto" | "expense" | "income" | "neutral";
-}) {
-  const { dollars, cents, sign } = useMemo(() => {
-    const absAmount = Math.abs(amount);
-    const parts = absAmount.toFixed(2).split(".");
-    return {
-      dollars: Number(parts[0]).toLocaleString("en-US"),
-      cents: parts[1],
-      sign: amount < 0 ? "-" : "",
-    };
-  }, [amount]);
-
-  const colorClass = useMemo(() => {
-    if (colorMode === "neutral") return "text-foreground";
-    if (colorMode === "expense") return "text-destructive";
-    if (colorMode === "income") return "text-success";
-    return amount < 0 ? "text-destructive" : "text-success";
-  }, [amount, colorMode]);
-
-  return (
-    <View className="flex-row items-baseline">
-      <Text className={`text-2xl font-bold ${colorClass}`}>
-        {sign}$
-      </Text>
-      <Text className={`text-4xl font-bold ${colorClass}`}>
-        {dollars}
-      </Text>
-      <Text className={`text-xl font-semibold text-muted-foreground`}>
-        .{cents}
-      </Text>
-    </View>
   );
 }

@@ -40,7 +40,7 @@ export default function ReportsPage() {
                 <CardHeader>
                   <div className="flex items-center gap-3">
                     <div className="p-3 rounded-lg bg-green-100 dark:bg-green-900/20">
-                      <TrendingDown className="w-6 h-6 text-green-600" />
+                      <TrendingDown className="w-6 h-6 text-success" />
                     </div>
                     <div>
                       <CardTitle>Income Overview</CardTitle>

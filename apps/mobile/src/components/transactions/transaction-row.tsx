@@ -1,12 +1,16 @@
 import { View, Text, Pressable } from "react-native";
 import type { TransactionWithRelations } from "@somar/shared";
-import { AmountDisplay } from "./amount-display";
+import { AmountDisplay } from "../ui/amount-display";
 
 interface TransactionRowProps {
   transaction: TransactionWithRelations;
   onPress?: () => void;
 }
 
+/**
+ * Transaction row for full-page transaction lists.
+ * Card-based design with category accent bar.
+ */
 export function TransactionRow({ transaction, onPress }: TransactionRowProps) {
   const category = transaction.category;
   const isUnconfirmed = !transaction.isConfirmed;
@@ -51,6 +55,7 @@ export function TransactionRow({ transaction, onPress }: TransactionRowProps) {
 
 /**
  * Compact transaction row for dashboard previews.
+ * Simpler design without card styling.
  */
 export function TransactionRowCompact({
   transaction,

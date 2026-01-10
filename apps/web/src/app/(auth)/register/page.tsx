@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/providers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,71 +18,70 @@ import {
 } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { registerSchema, type RegisterFormData } from "@somar/shared/validation";
 
 export default function RegisterPage() {
-  const { register } = useAuth();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const { register: authRegister } = useAuth();
   const [isRedirecting, setIsRedirecting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [isOAuthLoading, setIsOAuthLoading] = useState(false);
 
-  async function handleEmailRegister(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<RegisterFormData>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+    },
+  });
 
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
-      return;
-    }
+  const isDisabled = isSubmitting || isOAuthLoading;
 
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters");
-      return;
-    }
-
-    setIsLoading(true);
-
+  async function onSubmit(data: RegisterFormData) {
     try {
-      await register(email, password, name);
+      await authRegister(data.email, data.password, data.name);
       // register() handles navigation via window.location.href
       // Show redirecting state while browser navigates
       setIsRedirecting(true);
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Failed to create account");
-      setIsLoading(false);
+      setError("root", {
+        message: error instanceof Error ? error.message : "Failed to create account",
+      });
     }
   }
 
   // Show fullscreen loading when redirecting
   if (isRedirecting) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      <div className="fixed inset-0 flex items-center justify-center bg-surface-deep">
         <div className="text-center space-y-4">
-          <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
-          <h2 className="text-xl font-semibold text-white">Creating your account...</h2>
-          <p className="text-slate-400">Setting up your encrypted vault</p>
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+          <h2 className="text-xl font-semibold text-foreground">Creating your account...</h2>
+          <p className="text-muted-foreground">Setting up your encrypted vault</p>
         </div>
       </div>
     );
   }
 
-  async function handleGoogleRegister() {
+  function handleGoogleRegister(): void {
     // Google OAuth doesn't give us the password, so we can't derive encryption key.
-    setError(
-      "Google login coming soon. For now, please use email/password to encrypt your data."
-    );
+    setError("root", {
+      message: "Google login coming soon. For now, please use email/password to encrypt your data.",
+    });
   }
 
   return (
-    <Card className="border-slate-700 bg-slate-800/50 backdrop-blur">
+    <Card className="border-border bg-surface">
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-bold text-white">
+        <CardTitle className="text-2xl font-bold text-foreground">
           Create an account
         </CardTitle>
-        <CardDescription className="text-slate-400">
+        <CardDescription className="text-muted-foreground">
           Start tracking your finances securely
         </CardDescription>
       </CardHeader>
@@ -89,7 +90,7 @@ export default function RegisterPage() {
           variant="outline"
           className="w-full bg-white text-slate-900 hover:bg-slate-100"
           onClick={handleGoogleRegister}
-          disabled={isLoading}
+          disabled={isDisabled}
         >
           <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
             <path
@@ -114,114 +115,105 @@ export default function RegisterPage() {
 
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-slate-600" />
+            <span className="w-full border-t border-border" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-slate-800 px-2 text-slate-400">
+            <span className="bg-surface px-2 text-muted-foreground">
               Or continue with email
             </span>
           </div>
         </div>
 
-        <form onSubmit={handleEmailRegister} className="space-y-4">
-          {error && (
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {errors.root && (
             <Alert variant="destructive" className="border-red-500/50 bg-red-950/20">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Registration failed</AlertTitle>
               <AlertDescription className="text-red-200">
-                {error}
+                {errors.root.message}
               </AlertDescription>
             </Alert>
           )}
           <div className="space-y-2">
-            <Label htmlFor="name" className="text-slate-200">
+            <Label htmlFor="name" className="text-foreground-secondary">
               Name
             </Label>
             <Input
               id="name"
               type="text"
               placeholder="John Doe"
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                setError(null); // Clear error when user types
-              }}
-              required
-              className="border-slate-600 bg-slate-700/50 text-white placeholder:text-slate-400"
+              {...register("name")}
+              className="border-border bg-surface-elevated text-foreground placeholder:text-foreground-dim"
             />
+            {errors.name && (
+              <p className="text-destructive text-xs">{errors.name.message}</p>
+            )}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="email" className="text-slate-200">
+            <Label htmlFor="email" className="text-foreground-secondary">
               Email
             </Label>
             <Input
               id="email"
               type="email"
               placeholder="you@example.com"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                setError(null); // Clear error when user types
-              }}
-              required
-              className="border-slate-600 bg-slate-700/50 text-white placeholder:text-slate-400"
+              {...register("email")}
+              className="border-border bg-surface-elevated text-foreground placeholder:text-foreground-dim"
             />
+            {errors.email && (
+              <p className="text-destructive text-xs">{errors.email.message}</p>
+            )}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password" className="text-slate-200">
+            <Label htmlFor="password" className="text-foreground-secondary">
               Password
             </Label>
             <Input
               id="password"
               type="password"
               placeholder="••••••••"
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                setError(null); // Clear error when user types
-              }}
-              required
-              minLength={8}
-              className="border-slate-600 bg-slate-700/50 text-white placeholder:text-slate-400"
+              {...register("password")}
+              className="border-border bg-surface-elevated text-foreground placeholder:text-foreground-dim"
             />
-            <p className="text-xs text-slate-500">
+            {errors.password && (
+              <p className="text-destructive text-xs">{errors.password.message}</p>
+            )}
+            <p className="text-xs text-foreground-dim">
               This password encrypts your data. If you forget it, your data cannot be recovered.
             </p>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="confirmPassword" className="text-slate-200">
+            <Label htmlFor="confirmPassword" className="text-foreground-secondary">
               Confirm Password
             </Label>
             <Input
               id="confirmPassword"
               type="password"
               placeholder="••••••••"
-              value={confirmPassword}
-              onChange={(e) => {
-                setConfirmPassword(e.target.value);
-                setError(null); // Clear error when user types
-              }}
-              required
-              className="border-slate-600 bg-slate-700/50 text-white placeholder:text-slate-400"
+              {...register("confirmPassword")}
+              className="border-border bg-surface-elevated text-foreground placeholder:text-foreground-dim"
             />
+            {errors.confirmPassword && (
+              <p className="text-destructive text-xs">{errors.confirmPassword.message}</p>
+            )}
           </div>
           <Button
             type="submit"
-            className="w-full bg-indigo-600 hover:bg-indigo-700"
-            disabled={isLoading}
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+            disabled={isDisabled}
           >
-            {isLoading ? "Creating account..." : "Create account"}
+            {isSubmitting ? "Creating account..." : "Create account"}
           </Button>
         </form>
       </CardContent>
       <CardFooter className="flex-col gap-2">
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-muted-foreground">
           Already have an account?{" "}
-          <Link href="/login" className="text-indigo-400 hover:underline">
+          <Link href="/login" className="text-primary hover:underline">
             Sign in
           </Link>
         </p>
-        <p className="text-xs text-slate-500 text-center">
+        <p className="text-xs text-foreground-dim text-center">
           Your data is end-to-end encrypted. We can never see it.
         </p>
       </CardFooter>

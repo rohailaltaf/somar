@@ -1,9 +1,11 @@
 import { Tabs } from "expo-router";
-import { useColorScheme, View, Text, ActivityIndicator, Pressable, Alert } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { View, Text, ActivityIndicator, Pressable, Alert } from "react-native";
+import { LogOut, House, Activity, Wallet } from "lucide-react-native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
-import { useAuth, DatabaseProvider } from "../../src/providers";
+import { useAuth, DatabaseProvider } from "@/src/providers";
+import { colors } from "@/src/lib/theme";
+import { FloatingTabBar } from "@/src/components/ui/floating-tab-bar";
 
 /**
  * Sign out button for header.
@@ -28,31 +30,10 @@ function SignOutButton() {
 
   return (
     <Pressable onPress={handleSignOut} className="mr-4 p-2">
-      <Ionicons name="log-out-outline" size={22} color="#64748b" />
+      <LogOut size={22} color={colors.mutedForeground} />
     </Pressable>
   );
 }
-
-// Navigation options require color strings (can't use className)
-// These match the CSS variables in global.css
-const navColors = {
-  light: {
-    background: "#ffffff",
-    card: "#ffffff",
-    text: "#0f172a",
-    border: "#e2e8f0",
-    accent: "#6366f1",
-    muted: "#94a3b8",
-  },
-  dark: {
-    background: "#020617",
-    card: "#0f172a",
-    text: "#f8fafc",
-    border: "#334155",
-    accent: "#818cf8",
-    muted: "#64748b",
-  },
-};
 
 /**
  * Loading screen shown while database is initializing.
@@ -61,7 +42,7 @@ function LoadingScreen() {
   return (
     <View className="flex-1 items-center justify-center bg-background">
       <View className="w-16 h-16 rounded-2xl bg-primary/10 items-center justify-center mb-4">
-        <ActivityIndicator size="large" color="#6366f1" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
       <Text className="text-base font-medium text-foreground mb-1">
         Loading your data
@@ -100,12 +81,10 @@ function DatabaseGate({ children }: { children: React.ReactNode }) {
  * Tab navigator content with icons and styling.
  */
 function TabNavigator() {
-  const colorScheme = useColorScheme();
-  const colors = colorScheme === "dark" ? navColors.dark : navColors.light;
-
   return (
     <DatabaseGate>
       <Tabs
+        tabBar={(props) => <FloatingTabBar {...props as any} />}
         screenOptions={{
           headerShown: true,
           headerStyle: {
@@ -117,31 +96,26 @@ function TabNavigator() {
             fontWeight: "600",
             fontSize: 17,
           },
-          headerTintColor: colors.text,
+          headerTintColor: colors.foreground,
           tabBarStyle: {
-            backgroundColor: colors.card,
-            borderTopColor: colors.border,
-            paddingTop: 8,
-            height: 88,
+            position: "absolute",
+            backgroundColor: "transparent",
+            borderTopWidth: 0,
+            elevation: 0,
           },
-          tabBarLabelStyle: {
-            fontSize: 11,
-            fontWeight: "500",
-            marginTop: 4,
-          },
-          tabBarActiveTintColor: colors.accent,
-          tabBarInactiveTintColor: colors.muted,
+          tabBarActiveTintColor: colors.foreground,
+          tabBarInactiveTintColor: colors.mutedForeground,
         }}
       >
         <Tabs.Screen
           name="index"
           options={{
-            title: "Dashboard",
+            title: "Home",
             tabBarIcon: ({ color, focused }) => (
-              <Ionicons
-                name={focused ? "grid" : "grid-outline"}
-                size={24}
+              <House
+                size={20}
                 color={color}
+                strokeWidth={focused ? 2.25 : 1.75}
               />
             ),
             headerRight: () => <SignOutButton />,
@@ -150,12 +124,25 @@ function TabNavigator() {
         <Tabs.Screen
           name="transactions"
           options={{
-            title: "Transactions",
+            title: "Activity",
             tabBarIcon: ({ color, focused }) => (
-              <Ionicons
-                name={focused ? "receipt" : "receipt-outline"}
-                size={24}
+              <Activity
+                size={20}
                 color={color}
+                strokeWidth={focused ? 2.25 : 1.75}
+              />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="wallet"
+          options={{
+            title: "Wallet",
+            tabBarIcon: ({ color, focused }) => (
+              <Wallet
+                size={20}
+                color={color}
+                strokeWidth={focused ? 2.25 : 1.75}
               />
             ),
           }}

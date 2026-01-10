@@ -231,7 +231,7 @@ export function TransactionsList({
                   <span
                     className={cn(
                       "font-medium",
-                      transaction.amount < 0 ? "text-red-600" : "text-emerald-600"
+                      transaction.amount < 0 ? "text-destructive" : "text-success"
                     )}
                   >
                     {transaction.amount < 0 ? "-" : "+"}

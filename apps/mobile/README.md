@@ -20,6 +20,9 @@ pnpm android          # Start Android emulator
 - **Framework:** React Native with Expo SDK 54
 - **Navigation:** Expo Router
 - **React:** 19.1.0 (pinned to match react-native-renderer)
+- **Animations:** react-native-reanimated + expo-haptics
+- **Graphics:** react-native-svg + expo-linear-gradient
+- **Fonts:** DM Sans (body) + Instrument Serif (display)
 
 ## Project Structure
 
@@ -45,7 +48,8 @@ mobile/
 │       ├── storage/        # ExpoSqliteAdapter
 │       ├── auth-client.ts  # Better Auth client
 │       ├── api.ts          # API helpers
-│       └── theme.ts        # Theme colors for native components
+│       ├── theme.ts        # Theme colors for native components
+│       └── color.ts        # Color conversion (oklch → hex)
 ├── assets/                 # Images, fonts, animations
 ├── global.css              # NativeWind theme variables
 ├── tailwind.config.js      # Tailwind/NativeWind config
@@ -111,7 +115,7 @@ Some React Native components **don't accept `className`** and need raw color str
 ```tsx
 // ❌ These don't work with className
 <ActivityIndicator color={???} />
-<Ionicons color={???} />
+<Search color={???} />  // Lucide icon
 <RefreshControl tintColor={???} />
 ```
 
@@ -120,12 +124,13 @@ Solution — import pre-computed hex values:
 ```tsx
 import { themeColors } from "../src/lib/theme";
 import { useColorScheme } from "nativewind";
+import { Search } from "lucide-react-native";
 
 const { colorScheme } = useColorScheme();
 const colors = themeColors[colorScheme ?? "light"];
 
 <ActivityIndicator color={colors.primaryForeground} />
-<Ionicons color={colors.mutedForeground} />
+<Search color={colors.mutedForeground} />
 <RefreshControl tintColor={colors.primary} />
 ```
 
@@ -138,6 +143,19 @@ const colors = themeColors[colorScheme ?? "light"];
 | `--color-primary` | `primary` | `#6366f1` | `#818cf8` |
 | `--color-primary-foreground` | `primaryForeground` | `#ffffff` | `#0f172a` |
 | `--color-muted-foreground` | `mutedForeground` | `#64748b` | `#94a3b8` |
+
+### OKLCH Color Conversion
+
+Category colors are stored as OKLCH strings (e.g., `oklch(0.65 0.2 30)`). Native components like progress bars need hex values. Use the `oklchToHex()` utility:
+
+```tsx
+import { oklchToHex } from "../src/lib/color";
+
+// Convert category color for native component
+const hexColor = oklchToHex(category.color); // "oklch(0.65 0.2 30)" → "#e04d24"
+
+<View style={{ backgroundColor: hexColor }} />
+```
 
 ## Shared Package Integration
 

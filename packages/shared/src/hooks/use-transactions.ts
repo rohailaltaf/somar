@@ -101,16 +101,26 @@ export function useTotalSpending(month: string) {
 }
 
 /**
+ * Options for spending by category query.
+ */
+export interface SpendingByCategoryOptions {
+  /** Only include categories with spending above this amount */
+  minSpent?: number;
+  /** Limit the number of results returned */
+  limit?: number;
+}
+
+/**
  * Hook for getting spending by category for a month.
  */
-export function useSpendingByCategory(month: string) {
+export function useSpendingByCategory(month: string, options?: SpendingByCategoryOptions) {
   const { adapter, isReady } = useDatabaseAdapter();
 
   return useQuery({
-    queryKey: ["spending", "byCategory", month],
+    queryKey: ["spending", "byCategory", month, options],
     queryFn: () => {
       if (!adapter) return [];
-      return TransactionService.getSpendingByCategory(adapter, month);
+      return TransactionService.getSpendingByCategory(adapter, month, options);
     },
     enabled: isReady,
   });

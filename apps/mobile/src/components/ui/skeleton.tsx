@@ -87,15 +87,3 @@ export function TransactionsLoadingState() {
   );
 }
 
-/**
- * Dashboard card skeleton.
- */
-export function DashboardCardSkeleton() {
-  return (
-    <View className="bg-card rounded-2xl p-5 border border-border">
-      <Skeleton width={80} height={14} className="mb-3" />
-      <Skeleton width={150} height={36} className="mb-2" />
-      <Skeleton width={100} height={14} />
-    </View>
-  );
-}

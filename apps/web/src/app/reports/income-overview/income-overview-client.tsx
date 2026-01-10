@@ -147,7 +147,7 @@ export function IncomeOverviewClient({
     return (
       <div
         className={`flex items-center gap-2 ${
-          isIncrease ? "text-green-600" : "text-red-600"
+          isIncrease ? "text-success" : "text-destructive"
         }`}
       >
         {isIncrease ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
@@ -180,7 +180,7 @@ export function IncomeOverviewClient({
           </Select>
         </CardHeader>
         <CardContent>
-          <div className="text-4xl font-bold text-green-600">{formatCurrency(displayTotal)}</div>
+          <div className="text-4xl font-bold text-success">{formatCurrency(displayTotal)}</div>
           {selectedPeriod === "current" && (
             <div className="mt-4">
               {renderChangeIndicator()}
@@ -259,7 +259,7 @@ export function IncomeOverviewClient({
                       />
                       <span className="font-medium capitalize">{category.name}</span>
                     </div>
-                    <div className="text-lg font-bold text-green-600">
+                    <div className="text-lg font-bold text-success">
                       {formatCurrency(category.income)}
                     </div>
                   </div>

@@ -7,8 +7,7 @@ import {
   TextInput,
   Pressable,
 } from "react-native";
-import { useColorScheme } from "nativewind";
-import { Ionicons } from "@expo/vector-icons";
+import { Search, X } from "lucide-react-native";
 import { useTransactions, useTotalSpending } from "@somar/shared/hooks";
 import type { TransactionWithRelations } from "@somar/shared";
 import { getCurrentMonth } from "@somar/shared";
@@ -17,9 +16,9 @@ import {
   SearchEmptyState,
   TransactionsLoadingState,
   DateSectionHeader,
-  TransactionRow,
 } from "../../src/components/ui";
-import { themeColors } from "../../src/lib/theme";
+import { TransactionRow } from "../../src/components/transactions";
+import { colors } from "../../src/lib/theme";
 
 interface TransactionSection {
   date: string;
@@ -48,9 +47,6 @@ function groupTransactionsByDate(
 }
 
 export default function Transactions() {
-  const { colorScheme } = useColorScheme();
-  const colors = themeColors[colorScheme ?? "light"];
-
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchVisible, setSearchVisible] = useState(false);
@@ -87,9 +83,6 @@ export default function Transactions() {
     return <TransactionsLoadingState />;
   }
 
-  const hasTransactions = transactions.length > 0;
-  const transactionCount = filteredTransactions.length;
-
   return (
     <View className="flex-1 bg-background">
       {/* Header */}
@@ -117,11 +110,11 @@ export default function Transactions() {
             }}
             className="w-10 h-10 rounded-full bg-muted items-center justify-center"
           >
-            <Ionicons
-              name={searchVisible ? "close" : "search"}
-              size={20}
-              color={colors.mutedForeground}
-            />
+            {searchVisible ? (
+              <X size={20} color={colors.mutedForeground} />
+            ) : (
+              <Search size={20} color={colors.mutedForeground} />
+            )}
           </Pressable>
         </View>
 
@@ -142,15 +135,6 @@ export default function Transactions() {
           </View>
         )}
       </View>
-
-      {/* Transaction count */}
-      {hasTransactions && (
-        <View className="px-4 pb-2">
-          <Text className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            {transactionCount} transaction{transactionCount !== 1 ? "s" : ""}
-          </Text>
-        </View>
-      )}
 
       {/* Transaction List */}
       <SectionList
@@ -173,7 +157,7 @@ export default function Transactions() {
           />
         }
         contentContainerStyle={
-          sections.length === 0 ? { flex: 1 } : { paddingBottom: 32 }
+          sections.length === 0 ? { flex: 1 } : { paddingBottom: 100 }
         }
         showsVerticalScrollIndicator={false}
         stickySectionHeadersEnabled={false}

@@ -16,26 +16,6 @@ export function getAllAccounts(db: DatabaseAdapter): Account[] {
   ).map(mapAccountRow);
 }
 
-export function getAccountById(db: DatabaseAdapter, id: string): Account | null {
-  const row = db.get<RawAccount>(
-    "SELECT * FROM accounts WHERE id = ?",
-    [id]
-  );
-  return row ? mapAccountRow(row) : null;
-}
-
-export function getManualAccounts(db: DatabaseAdapter): Account[] {
-  return db.all<RawAccount>(
-    "SELECT * FROM accounts WHERE plaid_account_id IS NULL ORDER BY name"
-  ).map(mapAccountRow);
-}
-
-export function getPlaidAccounts(db: DatabaseAdapter): Account[] {
-  return db.all<RawAccount>(
-    "SELECT * FROM accounts WHERE plaid_account_id IS NOT NULL ORDER BY name"
-  ).map(mapAccountRow);
-}
-
 // ============ Mutations ============
 
 export function createAccount(db: DatabaseAdapter, input: CreateAccountInput): string {

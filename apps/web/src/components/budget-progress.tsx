@@ -3,47 +3,54 @@
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@somar/shared";
+import { useBudgetProgress } from "@somar/shared/ui-logic";
+import type { BudgetRowProps } from "@somar/shared/components";
 
-interface BudgetProgressProps {
-  spent: number;
-  budget: number | null;
-  categoryName: string;
-  categoryColor?: string;
-  showDetails?: boolean;
-}
-
+/**
+ * Budget progress component.
+ *
+ * Displays spending progress against a budget with visual indicators.
+ * Implements the BudgetRowProps contract from @somar/shared/components.
+ *
+ * @example
+ * <BudgetProgress category={category} spent={-234} budget={400} />
+ */
 export function BudgetProgress({
+  category,
   spent,
   budget,
-  categoryName,
-  categoryColor,
   showDetails = true,
-}: BudgetProgressProps) {
-  const percentage = budget ? Math.min((spent / budget) * 100, 100) : 0;
-  const isOverBudget = budget ? spent > budget : false;
-  const isNearBudget = budget ? spent > budget * 0.8 : false;
+}: BudgetRowProps) {
 
-  const getProgressColor = () => {
-    if (isOverBudget) return "bg-red-500";
-    if (isNearBudget) return "bg-amber-500";
-    return "bg-emerald-500";
+  const {
+    percentCapped,
+    isOverBudget,
+    hasBudget,
+    colorToken,
+  } = useBudgetProgress(spent, budget);
+
+  // Map color token to Tailwind class
+  const colorClassMap = {
+    primary: "bg-emerald-500",
+    warning: "bg-amber-500",
+    destructive: "bg-red-500",
   };
 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          {categoryColor && (
+          {category.color && (
             <div
               className="w-3 h-3 rounded-full"
-              style={{ backgroundColor: categoryColor }}
+              style={{ backgroundColor: category.color }}
             />
           )}
-          <span className="font-medium capitalize">{categoryName}</span>
+          <span className="font-medium capitalize">{category.name}</span>
         </div>
         {showDetails && (
-          <span className={cn("text-sm", isOverBudget && "text-red-500 font-medium")}>
-            {formatCurrency(spent)}
+          <span className={cn("text-sm", isOverBudget && "text-destructive font-medium")}>
+            {formatCurrency(Math.abs(spent))}
             {budget && (
               <span className="text-muted-foreground">
                 {" "}
@@ -53,28 +60,21 @@ export function BudgetProgress({
           </span>
         )}
       </div>
-      {budget && (
+      {hasBudget && (
         <div className="relative">
-          <Progress value={percentage} className="h-2" />
+          <Progress value={percentCapped} className="h-2" />
           <div
             className={cn(
               "absolute inset-0 h-2 rounded-full transition-all",
-              getProgressColor()
+              colorClassMap[colorToken]
             )}
-            style={{ width: `${Math.min(percentage, 100)}%` }}
+            style={{ width: `${percentCapped}%` }}
           />
         </div>
       )}
-      {!budget && (
+      {!hasBudget && (
         <p className="text-xs text-muted-foreground">No budget set</p>
       )}
     </div>
   );
 }
-
-
-
-
-
-
-

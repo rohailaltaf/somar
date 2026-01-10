@@ -17,7 +17,7 @@ import {
   ColumnMapping,
   ParsedTransaction,
 } from "@/lib/csv-parser";
-import type { Account } from "@somar/shared";
+import type { Account, TransactionWithRelations } from "@somar/shared";
 
 // Simplified transaction type for post-dedup (no rawRow needed)
 interface SimpleTransaction {
@@ -120,9 +120,10 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
   } | null>(null);
 
   // Fetch existing transactions for dedup (only for selected account)
-  const { data: existingTransactions = [] } = useTransactions({
+  const transactionsResult = useTransactions({
     accountId: selectedAccountId || undefined,
   });
+  const existingTransactions: TransactionWithRelations[] = transactionsResult.data ?? [];
 
   const handleFileUpload = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -724,7 +725,7 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
                             <span
                               className={cn(
                                 "font-medium",
-                                isExpense ? "text-red-600" : "text-emerald-600"
+                                isExpense ? "text-destructive" : "text-success"
                               )}
                             >
                               {isExpense ? "-" : "+"}
@@ -851,7 +852,7 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
                         <span
                           className={cn(
                             "font-medium",
-                            item.transaction.amount < 0 ? "text-red-600" : "text-emerald-600"
+                            item.transaction.amount < 0 ? "text-destructive" : "text-success"
                           )}
                         >
                           {item.transaction.amount < 0 ? "-" : "+"}
@@ -963,7 +964,7 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
                             <span
                               className={cn(
                                 "font-medium",
-                                item.transaction.amount < 0 ? "text-red-600" : "text-emerald-600"
+                                item.transaction.amount < 0 ? "text-destructive" : "text-success"
                               )}
                             >
                               {item.transaction.amount < 0 ? "-" : "+"}
@@ -1018,7 +1019,7 @@ export function UploadInterface({ accounts }: UploadInterfaceProps) {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
             <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mb-4">
-              <Check className="w-8 h-8 text-emerald-600" />
+              <Check className="w-8 h-8 text-success" />
             </div>
             <h3 className="text-xl font-medium">Import Complete!</h3>
             <p className="text-muted-foreground mt-2 text-center">

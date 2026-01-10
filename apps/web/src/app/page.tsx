@@ -1,40 +1,53 @@
 "use client";
 
 import { useMemo } from "react";
-import Link from "next/link";
-import { useSpendingByCategory, useTotalSpending, useUnconfirmedCount } from "@somar/shared/hooks";
+import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
+import {
+  useSpendingByCategory,
+  useTotalSpending,
+  useUnconfirmedCount,
+  useRecentTransactions,
+  useAccounts,
+} from "@somar/shared/hooks";
 import { Nav } from "@/components/nav";
-import { PageHeader } from "@/components/page-header";
-import { BudgetProgress } from "@/components/budget-progress";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+  HeroCard,
+  StatCard,
+  CategoryRow,
+  TransactionRow,
+  QuickAction,
+  DashboardSkeleton,
+  AtmosphericBackground,
+  DashboardSectionHeader,
+} from "@/components/dashboard";
 import {
-  ArrowRight,
   TrendingUp,
-  TrendingDown,
-  DollarSign,
-  AlertTriangle,
+  Upload,
   Zap,
+  Wallet,
+  CreditCard,
 } from "lucide-react";
-import { getCurrentMonth, formatMonth, formatCurrency } from "@somar/shared";
+import {
+  getCurrentMonth,
+  getPreviousMonth,
+  getPercentageChange,
+  getBudgetProgress,
+  getBudgetRemaining,
+  type TransactionWithRelations,
+  type Account,
+} from "@somar/shared";
 
 export default function DashboardPage() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen overflow-hidden bg-surface-deep">
       <Nav />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <PageHeader
-          title="Dashboard"
-          description="Overview of your spending and budgets"
-        />
-        <div className="mt-8">
+      <main className="relative">
+        {/* Deep Space Background */}
+        <AtmosphericBackground />
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
           <DashboardContent />
         </div>
       </main>
@@ -42,12 +55,31 @@ export default function DashboardPage() {
   );
 }
 
-function DashboardContent() {
-  const currentMonth = useMemo(() => getCurrentMonth(), []);
+interface CategorySpendingItem {
+  id: string;
+  name: string;
+  color: string;
+  spent: number;
+  budget: number | null;
+}
 
-  const { data: categorySpending = [], isLoading: loadingSpending } = useSpendingByCategory(currentMonth);
-  const { data: totalSpending = 0, isLoading: loadingTotal } = useTotalSpending(currentMonth);
-  const { data: unconfirmedCount = 0, isLoading: loadingUnconfirmed } = useUnconfirmedCount();
+function DashboardContent() {
+  const router = useRouter();
+  const currentMonth = useMemo(() => getCurrentMonth(), []);
+  const previousMonth = useMemo(() => getPreviousMonth(currentMonth), [currentMonth]);
+
+  const spendingResult = useSpendingByCategory(currentMonth);
+  const categorySpending: CategorySpendingItem[] = spendingResult.data ?? [];
+  const loadingSpending = spendingResult.isLoading;
+  const { data: totalSpending = 0, isLoading: loadingTotal } =
+    useTotalSpending(currentMonth);
+  const { data: lastMonthSpending = 0 } = useTotalSpending(previousMonth);
+  const { data: unconfirmedCount = 0, isLoading: loadingUnconfirmed } =
+    useUnconfirmedCount();
+  const transactionsResult = useRecentTransactions(6);
+  const recentTransactions: TransactionWithRelations[] = transactionsResult.data ?? [];
+  const accountsResult = useAccounts();
+  const accounts: Account[] = accountsResult.data ?? [];
 
   const isLoading = loadingSpending || loadingTotal || loadingUnconfirmed;
 
@@ -55,256 +87,158 @@ function DashboardContent() {
     return <DashboardSkeleton />;
   }
 
-  const totalBudget = categorySpending.reduce(
-    (sum, cat) => sum + (cat.budget || 0),
-    0
-  );
-  const overBudgetCategories = categorySpending.filter(
-    (cat) => cat.budget && cat.spent > cat.budget
-  );
-  const nearBudgetCategories = categorySpending.filter(
-    (cat) => cat.budget && cat.spent > cat.budget * 0.8 && cat.spent <= cat.budget
-  );
+  const totalBudget = categorySpending.reduce((sum, cat) => sum + (cat.budget || 0), 0);
+  const budgetProgress = getBudgetProgress(totalSpending, totalBudget);
+  const spendingChange = getPercentageChange(Math.abs(totalSpending), Math.abs(lastMonthSpending));
+  const budgetRemaining = getBudgetRemaining(totalSpending, totalBudget);
+
+  const topCategories = categorySpending.filter((cat) => cat.spent > 0).slice(0, 6);
 
   return (
     <div className="space-y-8">
-      {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Spending</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalSpending)}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {formatMonth(currentMonth)}
-            </p>
-          </CardContent>
-        </Card>
+      {/* Hero Section - Bento Grid */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6 }}
+        className="grid grid-cols-12 gap-3 lg:gap-6"
+      >
+        <HeroCard
+          currentMonth={currentMonth}
+          totalSpending={totalSpending}
+          spendingChange={spendingChange}
+          budgetProgress={budgetProgress}
+          budgetRemaining={budgetRemaining}
+          hasBudget={totalBudget > 0}
+        />
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Budget</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {totalBudget > 0 ? formatCurrency(totalBudget) : "Not set"}
+        <StatCard
+          href="/tagger"
+          icon={Zap}
+          iconColorClass={unconfirmedCount > 0 ? "text-primary" : "text-muted-foreground"}
+          iconBgClass={unconfirmedCount > 0 ? "bg-primary/20" : "bg-muted"}
+          value={unconfirmedCount}
+          label={`${unconfirmedCount === 1 ? "Transaction" : "Transactions"} to categorize`}
+          highlight={unconfirmedCount > 0}
+          delay={0.1}
+        />
+
+        <StatCard
+          href="/accounts"
+          icon={Wallet}
+          iconColorClass="text-gold"
+          iconBgClass="bg-gold/15"
+          value={accounts.length}
+          label={`Connected ${accounts.length === 1 ? "Account" : "Accounts"}`}
+          delay={0.15}
+        />
+      </motion.div>
+
+      {/* Category & Transactions Grid */}
+      <div className="grid grid-cols-12 gap-4 lg:gap-6">
+        {/* Category Breakdown */}
+        <motion.section
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.7 }}
+          className="col-span-12 lg:col-span-7"
+        >
+          <div className="rounded-2xl overflow-hidden bg-surface border border-border-subtle p-6 lg:p-8">
+            <div className="mb-8">
+              <DashboardSectionHeader
+                title="Spending Breakdown"
+                subtitle="Where your money went this month"
+                actionLabel="Manage"
+                onAction={() => router.push("/categories")}
+              />
             </div>
-            {totalBudget > 0 && (
-              <p className="text-xs text-muted-foreground mt-1">
-                {formatCurrency(Math.max(0, totalBudget - totalSpending))} remaining
-              </p>
-            )}
-          </CardContent>
-        </Card>
 
-        <Card className={unconfirmedCount > 0 ? "border-amber-500/50" : ""}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Unconfirmed Transactions
-            </CardTitle>
-            <Zap className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{unconfirmedCount}</div>
-            {unconfirmedCount > 0 && (
-              <Link href="/tagger">
-                <Button variant="link" className="p-0 h-auto text-xs mt-1">
-                  Review now
-                  <ArrowRight className="w-3 h-3 ml-1" />
-                </Button>
-              </Link>
+            {topCategories.length > 0 ? (
+              <div className="space-y-5">
+                {topCategories.map((category, index) => (
+                  <CategoryRow
+                    key={category.id}
+                    name={category.name}
+                    amount={category.spent}
+                    budget={category.budget}
+                    color={category.color}
+                    index={index}
+                  />
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                icon="PiggyBank"
+                title="No spending yet"
+                description="Upload transactions or connect your bank to see your spending breakdown"
+                action={{ href: "/upload", label: "Upload CSV" }}
+              />
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </motion.section>
+
+        {/* Recent Transactions */}
+        <motion.section
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4, duration: 0.7 }}
+          className="col-span-12 lg:col-span-5"
+        >
+          <div className="rounded-2xl overflow-hidden bg-surface border border-border-subtle p-6 lg:p-8 h-full">
+            <div className="mb-6">
+              <DashboardSectionHeader
+                title="Recent Activity"
+                subtitle="Latest transactions"
+                actionLabel="View all"
+                onAction={() => router.push("/transactions")}
+              />
+            </div>
+
+            {recentTransactions.length > 0 ? (
+              <div className="space-y-1">
+                {recentTransactions.map((tx, index) => (
+                  <TransactionRow
+                    key={tx.id}
+                    description={tx.description}
+                    amount={tx.amount}
+                    date={tx.date}
+                    categoryName={tx.category?.name}
+                    categoryColor={tx.category?.color}
+                    isConfirmed={tx.isConfirmed}
+                    index={index}
+                  />
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                icon="Activity"
+                title="No transactions"
+                description="Get started by uploading a CSV or connecting your bank"
+                action={{ href: "/accounts", label: "Connect Bank" }}
+              />
+            )}
+          </div>
+        </motion.section>
       </div>
-
-      {/* Alerts */}
-      {(overBudgetCategories.length > 0 || nearBudgetCategories.length > 0) && (
-        <Card className="border-amber-500/50 bg-amber-50/50 dark:bg-amber-950/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <AlertTriangle className="w-4 h-4 text-amber-600" />
-              Budget Alerts
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {overBudgetCategories.map((cat) => (
-                <div key={cat.id} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="destructive" className="text-xs">
-                      Over budget
-                    </Badge>
-                    <span className="capitalize font-medium">{cat.name}</span>
-                  </div>
-                  <span className="text-red-600 font-medium">
-                    {formatCurrency(cat.spent - (cat.budget || 0))} over
-                  </span>
-                </div>
-              ))}
-              {nearBudgetCategories.map((cat) => (
-                <div key={cat.id} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-xs text-amber-600 border-amber-600">
-                      Near limit
-                    </Badge>
-                    <span className="capitalize font-medium">{cat.name}</span>
-                  </div>
-                  <span className="text-amber-600 font-medium">
-                    {formatCurrency((cat.budget || 0) - cat.spent)} remaining
-                  </span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Category Breakdown */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Spending by Category</CardTitle>
-          <CardDescription>
-            Your spending breakdown for {formatMonth(currentMonth)}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <CategoryBreakdown categorySpending={categorySpending} />
-        </CardContent>
-      </Card>
 
       {/* Quick Actions */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Link href="/upload">
-          <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
-            <CardContent className="flex items-center gap-4 pt-6">
-              <div className="p-3 rounded-lg bg-primary/10">
-                <TrendingDown className="w-6 h-6 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-medium">Upload Transactions</h3>
-                <p className="text-sm text-muted-foreground">
-                  Import from CSV
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link href="/tagger">
-          <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
-            <CardContent className="flex items-center gap-4 pt-6">
-              <div className="p-3 rounded-lg bg-primary/10">
-                <Zap className="w-6 h-6 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-medium">Categorize Transactions</h3>
-                <p className="text-sm text-muted-foreground">
-                  Quick swipe to tag
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link href="/categories">
-          <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
-            <CardContent className="flex items-center gap-4 pt-6">
-              <div className="p-3 rounded-lg bg-primary/10">
-                <DollarSign className="w-6 h-6 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-medium">Manage Budgets</h3>
-                <p className="text-sm text-muted-foreground">
-                  Set spending limits
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-      </div>
-    </div>
-  );
-}
-
-function CategoryBreakdown({ categorySpending }: { categorySpending: Array<{ id: string; name: string; color: string; spent: number; budget: number | null }> }) {
-  if (categorySpending.length === 0) {
-    return (
-      <div className="text-center py-8 text-muted-foreground">
-        <p>No categories found.</p>
-        <Link href="/categories">
-          <Button variant="link" className="mt-2">
-            Set up categories
-            <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
-        </Link>
-      </div>
-    );
-  }
-
-  const visibleCategories = categorySpending.filter((cat) => cat.spent > 0 || cat.budget);
-  
-  if (visibleCategories.length === 0) {
-    return (
-      <div className="text-center py-8 text-muted-foreground">
-        <p>No spending data yet this month.</p>
-        <Link href="/upload">
-          <Button variant="link" className="mt-2">
-            Upload transactions
-            <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
-        </Link>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      {visibleCategories
-        .sort((a, b) => b.spent - a.spent)
-        .map((category) => (
-          <BudgetProgress
-            key={category.id}
-            spent={category.spent}
-            budget={category.budget}
-            categoryName={category.name}
-            categoryColor={category.color}
-          />
-        ))}
-    </div>
-  );
-}
-
-function DashboardSkeleton() {
-  return (
-    <div className="space-y-8">
-      <div className="grid gap-4 md:grid-cols-3">
-        {[1, 2, 3].map((i) => (
-          <Card key={i}>
-            <CardHeader className="pb-2">
-              <div className="h-4 w-24 bg-muted rounded animate-pulse" />
-            </CardHeader>
-            <CardContent>
-              <div className="h-8 w-32 bg-muted rounded animate-pulse" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-      <Card>
-        <CardHeader>
-          <div className="h-6 w-48 bg-muted rounded animate-pulse" />
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-12 bg-muted rounded animate-pulse" />
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <motion.section
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5, duration: 0.7 }}
+        className="grid grid-cols-2 sm:grid-cols-4 gap-3 lg:gap-4"
+      >
+        <QuickAction href="/upload" icon={Upload} label="Upload" sublabel="Import CSV" />
+        <QuickAction
+          href="/tagger"
+          icon={Zap}
+          label="Categorize"
+          sublabel="Quick tagger"
+          highlight={unconfirmedCount > 0}
+        />
+        <QuickAction href="/reports" icon={TrendingUp} label="Reports" sublabel="Analytics" />
+        <QuickAction href="/accounts" icon={CreditCard} label="Accounts" sublabel="Manage" />
+      </motion.section>
     </div>
   );
 }

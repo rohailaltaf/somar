@@ -1,52 +1,65 @@
-import { View, Text } from "react-native";
+import React, { useEffect } from "react";
+import { View } from "react-native";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withDelay,
+  Easing,
+} from "react-native-reanimated";
+import {
+  progressBarStyles,
+  getProgressBarHexColor,
+  type ProgressBarProps,
+} from "@somar/shared/styles";
 
 /**
- * Progress bar for budget tracking.
+ * Animated progress bar with glow effect.
+ * Uses shared styles from @somar/shared/styles.
  */
-export function ProgressBar({
-  progress,
-  color = "primary",
-  showLabel = false,
-  size = "md",
-}: {
-  progress: number; // 0-1
-  color?: "primary" | "success" | "warning" | "destructive";
-  showLabel?: boolean;
-  size?: "sm" | "md";
-}) {
-  const clampedProgress = Math.min(Math.max(progress, 0), 1);
-  const percentage = Math.round(clampedProgress * 100);
+export function ProgressBar({ percentage }: ProgressBarProps) {
+  const barColor = getProgressBarHexColor(percentage);
+  const clampedPercentage = Math.min(percentage, 100);
+  const { animation } = progressBarStyles;
 
-  const heightClass = size === "sm" ? "h-1.5" : "h-2";
-  const colorClasses = {
-    primary: "bg-primary",
-    success: "bg-success",
-    warning: "bg-warning",
-    destructive: "bg-destructive",
-  };
+  const animatedWidth = useSharedValue(0);
 
-  // Auto-determine color based on progress if not specified
-  const autoColor =
-    progress > 1
-      ? "destructive"
-      : progress > 0.9
-        ? "warning"
-        : progress > 0.7
-          ? "primary"
-          : "success";
-  const barColor = color === "primary" ? autoColor : color;
+  useEffect(() => {
+    animatedWidth.value = withDelay(
+      animation.delay,
+      withTiming(clampedPercentage, {
+        duration: animation.duration,
+        easing: Easing.out(Easing.cubic),
+      })
+    );
+  }, [clampedPercentage, animation.delay, animation.duration, animatedWidth]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    width: `${animatedWidth.value}%`,
+  }));
 
   return (
-    <View>
-      <View className={`w-full ${heightClass} bg-muted rounded-full overflow-hidden`}>
-        <View
-          className={`h-full ${colorClasses[barColor]} rounded-full`}
-          style={{ width: `${Math.min(percentage, 100)}%` }}
-        />
-      </View>
-      {showLabel && (
-        <Text className="text-xs text-muted-foreground mt-1">{percentage}%</Text>
-      )}
+    <View className={`relative ${progressBarStyles.trackHeight} ${progressBarStyles.track} ${progressBarStyles.trackBackground}`}>
+      {/* Glow layer - uses native shadow instead of CSS blur */}
+      <Animated.View
+        className={`${progressBarStyles.barAbsolute} ${progressBarStyles.bar}`}
+        style={[
+          {
+            backgroundColor: barColor,
+            opacity: 0.5,
+            shadowColor: barColor,
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: 0.8,
+            shadowRadius: 4,
+          },
+          animatedStyle,
+        ]}
+      />
+      {/* Main bar */}
+      <Animated.View
+        className={`${progressBarStyles.barAbsolute} ${progressBarStyles.bar}`}
+        style={[{ backgroundColor: barColor }, animatedStyle]}
+      />
     </View>
   );
 }

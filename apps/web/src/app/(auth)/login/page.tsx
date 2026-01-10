@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/providers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,84 +18,78 @@ import {
 } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { loginSchema, type LoginFormData } from "@somar/shared/validation";
 
 export default function LoginPage() {
   const { login } = useAuth();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [isOAuthLoading, setIsOAuthLoading] = useState(false);
 
-  async function handleEmailLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
 
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters");
-      return;
-    }
+  const isDisabled = isSubmitting || isOAuthLoading;
 
-    setIsLoading(true);
-
+  async function onSubmit(data: LoginFormData) {
     try {
-      await login(email, password);
+      await login(data.email, data.password);
       // login() handles navigation via window.location.href
       // Show redirecting state while browser navigates
       setIsRedirecting(true);
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Failed to sign in");
-      setIsLoading(false);
+      setError("root", {
+        message: error instanceof Error ? error.message : "Failed to sign in",
+      });
     }
   }
 
   // Show fullscreen loading when redirecting
   if (isRedirecting) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      <div className="fixed inset-0 flex items-center justify-center bg-surface-deep">
         <div className="text-center space-y-4">
-          <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
-          <h2 className="text-xl font-semibold text-white">Signing in...</h2>
-          <p className="text-slate-400">Preparing your encrypted data</p>
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+          <h2 className="text-xl font-semibold text-foreground">Signing in...</h2>
+          <p className="text-muted-foreground">Preparing your encrypted data</p>
         </div>
       </div>
     );
   }
 
-  async function handleGoogleLogin() {
+  function handleGoogleLogin(): void {
     // Google OAuth doesn't give us the password, so we can't derive encryption key.
     // For now, show a message. Later: use a separate "data password" prompt.
-    setError(
-      "Google login coming soon. For now, please use email/password to access your encrypted data."
-    );
-    return;
-
-    // When ready:
-    // setIsLoading(true);
-    // try {
-    //   await signIn.social({ provider: "google", callbackURL: "/" });
-    // } catch (error) {
-    //   setError("Failed to sign in with Google");
-    //   setIsLoading(false);
-    // }
+    setError("root", {
+      message: "Google login coming soon. For now, please use email/password to access your encrypted data.",
+    });
   }
 
   return (
-    <Card className="border-slate-700 bg-slate-800/50 backdrop-blur">
+    <Card className="border-border bg-surface">
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-bold text-white">
+        <CardTitle className="text-2xl font-bold text-foreground">
           Welcome back
         </CardTitle>
-        <CardDescription className="text-slate-400">
+        <CardDescription className="text-muted-foreground">
           Sign in to access your finances
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <Button
           variant="outline"
-          className="w-full bg-white text-slate-900 hover:bg-slate-100"
+          className="w-full bg-white dark:bg-white text-slate-900 dark:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-100 border-slate-300"
           onClick={handleGoogleLogin}
-          disabled={isLoading}
+          disabled={isDisabled}
         >
           <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
             <path
@@ -118,77 +114,72 @@ export default function LoginPage() {
 
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-slate-600" />
+            <span className="w-full border-t border-border" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-slate-800 px-2 text-slate-400">
+            <span className="bg-surface px-2 text-muted-foreground">
               Or continue with email
             </span>
           </div>
         </div>
 
-        <form onSubmit={handleEmailLogin} className="space-y-4">
-          {error && (
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {errors.root && (
             <Alert variant="destructive" className="border-red-500/50 bg-red-950/20">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Sign in failed</AlertTitle>
               <AlertDescription className="text-red-200">
-                {error}
+                {errors.root.message}
               </AlertDescription>
             </Alert>
           )}
           <div className="space-y-2">
-            <Label htmlFor="email" className="text-slate-200">
+            <Label htmlFor="email" className="text-foreground-secondary">
               Email
             </Label>
             <Input
               id="email"
               type="email"
               placeholder="you@example.com"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                setError(null); // Clear error when user types
-              }}
-              required
-              className="border-slate-600 bg-slate-700/50 text-white placeholder:text-slate-400"
+              {...register("email")}
+              className="border-border bg-surface-elevated text-foreground placeholder:text-foreground-dim"
             />
+            {errors.email && (
+              <p className="text-destructive text-xs">{errors.email.message}</p>
+            )}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password" className="text-slate-200">
+            <Label htmlFor="password" className="text-foreground-secondary">
               Password
             </Label>
             <Input
               id="password"
               type="password"
               placeholder="••••••••"
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                setError(null); // Clear error when user types
-              }}
-              required
-              minLength={8}
-              className="border-slate-600 bg-slate-700/50 text-white placeholder:text-slate-400"
+              {...register("password")}
+              className="border-border bg-surface-elevated text-foreground placeholder:text-foreground-dim"
             />
+            {errors.password && (
+              <p className="text-destructive text-xs">{errors.password.message}</p>
+            )}
           </div>
           <Button
             type="submit"
-            className="w-full bg-indigo-600 hover:bg-indigo-700"
-            disabled={isLoading}
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+            disabled={isDisabled}
           >
-            {isLoading ? "Signing in..." : "Sign in"}
+            {isSubmitting ? "Signing in..." : "Sign in"}
           </Button>
         </form>
       </CardContent>
       <CardFooter className="flex-col gap-2">
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-muted-foreground">
           Don&apos;t have an account?{" "}
-          <Link href="/register" className="text-indigo-400 hover:underline">
+          <Link href="/register" className="text-primary hover:underline">
             Sign up
           </Link>
         </p>
-        <p className="text-xs text-slate-500 text-center">
+        <p className="text-xs text-foreground-dim text-center">
           Your data is encrypted with your password. We can never see it.
         </p>
       </CardFooter>

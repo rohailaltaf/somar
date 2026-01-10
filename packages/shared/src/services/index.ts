@@ -32,14 +32,12 @@ export {
   uncategorizeTransaction,
   extractMerchantPattern,
   type SpendingTransaction,
+  type SpendingByCategoryOptions,
 } from "./transactions";
 
 // Account operations
 export {
   getAllAccounts,
-  getAccountById,
-  getManualAccounts,
-  getPlaidAccounts,
   createAccount,
   updateAccount,
   deleteAccount,
@@ -50,7 +48,6 @@ export {
   getAllCategories,
   getCategoriesByType,
   getCategoriesWithBudgets,
-  getCategoryById,
   createCategory,
   updateCategory,
   deleteCategory,

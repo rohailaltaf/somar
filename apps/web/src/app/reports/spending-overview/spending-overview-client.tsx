@@ -280,7 +280,7 @@ export function SpendingOverviewClient({
                           </p>
                         </div>
                       </div>
-                      <span className="text-sm font-medium text-red-600 flex-shrink-0 ml-3">
+                      <span className="text-sm font-medium text-destructive flex-shrink-0 ml-3">
                         -{formatCurrency(Math.abs(txn.amount))}
                       </span>
                     </div>
@@ -307,10 +307,9 @@ export function SpendingOverviewClient({
                 .map((category) => (
                   <BudgetProgress
                     key={category.id}
+                    category={category}
                     spent={category.spent}
                     budget={category.budget}
-                    categoryName={category.name}
-                    categoryColor={category.color}
                   />
                 ))}
               {displayCategorySpending.filter((cat) => cat.spent > 0 || cat.budget).length === 0 && (

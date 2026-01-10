@@ -3,10 +3,18 @@ module.exports = {
   content: [
     "./app/**/*.{js,jsx,ts,tsx}",
     "./src/**/*.{js,jsx,ts,tsx}",
+    // Include shared package so NativeWind generates styles for shared className strings
+    "../../packages/shared/src/**/*.{js,jsx,ts,tsx}",
   ],
   presets: [require("nativewind/preset")],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['DMSans_400Regular'],
+        medium: ['DMSans_500Medium'],
+        semibold: ['DMSans_600SemiBold'],
+        bold: ['DMSans_700Bold'],
+      },
       colors: {
         // Base
         background: "rgb(var(--color-background) / <alpha-value>)",
@@ -23,6 +31,12 @@ module.exports = {
         "muted-foreground": "rgb(var(--color-muted-foreground) / <alpha-value>)",
         secondary: "rgb(var(--color-secondary) / <alpha-value>)",
         "secondary-foreground": "rgb(var(--color-secondary-foreground) / <alpha-value>)",
+
+        // Foreground hierarchy
+        "foreground-secondary": "rgb(var(--color-foreground-secondary) / <alpha-value>)",
+        "foreground-muted": "rgb(var(--color-foreground-muted) / <alpha-value>)",
+        "foreground-dim": "rgb(var(--color-foreground-dim) / <alpha-value>)",
+        "foreground-bright": "rgb(var(--color-foreground-bright) / <alpha-value>)",
 
         // Brand
         primary: "rgb(var(--color-primary) / <alpha-value>)",
@@ -48,6 +62,16 @@ module.exports = {
 
         // Overlay
         overlay: "rgb(var(--color-overlay) / <alpha-value>)",
+
+        // Navigation (dark mode only)
+        "nav-dock": "rgb(var(--color-nav-dock) / <alpha-value>)",
+        "nav-indicator": "rgb(var(--color-nav-indicator) / <alpha-value>)",
+        "nav-inactive-icon": "rgb(var(--color-nav-inactive-icon) / <alpha-value>)",
+        "nav-inactive-label": "rgb(var(--color-nav-inactive-label) / <alpha-value>)",
+
+        // Premium accent (gold)
+        gold: "rgb(var(--color-gold) / <alpha-value>)",
+        "gold-muted": "rgb(var(--color-gold-muted) / <alpha-value>)",
       },
       // Custom spacing for premium feel
       spacing: {

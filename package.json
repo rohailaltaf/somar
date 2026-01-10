@@ -1,13 +1,20 @@
 {
   "name": "somar",
   "private": true,
+  "pnpm": {
+    "overrides": {
+      "react": "19.1.0"
+    }
+  },
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
     "lint": "turbo run lint",
-    "test": "turbo run test"
+    "test": "turbo run test",
+    "generate:theme": "tsx scripts/generate-theme.ts"
   },
   "devDependencies": {
+    "@tanstack/react-query": "^5.90.16",
     "tsx": "^4.21.0",
     "turbo": "^2"
   },

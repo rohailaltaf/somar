@@ -15,7 +15,7 @@ export default function SignOutPage() {
       try {
         // Clear encryption key from sessionStorage
         sessionStorage.removeItem("somar_encryption_key");
-        
+
         // Sign out from Better Auth
         await signOut();
       } catch (error) {
@@ -34,11 +34,11 @@ export default function SignOutPage() {
   }
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="fixed inset-0 flex items-center justify-center bg-surface-deep">
       <div className="text-center space-y-4">
-        <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
-        <h2 className="text-xl font-semibold text-white">Signing out...</h2>
-        <p className="text-slate-400">Please wait</p>
+        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+        <h2 className="text-xl font-semibold text-foreground">Signing out...</h2>
+        <p className="text-muted-foreground">Please wait</p>
       </div>
     </div>
   );
