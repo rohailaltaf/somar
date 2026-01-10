@@ -27,6 +27,10 @@ const dmSans = DM_Sans({
 export const metadata: Metadata = {
   title: "Somar - Personal Finance Tracker",
   description: "Track your spending and manage your budget",
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 export default function RootLayout({
