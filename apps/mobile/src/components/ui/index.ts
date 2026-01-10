@@ -25,9 +25,6 @@ export {
 // Forms
 export { FormTextInput } from "./form-text-input";
 
-// Screens
-export { DecryptingScreen } from "./decrypting-screen";
-
 // Core UI Components (shadcn-style)
 export { Button, type ButtonProps, type ButtonVariant, type ButtonSize } from "./button";
 export { Badge, type BadgeProps, type BadgeVariant } from "./badge";

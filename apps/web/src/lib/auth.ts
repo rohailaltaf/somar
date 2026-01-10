@@ -34,7 +34,9 @@ export const auth = betterAuth({
   },
 
   // Trust proxy headers for production (behind reverse proxy)
-  trustedOrigins: [process.env.BETTER_AUTH_URL || "", "somar://"],
+  trustedOrigins: [process.env.BETTER_AUTH_URL, "somar://"].filter(
+    (origin): origin is string => Boolean(origin)
+  ),
 });
 
 // Export types for use in API routes and middleware

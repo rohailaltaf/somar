@@ -1,0 +1,135 @@
+import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { headers } from "next/headers";
+
+/**
+ * GET /api/transactions/stats
+ * Get spending statistics.
+ * Query params:
+ * - month: Month in YYYY-MM format (required)
+ * - stat: Type of stat (total, byCategory, cumulative) - default: all
+ */
+export async function GET(request: Request) {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (!session?.user?.id) {
+    return NextResponse.json(
+      { success: false, error: { code: "UNAUTHORIZED", message: "Not authenticated" } },
+      { status: 401 }
+    );
+  }
+
+  try {
+    const url = new URL(request.url);
+    const month = url.searchParams.get("month");
+    const stat = url.searchParams.get("stat");
+
+    if (!month) {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_INPUT", message: "month parameter is required (YYYY-MM)" } },
+        { status: 400 }
+      );
+    }
+
+    // Parse month to get date range
+    const [year, monthNum] = month.split("-").map(Number);
+    const startDate = `${year}-${String(monthNum).padStart(2, "0")}-01`;
+    const endDate = `${year}-${String(monthNum).padStart(2, "0")}-31`;
+
+    const baseWhere = {
+      userId: session.user.id,
+      date: { gte: startDate, lte: endDate },
+      excluded: false,
+      amount: { lt: 0 }, // Only expenses (negative amounts)
+    };
+
+    const result: Record<string, unknown> = {};
+
+    // Total spending
+    if (!stat || stat === "total") {
+      const totalResult = await db.transaction.aggregate({
+        where: baseWhere,
+        _sum: { amount: true },
+      });
+      result.total = Math.abs(totalResult._sum.amount || 0);
+    }
+
+    // Spending by category
+    if (!stat || stat === "byCategory") {
+      const transactions = await db.transaction.findMany({
+        where: baseWhere,
+        include: { category: true },
+      });
+
+      const byCategory: Record<string, { amount: number; name: string; color: string }> = {};
+      for (const txn of transactions) {
+        const categoryId = txn.categoryId || "uncategorized";
+        const categoryName = txn.category?.name || "Uncategorized";
+        const categoryColor = txn.category?.color || "#94a3b8";
+
+        if (!byCategory[categoryId]) {
+          byCategory[categoryId] = { amount: 0, name: categoryName, color: categoryColor };
+        }
+        byCategory[categoryId].amount += Math.abs(txn.amount);
+      }
+
+      result.byCategory = Object.entries(byCategory)
+        .map(([id, data]) => ({ id, ...data }))
+        .sort((a, b) => b.amount - a.amount);
+    }
+
+    // Daily cumulative spending (for charts)
+    if (!stat || stat === "cumulative") {
+      const transactions = await db.transaction.findMany({
+        where: baseWhere,
+        orderBy: { date: "asc" },
+        select: { date: true, amount: true },
+      });
+
+      const dailyTotals: Record<string, number> = {};
+      for (const txn of transactions) {
+        dailyTotals[txn.date] = (dailyTotals[txn.date] || 0) + Math.abs(txn.amount);
+      }
+
+      // Build cumulative data
+      let cumulative = 0;
+      const cumulativeData: Array<{ date: string; daily: number; cumulative: number }> = [];
+
+      // Get all days in month
+      const daysInMonth = new Date(year, monthNum, 0).getDate();
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${year}-${String(monthNum).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        const daily = dailyTotals[dateStr] || 0;
+        cumulative += daily;
+        cumulativeData.push({ date: dateStr, daily, cumulative });
+      }
+
+      result.cumulative = cumulativeData;
+    }
+
+    // Income for the month
+    if (!stat || stat === "income") {
+      const incomeResult = await db.transaction.aggregate({
+        where: {
+          userId: session.user.id,
+          date: { gte: startDate, lte: endDate },
+          excluded: false,
+          amount: { gt: 0 }, // Only income (positive amounts)
+        },
+        _sum: { amount: true },
+      });
+      result.income = incomeResult._sum.amount || 0;
+    }
+
+    return NextResponse.json({ success: true, data: result });
+  } catch (error) {
+    console.error("[Transactions] Error fetching stats:", error);
+    return NextResponse.json(
+      { success: false, error: { code: "FETCH_FAILED", message: "Failed to fetch stats" } },
+      { status: 500 }
+    );
+  }
+}

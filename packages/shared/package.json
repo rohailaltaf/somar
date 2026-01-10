@@ -6,9 +6,8 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./crypto": "./src/crypto/index.ts",
+    "./api-client": "./src/api-client/index.ts",
     "./dedup": "./src/dedup/index.ts",
-    "./storage": "./src/storage/index.ts",
     "./services": "./src/services/index.ts",
     "./hooks": "./src/hooks/index.ts",
     "./utils": "./src/utils/index.ts",
@@ -32,8 +31,6 @@
     "vitest": "^2.1.8"
   },
   "dependencies": {
-    "@noble/ciphers": "^1.2.1",
-    "@noble/hashes": "^1.7.1",
     "zod": "^4.3.4"
   },
   "peerDependencies": {

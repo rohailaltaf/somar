@@ -6,13 +6,16 @@ Platform-agnostic code used by both web and mobile. Contains types, services, ho
 
 ```typescript
 // Main exports
-import { type AccountType, type CategoryType, type DatabaseAdapter } from "@somar/shared";
+import type { AccountType, CategoryType } from "@somar/shared";
 
-// Services (data access)
+// Services (API calls - all async)
 import { getAllTransactions, confirmTransaction } from "@somar/shared/services";
 
 // Hooks
 import { useTransactions, useAccounts, useCategories } from "@somar/shared/hooks";
+
+// API client
+import { configureApiClient, apiRequest, apiGet, apiPost } from "@somar/shared/api-client";
 
 // Theme
 import { hexColors, oklchColors, rgbColors } from "@somar/shared/theme";
@@ -21,38 +24,55 @@ import { hexColors, oklchColors, rgbColors } from "@somar/shared/theme";
 import { oklchToHex, formatDate } from "@somar/shared/utils";
 ```
 
-## DatabaseAdapter Interface
+## API Client
 
-Both platforms implement this interface:
+The shared API client is configured per-platform:
+
 ```typescript
-export interface DatabaseAdapter {
-  all<T>(sql: string, params?: SqlParam[]): T[];
-  get<T>(sql: string, params?: SqlParam[]): T | undefined;
-  run(sql: string, params?: SqlParam[]): void;
-  exec(sql: string): void;
+// packages/shared/src/api-client/index.ts
+export interface ApiClientConfig {
+  baseUrl: string;
+  getAuthHeaders: () => Promise<Record<string, string>> | Record<string, string>;
 }
+
+export function configureApiClient(config: ApiClientConfig);
+export function apiRequest<T>(path: string, options?: RequestInit): Promise<T>;
+export function apiGet<T>(path: string): Promise<T>;
+export function apiPost<T>(path: string, body?: unknown): Promise<T>;
 ```
 
-Platform implementations:
-- Web: `apps/web/src/lib/storage/sql-js-adapter.ts`
-- Mobile: `apps/mobile/src/lib/storage/expo-sqlite-adapter.ts`
+Web configuration (same-origin, cookies automatic):
+```typescript
+configureApiClient({
+  baseUrl: "",
+  getAuthHeaders: () => ({}),
+});
+```
+
+Mobile configuration (cross-origin, manual cookies):
+```typescript
+configureApiClient({
+  baseUrl: process.env.EXPO_PUBLIC_API_URL,
+  getAuthHeaders: async () => {
+    const cookies = await authClient.getCookie();
+    return cookies ? { Cookie: cookies } : {};
+  },
+});
+```
 
 ## Services Layer
 
-Pure functions that take `DatabaseAdapter`:
+Services call the API and return typed data. All services are async:
+
 ```typescript
 // packages/shared/src/services/transactions.ts
-export function getAllTransactions(db: DatabaseAdapter): Transaction[] {
-  return db.all<Transaction>(`SELECT * FROM transactions ORDER BY date DESC`);
+export async function getAllTransactions(): Promise<TransactionWithRelations[]> {
+  const response = await apiGet<ApiResponse>("/api/transactions");
+  return response.data;
 }
 
-export function confirmTransaction(
-  db: DatabaseAdapter,
-  id: string,
-  categoryId: string,
-  visibleIds?: string[]
-): { updatedIds: string[] } {
-  // Marks confirmed, learns pattern, auto-tags visible transactions
+export async function confirmTransaction(id: string, categoryId: string) {
+  return apiPost(`/api/transactions/${id}/confirm`, { categoryId });
 }
 ```
 
@@ -158,14 +178,6 @@ function BudgetRow(props: BudgetRowProps) { ... }
 function EmptyState(props: EmptyStateProps) { ... }
 ```
 
-**Available contracts:**
-- `BudgetRowProps` - Category spending vs budget display
-- `TransactionRowProps` - Transaction list item
-- `EmptyStateProps` - No data placeholder
-- `AmountDisplayProps` - Currency amount with colors
-- `DateSectionHeaderProps` - Date-grouped section header
-- `DashboardSectionHeaderProps` - Dashboard section with action button
-
 Contracts define the API; each platform implements rendering with its own UI toolkit.
 
 ## Deduplication (Tier 1)
@@ -179,7 +191,7 @@ Uncertain pairs go to Tier 2 (LLM API in web app).
 
 ## Hooks
 
-React hooks that work with `DatabaseProvider`:
+React hooks that use React Query and the API client:
 ```typescript
 function Dashboard() {
   const { data: transactions } = useTransactions();
@@ -194,13 +206,11 @@ function Dashboard() {
 ```
 src/
 ├── index.ts            # Main exports
-├── crypto/             # AES-256-GCM encryption
-├── schema/             # SQLite DDL + default categories
 ├── types/              # TypeScript types
-├── storage/            # DatabaseAdapter interface
 ├── utils/              # Date, color utilities
 ├── theme/              # Colors (oklch, hex, rgb)
-├── services/           # Data access layer
+├── services/           # API calls (async)
 ├── hooks/              # React hooks
+├── api-client/         # HTTP client
 └── dedup/              # Tier 1 deduplication
 ```

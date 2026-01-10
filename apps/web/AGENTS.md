@@ -15,13 +15,12 @@ src/
 │   ├── tagger/             # Tinder-style categorization
 │   ├── upload/             # CSV import wizard
 │   ├── reports/            # Analytics with Recharts
-│   └── api/                # API routes
-├── providers/              # React context (auth, database)
+│   └── api/                # API routes (CRUD + Plaid)
+├── providers/              # React context (auth, api)
 ├── hooks/                  # Web-specific hooks
 ├── components/ui/          # shadcn components
 └── lib/
-    ├── db/                 # Prisma client (central DB)
-    ├── storage/            # sql.js adapter
+    ├── db/                 # Prisma client
     ├── dedup/              # LLM verifier (Tier 2)
     └── csv-parser.ts       # CSV parsing
 ```
@@ -47,61 +46,69 @@ Connection flow:
 4. Auto-sync with retry logic (8 retries, exponential backoff)
 
 Key files:
-- `src/hooks/use-plaid-sync.ts` - Client-side sync (runs Tier 1 dedup)
-- `src/app/api/plaid/sync/route.ts` - Server proxy with retry
+- `src/hooks/use-plaid-sync.ts` - Triggers server-side sync
+- `src/app/api/plaid/sync/route.ts` - Server-side sync with retry
 
 API routes:
 - `POST /api/plaid/create-link-token`
 - `POST /api/plaid/exchange-token`
-- `POST /api/plaid/sync`
+- `POST /api/plaid/sync` - Syncs transactions to PostgreSQL
 - `POST /api/dedup/verify` - LLM verification (max 100 pairs)
 
 ### Reports (`/reports`)
-- Server + client component pattern
+- Client components with React Query for data fetching
 - Recharts for visualization
-- `getDailyCumulativeSpending()` for burn-up charts
+
+## API Routes
+
+All user data is accessed through API routes using Prisma ORM:
+
+| Route | Methods | Purpose |
+|-------|---------|---------|
+| `/api/finance-accounts` | GET, POST | List/create accounts |
+| `/api/finance-accounts/[id]` | PATCH, DELETE | Update/delete account |
+| `/api/categories` | GET, POST | List/create categories |
+| `/api/categories/[id]` | GET, PATCH, DELETE | Get/update/delete category |
+| `/api/budgets` | POST | Create budget |
+| `/api/budgets/[id]` | DELETE | Delete budget |
+| `/api/transactions` | GET, POST | List/create transactions |
+| `/api/transactions/[id]` | GET, PATCH, DELETE | Get/update/delete transaction |
+| `/api/transactions/[id]/confirm` | POST | Confirm + learn pattern |
+| `/api/transactions/stats` | GET | Spending analytics |
+| `/api/user/seed-categories` | POST | Seed default categories |
 
 ## Patterns
 
-### API Routes
-Business logic in `lib/`, API routes handle HTTP:
+### API Routes with Prisma
 ```typescript
-// lib/plaid.ts - business logic
-export async function syncTransactions() { ... }
+// app/api/transactions/route.ts
+export async function GET(request: Request) {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session?.user?.id) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
-// app/api/plaid/sync/route.ts - HTTP handler
-export async function POST(request: Request) {
-  const result = await syncTransactions();
-  return Response.json(result);
+  const transactions = await db.transaction.findMany({
+    where: { userId: session.user.id },
+    include: { category: true, account: true },
+    orderBy: { date: "desc" },
+  });
+  return Response.json({ success: true, data: transactions });
 }
 ```
 
 ### Server-Side Pagination
 Never fetch all transactions on page load:
 ```typescript
-// Server Component: metadata only
-const [accounts, categories] = await Promise.all([...]);
-
-// Client Component: paginated API call
-const response = await fetch(`/api/transactions?page=1&limit=50`);
-```
-
-### Background Jobs (Next.js)
-Don't await to run after response:
-```typescript
-// Immediate - await and return
-const result = await processVisible(ids);
-
-// Background - don't await
-processRemaining().catch(() => {});
-
-return result;
+// Client Component: paginated API call via React Query
+const { data } = useQuery({
+  queryKey: ["transactions", { page, accountId }],
+  queryFn: () => apiGet(`/api/transactions?limit=50&offset=${page * 50}`),
+});
 ```
 
 ## Environment Variables
 
 ```bash
-# Central DB
+# Database
 CENTRAL_DATABASE_URL="postgresql://..."
 
 # Auth
@@ -121,12 +128,10 @@ OPENAI_API_KEY="..."
 
 1. **NEVER edit globals.css directly**: It's auto-generated from `scripts/generate-theme.ts`. Edit the generator script instead, then run `pnpm generate:theme`.
 
-2. **sql.js runs in browser**: User data never touches server. Encryption/decryption happens client-side.
+2. **Plaid test credentials**: `user_good` / `pass_good` in sandbox.
 
-3. **Plaid test credentials**: `user_good` / `pass_good` in sandbox.
+3. **Recharts empty data**: Test charts with empty datasets to avoid render errors.
 
-4. **Recharts empty data**: Test charts with empty datasets to avoid render errors.
+4. **revalidatePath after mutations**: Call this to refresh server components.
 
-5. **revalidatePath after mutations**: Call this to refresh server components.
-
-6. **React 19.1.4**: Web uses patched version (different from mobile's 19.1.0).
+5. **React 19.1.4**: Web uses patched version (different from mobile's 19.1.0).

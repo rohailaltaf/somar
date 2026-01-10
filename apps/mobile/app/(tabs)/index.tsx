@@ -20,7 +20,6 @@ import {
   useCategoriesWithBudgets,
   useRecentTransactions,
   useUnconfirmedCount,
-  useDatabaseAdapter,
   useAccounts,
 } from "@somar/shared/hooks";
 import {
@@ -47,7 +46,6 @@ import { EmptyState } from "@/src/components/ui/empty-state";
 
 export default function Dashboard() {
   const router = useRouter();
-  const { isReady: dbReady } = useDatabaseAdapter();
   const currentMonth = useMemo(() => getCurrentMonth(), []);
   const previousMonth = useMemo(() => getPreviousMonth(), []);
 
@@ -102,7 +100,7 @@ export default function Dashboard() {
     await Promise.all([refetchCurrent(), refetchByCategory(), refetchTransactions()]);
   };
 
-  const isLoading = !dbReady || loadingCurrent;
+  const isLoading = loadingCurrent;
 
   if (isLoading) {
     return (

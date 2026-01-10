@@ -13,9 +13,6 @@ export default function SignOutPage() {
   useEffect(() => {
     async function handleSignOut() {
       try {
-        // Clear encryption key from sessionStorage
-        sessionStorage.removeItem("somar_encryption_key");
-
         // Sign out from Better Auth
         await signOut();
       } catch (error) {

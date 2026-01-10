@@ -1,23 +1,16 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useDatabaseAdapter } from "./database-context";
 import * as AccountService from "../services/accounts";
 import type { AccountType, CreateAccountInput } from "../types";
 
 /**
- * Hook for accessing accounts from the local database.
+ * Hook for accessing accounts.
  */
 export function useAccounts() {
-  const { adapter, isReady } = useDatabaseAdapter();
-
   return useQuery({
     queryKey: ["accounts"],
-    queryFn: () => {
-      if (!adapter) return [];
-      return AccountService.getAllAccounts(adapter);
-    },
-    enabled: isReady,
+    queryFn: () => AccountService.getAllAccounts(),
   });
 }
 
@@ -25,47 +18,34 @@ export function useAccounts() {
  * Hook for account mutations (create, update, delete).
  */
 export function useAccountMutations() {
-  const { adapter, isReady, save, vacuum } = useDatabaseAdapter();
   const queryClient = useQueryClient();
 
-  const invalidateAndSave = async () => {
+  const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["accounts"] });
-    // Trigger save to persist changes to server
-    await save();
+    queryClient.invalidateQueries({ queryKey: ["transactions"] });
   };
 
   const createAccount = useMutation({
-    mutationFn: (input: CreateAccountInput) => {
-      if (!adapter) throw new Error("Database not ready");
-      return Promise.resolve(AccountService.createAccount(adapter, input));
-    },
-    onSuccess: invalidateAndSave,
+    mutationFn: (input: CreateAccountInput) =>
+      AccountService.createAccount(input),
+    onSuccess: invalidate,
   });
 
   const updateAccount = useMutation({
-    mutationFn: ({ id, name, type, plaidAccountId }: { id: string; name: string; type: AccountType; plaidAccountId?: string | null }) => {
-      if (!adapter) throw new Error("Database not ready");
-      AccountService.updateAccount(adapter, id, name, type, plaidAccountId);
-      return Promise.resolve();
-    },
-    onSuccess: invalidateAndSave,
+    mutationFn: ({ id, name, type, plaidAccountId }: { id: string; name: string; type: AccountType; plaidAccountId?: string | null }) =>
+      AccountService.updateAccount(id, name, type, plaidAccountId),
+    onSuccess: invalidate,
   });
 
   const deleteAccount = useMutation({
-    mutationFn: async (id: string) => {
-      if (!adapter) throw new Error("Database not ready");
-      AccountService.deleteAccount(adapter, id);
-      // Run VACUUM to reclaim disk space after deleting transactions
-      vacuum();
-    },
-    onSuccess: invalidateAndSave,
+    mutationFn: (id: string) =>
+      AccountService.deleteAccount(id),
+    onSuccess: invalidate,
   });
 
   return {
     createAccount,
     updateAccount,
     deleteAccount,
-    vacuum,
-    isReady,
   };
 }

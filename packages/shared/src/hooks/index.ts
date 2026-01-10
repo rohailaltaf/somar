@@ -1,14 +1,7 @@
 /**
- * Shared React hooks for database operations.
- * These hooks work with any platform that provides a DatabaseProvider.
+ * Shared React hooks for data operations.
+ * These hooks use React Query and call the API client.
  */
-
-// Database context (platform-agnostic)
-export {
-  DatabaseContext,
-  useDatabaseAdapter,
-  type DatabaseContextValue,
-} from "./database-context";
 
 // Transaction hooks
 export {

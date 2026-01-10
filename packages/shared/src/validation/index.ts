@@ -10,8 +10,6 @@
 export {
   loginSchema,
   registerSchema,
-  unlockSchema,
   type LoginFormData,
   type RegisterFormData,
-  type UnlockFormData,
 } from "./auth-schemas";

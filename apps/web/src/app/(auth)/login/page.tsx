@@ -60,17 +60,16 @@ export default function LoginPage() {
         <div className="text-center space-y-4">
           <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
           <h2 className="text-xl font-semibold text-foreground">Signing in...</h2>
-          <p className="text-muted-foreground">Preparing your encrypted data</p>
+          <p className="text-muted-foreground">Please wait</p>
         </div>
       </div>
     );
   }
 
   function handleGoogleLogin(): void {
-    // Google OAuth doesn't give us the password, so we can't derive encryption key.
-    // For now, show a message. Later: use a separate "data password" prompt.
+    // Google OAuth not yet implemented
     setError("root", {
-      message: "Google login coming soon. For now, please use email/password to access your encrypted data.",
+      message: "Google login coming soon. Please use email/password for now.",
     });
   }
 
@@ -178,9 +177,6 @@ export default function LoginPage() {
           <Link href="/register" className="text-primary hover:underline">
             Sign up
           </Link>
-        </p>
-        <p className="text-xs text-foreground-dim text-center">
-          Your data is encrypted with your password. We can never see it.
         </p>
       </CardFooter>
     </Card>

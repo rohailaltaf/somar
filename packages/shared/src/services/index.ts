@@ -1,7 +1,7 @@
 /**
  * Shared service layer exports.
- * These services provide platform-agnostic database operations
- * using the DatabaseAdapter interface.
+ * These services provide API client operations for data access.
+ * All functions are async and call the backend API.
  */
 
 // Transaction operations
@@ -9,6 +9,7 @@ export {
   getAllTransactions,
   getTransactionsFiltered,
   getUnconfirmedTransactions,
+  getRecentTransactions,
   getUnconfirmedCount,
   getTotalSpending,
   getSpendingByCategory,

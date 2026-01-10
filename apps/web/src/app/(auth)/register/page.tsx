@@ -62,16 +62,16 @@ export default function RegisterPage() {
         <div className="text-center space-y-4">
           <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
           <h2 className="text-xl font-semibold text-foreground">Creating your account...</h2>
-          <p className="text-muted-foreground">Setting up your encrypted vault</p>
+          <p className="text-muted-foreground">Please wait</p>
         </div>
       </div>
     );
   }
 
   function handleGoogleRegister(): void {
-    // Google OAuth doesn't give us the password, so we can't derive encryption key.
+    // Google OAuth not yet implemented
     setError("root", {
-      message: "Google login coming soon. For now, please use email/password to encrypt your data.",
+      message: "Google login coming soon. Please use email/password for now.",
     });
   }
 
@@ -178,9 +178,6 @@ export default function RegisterPage() {
             {errors.password && (
               <p className="text-destructive text-xs">{errors.password.message}</p>
             )}
-            <p className="text-xs text-foreground-dim">
-              This password encrypts your data. If you forget it, your data cannot be recovered.
-            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="confirmPassword" className="text-foreground-secondary">
@@ -206,15 +203,12 @@ export default function RegisterPage() {
           </Button>
         </form>
       </CardContent>
-      <CardFooter className="flex-col gap-2">
+      <CardFooter>
         <p className="text-sm text-muted-foreground">
           Already have an account?{" "}
           <Link href="/login" className="text-primary hover:underline">
             Sign in
           </Link>
-        </p>
-        <p className="text-xs text-foreground-dim text-center">
-          Your data is end-to-end encrypted. We can never see it.
         </p>
       </CardFooter>
     </Card>

@@ -1,309 +1,172 @@
 /**
- * Transaction service - encapsulates all transaction-related database operations.
- * This is a pure data layer with NO React/UI dependencies.
- *
- * Uses DatabaseAdapter interface for platform-agnostic database access.
+ * Transaction service - API client for transaction operations.
  */
 
-import type { DatabaseAdapter } from "../storage";
+import { apiGet, apiPost, apiPatch, apiDelete, type ApiResponse } from "../api-client";
 import type {
-  AccountType,
-  CategoryType,
   CreateTransactionInput,
   TransactionWithRelations,
 } from "../types";
 
 // ============ Queries ============
 
-export function getAllTransactions(db: DatabaseAdapter): TransactionWithRelations[] {
-  const rows = db.all<RawTransaction>(
-    `SELECT
-       t.*,
-       c.id as cat_id, c.name as cat_name, c.type as cat_type, c.color as cat_color, c.created_at as cat_created_at,
-       a.id as acc_id, a.name as acc_name, a.type as acc_type, a.created_at as acc_created_at
-     FROM transactions t
-     LEFT JOIN categories c ON t.category_id = c.id
-     LEFT JOIN accounts a ON t.account_id = a.id
-     ORDER BY t.date DESC, t.created_at DESC`
-  );
-
-  return rows.map(mapTransactionRow);
+export async function getAllTransactions(): Promise<TransactionWithRelations[]> {
+  const response = await apiGet<ApiResponse<TransactionWithRelations[]>>("/api/transactions");
+  return response.data ?? [];
 }
 
-export function getTransactionsFiltered(
-  db: DatabaseAdapter,
-  options: {
-    accountId?: string;
-    categoryId?: string | null;
-    startDate?: string;
-    endDate?: string;
-    showExcluded?: boolean;
-    search?: string;
-  }
-): TransactionWithRelations[] {
-  const conditions: string[] = [];
-  const params: (string | number)[] = [];
+export async function getTransactionsFiltered(options: {
+  accountId?: string;
+  categoryId?: string | null;
+  startDate?: string;
+  endDate?: string;
+  showExcluded?: boolean;
+  search?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<TransactionWithRelations[]> {
+  const params = new URLSearchParams();
 
-  if (options.accountId) {
-    conditions.push("t.account_id = ?");
-    params.push(options.accountId);
-  }
+  if (options.accountId) params.set("accountId", options.accountId);
+  if (options.categoryId === null) params.set("categoryId", "null");
+  else if (options.categoryId) params.set("categoryId", options.categoryId);
+  if (options.startDate) params.set("startDate", options.startDate);
+  if (options.endDate) params.set("endDate", options.endDate);
+  if (options.showExcluded) params.set("showExcluded", "true");
+  if (options.search) params.set("search", options.search);
+  if (options.limit) params.set("limit", String(options.limit));
+  if (options.offset) params.set("offset", String(options.offset));
 
-  if (options.categoryId === null) {
-    conditions.push("t.category_id IS NULL");
-  } else if (options.categoryId) {
-    conditions.push("t.category_id = ?");
-    params.push(options.categoryId);
-  }
-
-  if (options.startDate) {
-    conditions.push("t.date >= ?");
-    params.push(options.startDate);
-  }
-
-  if (options.endDate) {
-    conditions.push("t.date <= ?");
-    params.push(options.endDate);
-  }
-
-  if (!options.showExcluded) {
-    conditions.push("t.excluded = 0");
-  }
-
-  if (options.search) {
-    conditions.push("LOWER(t.description) LIKE LOWER(?)");
-    params.push(`%${options.search}%`);
-  }
-
-  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
-
-  const rows = db.all<RawTransaction>(
-    `SELECT
-       t.*,
-       c.id as cat_id, c.name as cat_name, c.type as cat_type, c.color as cat_color, c.created_at as cat_created_at,
-       a.id as acc_id, a.name as acc_name, a.type as acc_type, a.created_at as acc_created_at
-     FROM transactions t
-     LEFT JOIN categories c ON t.category_id = c.id
-     LEFT JOIN accounts a ON t.account_id = a.id
-     ${whereClause}
-     ORDER BY t.date DESC, t.created_at DESC`,
-    params
+  const response = await apiGet<ApiResponse<TransactionWithRelations[]>>(
+    `/api/transactions?${params.toString()}`
   );
-
-  return rows.map(mapTransactionRow);
+  return response.data ?? [];
 }
 
-export function getUnconfirmedTransactions(db: DatabaseAdapter): TransactionWithRelations[] {
-  const rows = db.all<RawTransaction>(
-    `SELECT
-       t.*,
-       c.id as cat_id, c.name as cat_name, c.type as cat_type, c.color as cat_color, c.created_at as cat_created_at,
-       a.id as acc_id, a.name as acc_name, a.type as acc_type, a.created_at as acc_created_at
-     FROM transactions t
-     LEFT JOIN categories c ON t.category_id = c.id
-     LEFT JOIN accounts a ON t.account_id = a.id
-     WHERE t.is_confirmed = 0
-     ORDER BY t.date DESC, t.created_at DESC`
-  );
-
-  return rows.map(mapTransactionRow);
+export async function getUnconfirmedTransactions(): Promise<TransactionWithRelations[]> {
+  const response = await apiGet<ApiResponse<TransactionWithRelations[]>>("/api/transactions/unconfirmed");
+  return response.data ?? [];
 }
 
-export function getRecentTransactions(db: DatabaseAdapter, limit = 5): TransactionWithRelations[] {
-  const rows = db.all<RawTransaction>(
-    `SELECT
-       t.*,
-       c.id as cat_id, c.name as cat_name, c.type as cat_type, c.color as cat_color, c.created_at as cat_created_at,
-       a.id as acc_id, a.name as acc_name, a.type as acc_type, a.created_at as acc_created_at
-     FROM transactions t
-     LEFT JOIN categories c ON t.category_id = c.id
-     LEFT JOIN accounts a ON t.account_id = a.id
-     ORDER BY t.date DESC, t.created_at DESC
-     LIMIT ?`,
-    [limit]
+export async function getRecentTransactions(limit = 5): Promise<TransactionWithRelations[]> {
+  const response = await apiGet<ApiResponse<TransactionWithRelations[]>>(
+    `/api/transactions?limit=${limit}`
   );
-
-  return rows.map(mapTransactionRow);
+  return response.data ?? [];
 }
 
-export function getUnconfirmedCount(db: DatabaseAdapter): number {
-  const result = db.get<{ count: number }>(
-    "SELECT COUNT(*) as count FROM transactions WHERE is_confirmed = 0"
-  );
-  return result?.count ?? 0;
+export async function getUnconfirmedCount(): Promise<number> {
+  const response = await apiGet<{ success: boolean; total: number }>("/api/transactions/unconfirmed");
+  return response.total ?? 0;
 }
 
-export function getTotalSpending(db: DatabaseAdapter, month: string): number {
-  const result = db.get<{ total: number }>(
-    `SELECT COALESCE(SUM(ABS(amount)), 0) as total
-     FROM transactions
-     WHERE amount < 0
-       AND excluded = 0
-       AND date LIKE ?`,
-    [`${month}%`]
+export async function getTotalSpending(month: string): Promise<number> {
+  const response = await apiGet<ApiResponse<{ total: number }>>(
+    `/api/transactions/stats?month=${month}&stat=total`
   );
-  return result?.total ?? 0;
+  return response.data?.total ?? 0;
 }
 
 export interface SpendingByCategoryOptions {
-  /** Only include categories with spending above this amount */
   minSpent?: number;
-  /** Limit the number of results returned */
   limit?: number;
 }
 
-export function getSpendingByCategory(
-  db: DatabaseAdapter,
+export async function getSpendingByCategory(
   month: string,
   options?: SpendingByCategoryOptions
-): Array<{ id: string; name: string; color: string; spent: number; budget: number | null }> {
-  const { minSpent, limit } = options ?? {};
-
-  // Build query with optional HAVING and LIMIT clauses
-  const havingClause = minSpent !== undefined ? `HAVING spent > ?` : "";
-  const limitClause = limit !== undefined ? `LIMIT ?` : "";
-
-  const params: (string | number)[] = [month, `${month}%`];
-  if (minSpent !== undefined) params.push(minSpent);
-  if (limit !== undefined) params.push(limit);
-
-  const rows = db.all<{
-    id: string;
-    name: string;
-    color: string;
-    spent: number;
-    budget_amount: number | null;
-  }>(
-    `SELECT
-       c.id, c.name, c.color,
-       COALESCE(SUM(ABS(t.amount)), 0) as spent,
-       (SELECT cb.amount FROM category_budgets cb
-        WHERE cb.category_id = c.id AND cb.start_month <= ?
-        ORDER BY cb.start_month DESC LIMIT 1) as budget_amount
-     FROM categories c
-     LEFT JOIN transactions t ON t.category_id = c.id
-       AND t.amount < 0
-       AND t.excluded = 0
-       AND t.date LIKE ?
-     WHERE c.type = 'spending'
-     GROUP BY c.id
-     ${havingClause}
-     ORDER BY spent DESC
-     ${limitClause}`,
-    params
+): Promise<Array<{ id: string; name: string; color: string; spent: number; budget: number | null }>> {
+  const response = await apiGet<ApiResponse<{ byCategory: Array<{ id: string; name: string; color: string; amount: number }> }>>(
+    `/api/transactions/stats?month=${month}&stat=byCategory`
   );
 
-  return rows.map(r => ({
-    id: r.id,
-    name: r.name,
-    color: r.color,
-    spent: r.spent,
-    budget: r.budget_amount,
+  let results = (response.data?.byCategory ?? []).map((cat) => ({
+    id: cat.id,
+    name: cat.name,
+    color: cat.color,
+    spent: cat.amount,
+    budget: null as number | null, // Budgets fetched separately if needed
   }));
+
+  if (options?.minSpent !== undefined) {
+    results = results.filter((r) => r.spent > options.minSpent!);
+  }
+  if (options?.limit !== undefined) {
+    results = results.slice(0, options.limit);
+  }
+
+  return results;
 }
 
-export function getDailyCumulativeSpending(
-  db: DatabaseAdapter,
+export async function getDailyCumulativeSpending(
   month: string
-): Array<{ day: number; date: string; cumulative: number }> {
-  const rows = db.all<{ day: number; date: string; cumulative: number }>(
-    `WITH daily_spending AS (
-       SELECT
-         CAST(SUBSTR(date, 9, 2) AS INTEGER) as day,
-         date,
-         SUM(ABS(amount)) as daily_total
-       FROM transactions
-       WHERE amount < 0
-         AND excluded = 0
-         AND date LIKE ?
-       GROUP BY date
-     )
-     SELECT
-       day,
-       date,
-       SUM(daily_total) OVER (ORDER BY date) as cumulative
-     FROM daily_spending
-     ORDER BY date`,
-    [`${month}%`]
-  );
-  return rows;
-}
-
-export function getYearToDateSpending(db: DatabaseAdapter, year: number): number {
-  const result = db.get<{ total: number }>(
-    `SELECT COALESCE(SUM(ABS(amount)), 0) as total
-     FROM transactions
-     WHERE amount < 0
-       AND excluded = 0
-       AND date LIKE ?`,
-    [`${year}%`]
-  );
-  return result?.total ?? 0;
-}
-
-export function getYearToDateCategorySpending(
-  db: DatabaseAdapter,
-  year: number
-): Array<{ id: string; name: string; color: string; spent: number; budget: number | null }> {
-  const currentMonth = `${year}-12`;
-  const rows = db.all<{
-    id: string;
-    name: string;
-    color: string;
-    spent: number;
-    budget_amount: number | null;
-  }>(
-    `SELECT
-       c.id, c.name, c.color,
-       COALESCE(SUM(ABS(t.amount)), 0) as spent,
-       (SELECT cb.amount FROM category_budgets cb
-        WHERE cb.category_id = c.id AND cb.start_month <= ?
-        ORDER BY cb.start_month DESC LIMIT 1) as budget_amount
-     FROM categories c
-     LEFT JOIN transactions t ON t.category_id = c.id
-       AND t.amount < 0
-       AND t.excluded = 0
-       AND t.date LIKE ?
-     WHERE c.type = 'spending'
-     GROUP BY c.id
-     ORDER BY spent DESC`,
-    [currentMonth, `${year}%`]
+): Promise<Array<{ day: number; date: string; cumulative: number }>> {
+  const response = await apiGet<ApiResponse<{ cumulative: Array<{ date: string; daily: number; cumulative: number }> }>>(
+    `/api/transactions/stats?month=${month}&stat=cumulative`
   );
 
-  return rows.map(r => ({
-    id: r.id,
-    name: r.name,
-    color: r.color,
-    spent: r.spent,
-    budget: r.budget_amount,
+  return (response.data?.cumulative ?? []).map((item) => ({
+    day: parseInt(item.date.split("-")[2]),
+    date: item.date,
+    cumulative: item.cumulative,
   }));
 }
 
-export function getMonthlyCumulativeSpending(
-  db: DatabaseAdapter,
+export async function getYearToDateSpending(year: number): Promise<number> {
+  // Get all months up to current month
+  const currentMonth = new Date().getMonth() + 1;
+  let total = 0;
+
+  for (let month = 1; month <= currentMonth; month++) {
+    const monthStr = `${year}-${String(month).padStart(2, "0")}`;
+    const monthTotal = await getTotalSpending(monthStr);
+    total += monthTotal;
+  }
+
+  return total;
+}
+
+export async function getYearToDateCategorySpending(
   year: number
-): Array<{ month: number; monthStr: string; cumulative: number }> {
-  const rows = db.all<{ month: number; monthStr: string; cumulative: number }>(
-    `WITH monthly_spending AS (
-       SELECT
-         CAST(SUBSTR(date, 6, 2) AS INTEGER) as month,
-         SUBSTR(date, 1, 7) as monthStr,
-         SUM(ABS(amount)) as monthly_total
-       FROM transactions
-       WHERE amount < 0
-         AND excluded = 0
-         AND date LIKE ?
-       GROUP BY monthStr
-     )
-     SELECT
-       month,
-       monthStr,
-       SUM(monthly_total) OVER (ORDER BY monthStr) as cumulative
-     FROM monthly_spending
-     ORDER BY monthStr`,
-    [`${year}%`]
-  );
-  return rows;
+): Promise<Array<{ id: string; name: string; color: string; spent: number; budget: number | null }>> {
+  // Aggregate across all months
+  const currentMonth = new Date().getMonth() + 1;
+  const categoryTotals: Map<string, { id: string; name: string; color: string; spent: number }> = new Map();
+
+  for (let month = 1; month <= currentMonth; month++) {
+    const monthStr = `${year}-${String(month).padStart(2, "0")}`;
+    const monthData = await getSpendingByCategory(monthStr);
+
+    for (const cat of monthData) {
+      const existing = categoryTotals.get(cat.id);
+      if (existing) {
+        existing.spent += cat.spent;
+      } else {
+        categoryTotals.set(cat.id, { id: cat.id, name: cat.name, color: cat.color, spent: cat.spent });
+      }
+    }
+  }
+
+  return Array.from(categoryTotals.values())
+    .map((cat) => ({ ...cat, budget: null }))
+    .sort((a, b) => b.spent - a.spent);
+}
+
+export async function getMonthlyCumulativeSpending(
+  year: number
+): Promise<Array<{ month: number; monthStr: string; cumulative: number }>> {
+  const currentMonth = new Date().getMonth() + 1;
+  const results: Array<{ month: number; monthStr: string; cumulative: number }> = [];
+  let cumulative = 0;
+
+  for (let month = 1; month <= currentMonth; month++) {
+    const monthStr = `${year}-${String(month).padStart(2, "0")}`;
+    const monthTotal = await getTotalSpending(monthStr);
+    cumulative += monthTotal;
+    results.push({ month, monthStr, cumulative });
+  }
+
+  return results;
 }
 
 export interface SpendingTransaction {
@@ -316,335 +179,205 @@ export interface SpendingTransaction {
   accountName: string | null;
 }
 
-export function getSpendingTransactions(db: DatabaseAdapter, month: string): SpendingTransaction[] {
-  return db.all<SpendingTransaction>(
-    `SELECT
-       t.id,
-       t.description,
-       ABS(t.amount) as amount,
-       t.date,
-       c.name as categoryName,
-       c.color as categoryColor,
-       a.name as accountName
-     FROM transactions t
-     LEFT JOIN categories c ON t.category_id = c.id
-     LEFT JOIN accounts a ON t.account_id = a.id
-     WHERE t.amount < 0
-       AND t.excluded = 0
-       AND t.date LIKE ?
-     ORDER BY t.date DESC`,
-    [`${month}%`]
-  );
+export async function getSpendingTransactions(month: string): Promise<SpendingTransaction[]> {
+  const [year, monthNum] = month.split("-");
+  const startDate = `${year}-${monthNum}-01`;
+  const endDate = `${year}-${monthNum}-31`;
+
+  const transactions = await getTransactionsFiltered({
+    startDate,
+    endDate,
+    showExcluded: false,
+  });
+
+  return transactions
+    .filter((t) => t.amount < 0)
+    .map((t) => ({
+      id: t.id,
+      description: t.description,
+      amount: Math.abs(t.amount),
+      date: t.date,
+      categoryName: t.category?.name ?? null,
+      categoryColor: t.category?.color ?? null,
+      accountName: t.account?.name ?? null,
+    }));
 }
 
-export function getYearSpendingTransactions(db: DatabaseAdapter, year: number): SpendingTransaction[] {
-  return db.all<SpendingTransaction>(
-    `SELECT
-       t.id,
-       t.description,
-       ABS(t.amount) as amount,
-       t.date,
-       c.name as categoryName,
-       c.color as categoryColor,
-       a.name as accountName
-     FROM transactions t
-     LEFT JOIN categories c ON t.category_id = c.id
-     LEFT JOIN accounts a ON t.account_id = a.id
-     WHERE t.amount < 0
-       AND t.excluded = 0
-       AND t.date LIKE ?
-     ORDER BY t.date DESC`,
-    [`${year}%`]
-  );
+export async function getYearSpendingTransactions(year: number): Promise<SpendingTransaction[]> {
+  const startDate = `${year}-01-01`;
+  const endDate = `${year}-12-31`;
+
+  const transactions = await getTransactionsFiltered({
+    startDate,
+    endDate,
+    showExcluded: false,
+  });
+
+  return transactions
+    .filter((t) => t.amount < 0)
+    .map((t) => ({
+      id: t.id,
+      description: t.description,
+      amount: Math.abs(t.amount),
+      date: t.date,
+      categoryName: t.category?.name ?? null,
+      categoryColor: t.category?.color ?? null,
+      accountName: t.account?.name ?? null,
+    }));
 }
 
-export function getTotalIncome(db: DatabaseAdapter, month: string): number {
-  const result = db.get<{ total: number }>(
-    `SELECT COALESCE(SUM(amount), 0) as total
-     FROM transactions
-     WHERE amount > 0
-       AND excluded = 0
-       AND date LIKE ?`,
-    [`${month}%`]
+export async function getTotalIncome(month: string): Promise<number> {
+  const response = await apiGet<ApiResponse<{ income: number }>>(
+    `/api/transactions/stats?month=${month}&stat=income`
   );
-  return result?.total ?? 0;
+  return response.data?.income ?? 0;
 }
 
-export function getIncomeByCategory(
-  db: DatabaseAdapter,
+export async function getIncomeByCategory(
   month: string
-): Array<{ id: string; name: string; color: string; income: number }> {
-  const rows = db.all<{
-    id: string;
-    name: string;
-    color: string;
-    income: number;
-  }>(
-    `SELECT
-       c.id, c.name, c.color,
-       COALESCE(SUM(t.amount), 0) as income
-     FROM categories c
-     LEFT JOIN transactions t ON t.category_id = c.id
-       AND t.amount > 0
-       AND t.excluded = 0
-       AND t.date LIKE ?
-     WHERE c.type = 'income'
-     GROUP BY c.id
-     ORDER BY income DESC`,
-    [`${month}%`]
-  );
+): Promise<Array<{ id: string; name: string; color: string; income: number }>> {
+  // Fetch transactions and aggregate by income categories
+  const [year, monthNum] = month.split("-");
+  const startDate = `${year}-${monthNum}-01`;
+  const endDate = `${year}-${monthNum}-31`;
 
-  return rows;
-}
+  const transactions = await getTransactionsFiltered({
+    startDate,
+    endDate,
+    showExcluded: false,
+  });
 
-export function getYearToDateIncome(db: DatabaseAdapter, year: number): number {
-  const result = db.get<{ total: number }>(
-    `SELECT COALESCE(SUM(amount), 0) as total
-     FROM transactions
-     WHERE amount > 0
-       AND excluded = 0
-       AND date LIKE ?`,
-    [`${year}%`]
-  );
-  return result?.total ?? 0;
-}
+  const categoryTotals: Map<string, { id: string; name: string; color: string; income: number }> = new Map();
 
-export function getYearToDateCategoryIncome(
-  db: DatabaseAdapter,
-  year: number
-): Array<{ id: string; name: string; color: string; income: number }> {
-  const rows = db.all<{
-    id: string;
-    name: string;
-    color: string;
-    income: number;
-  }>(
-    `SELECT
-       c.id, c.name, c.color,
-       COALESCE(SUM(t.amount), 0) as income
-     FROM categories c
-     LEFT JOIN transactions t ON t.category_id = c.id
-       AND t.amount > 0
-       AND t.excluded = 0
-       AND t.date LIKE ?
-     WHERE c.type = 'income'
-     GROUP BY c.id
-     ORDER BY income DESC`,
-    [`${year}%`]
-  );
-
-  return rows;
-}
-
-export function getMonthlyIncome(
-  db: DatabaseAdapter,
-  year: number
-): Array<{ month: number; monthStr: string; amount: number }> {
-  const rows = db.all<{ month: number; monthStr: string; amount: number }>(
-    `SELECT
-       CAST(SUBSTR(date, 6, 2) AS INTEGER) as month,
-       SUBSTR(date, 1, 7) as monthStr,
-       COALESCE(SUM(amount), 0) as amount
-     FROM transactions
-     WHERE amount > 0
-       AND excluded = 0
-       AND date LIKE ?
-     GROUP BY monthStr
-     ORDER BY monthStr`,
-    [`${year}%`]
-  );
-  return rows;
-}
-
-// ============ Mutations ============
-
-export function createTransaction(db: DatabaseAdapter, input: CreateTransactionInput): string {
-  const id = crypto.randomUUID();
-  db.run(
-    `INSERT INTO transactions (id, account_id, category_id, description, amount, date, excluded, is_confirmed, created_at, plaid_transaction_id)
-     VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?, ?)`,
-    [
-      id,
-      input.accountId,
-      input.categoryId ?? null,
-      input.description,
-      input.amount,
-      input.date,
-      new Date().toISOString(),
-      input.plaidTransactionId ?? null,
-    ]
-  );
-  return id;
-}
-
-export function createManyTransactions(db: DatabaseAdapter, inputs: CreateTransactionInput[]): string[] {
-  const ids: string[] = [];
-  for (const input of inputs) {
-    ids.push(createTransaction(db, input));
-  }
-  return ids;
-}
-
-export function updateTransactionCategory(
-  db: DatabaseAdapter,
-  transactionId: string,
-  categoryId: string | null,
-  isConfirmed: boolean = true
-): void {
-  db.run(
-    "UPDATE transactions SET category_id = ?, is_confirmed = ? WHERE id = ?",
-    [categoryId, isConfirmed ? 1 : 0, transactionId]
-  );
-}
-
-export function confirmTransaction(
-  db: DatabaseAdapter,
-  transactionId: string,
-  categoryId: string
-): { autoTaggedCount: number } {
-  // Get the transaction
-  const transaction = db.get<{ description: string }>(
-    "SELECT description FROM transactions WHERE id = ?",
-    [transactionId]
-  );
-
-  if (!transaction) {
-    return { autoTaggedCount: 0 };
-  }
-
-  // Update this transaction
-  db.run(
-    "UPDATE transactions SET category_id = ?, is_confirmed = 1 WHERE id = ?",
-    [categoryId, transactionId]
-  );
-
-  // Learn the pattern
-  const pattern = extractMerchantPattern(transaction.description);
-  let autoTaggedCount = 0;
-
-  if (pattern) {
-    // Upsert the rule
-    const existingRule = db.get<{ id: string }>(
-      "SELECT id FROM categorization_rules WHERE pattern = ?",
-      [pattern]
-    );
-
-    if (existingRule) {
-      db.run(
-        "UPDATE categorization_rules SET category_id = ? WHERE pattern = ?",
-        [categoryId, pattern]
-      );
-    } else {
-      db.run(
-        `INSERT INTO categorization_rules (id, pattern, category_id, is_preset, created_at)
-         VALUES (?, ?, ?, 0, ?)`,
-        [crypto.randomUUID(), pattern, categoryId, new Date().toISOString()]
-      );
-    }
-
-    // Auto-tag other unconfirmed transactions with similar pattern
-    const unconfirmed = db.all<{ id: string; description: string }>(
-      "SELECT id, description FROM transactions WHERE is_confirmed = 0 AND id != ?",
-      [transactionId]
-    );
-
-    for (const txn of unconfirmed) {
-      const txnPattern = extractMerchantPattern(txn.description);
-      if (txnPattern === pattern || txn.description.toUpperCase().includes(pattern)) {
-        db.run(
-          "UPDATE transactions SET category_id = ? WHERE id = ? AND is_confirmed = 0",
-          [categoryId, txn.id]
-        );
-        autoTaggedCount++;
+  for (const t of transactions) {
+    if (t.amount > 0 && t.category?.type === "income") {
+      const existing = categoryTotals.get(t.category.id);
+      if (existing) {
+        existing.income += t.amount;
+      } else {
+        categoryTotals.set(t.category.id, {
+          id: t.category.id,
+          name: t.category.name,
+          color: t.category.color,
+          income: t.amount,
+        });
       }
     }
   }
 
-  return { autoTaggedCount };
+  return Array.from(categoryTotals.values()).sort((a, b) => b.income - a.income);
 }
 
-export function toggleTransactionExcluded(db: DatabaseAdapter, transactionId: string): void {
-  db.run(
-    "UPDATE transactions SET excluded = CASE WHEN excluded = 0 THEN 1 ELSE 0 END WHERE id = ?",
-    [transactionId]
+export async function getYearToDateIncome(year: number): Promise<number> {
+  const currentMonth = new Date().getMonth() + 1;
+  let total = 0;
+
+  for (let month = 1; month <= currentMonth; month++) {
+    const monthStr = `${year}-${String(month).padStart(2, "0")}`;
+    const monthTotal = await getTotalIncome(monthStr);
+    total += monthTotal;
+  }
+
+  return total;
+}
+
+export async function getYearToDateCategoryIncome(
+  year: number
+): Promise<Array<{ id: string; name: string; color: string; income: number }>> {
+  const currentMonth = new Date().getMonth() + 1;
+  const categoryTotals: Map<string, { id: string; name: string; color: string; income: number }> = new Map();
+
+  for (let month = 1; month <= currentMonth; month++) {
+    const monthStr = `${year}-${String(month).padStart(2, "0")}`;
+    const monthData = await getIncomeByCategory(monthStr);
+
+    for (const cat of monthData) {
+      const existing = categoryTotals.get(cat.id);
+      if (existing) {
+        existing.income += cat.income;
+      } else {
+        categoryTotals.set(cat.id, { ...cat });
+      }
+    }
+  }
+
+  return Array.from(categoryTotals.values()).sort((a, b) => b.income - a.income);
+}
+
+export async function getMonthlyIncome(
+  year: number
+): Promise<Array<{ month: number; monthStr: string; amount: number }>> {
+  const currentMonth = new Date().getMonth() + 1;
+  const results: Array<{ month: number; monthStr: string; amount: number }> = [];
+
+  for (let month = 1; month <= currentMonth; month++) {
+    const monthStr = `${year}-${String(month).padStart(2, "0")}`;
+    const amount = await getTotalIncome(monthStr);
+    results.push({ month, monthStr, amount });
+  }
+
+  return results;
+}
+
+// ============ Mutations ============
+
+export async function createTransaction(input: CreateTransactionInput): Promise<string> {
+  const response = await apiPost<ApiResponse<{ count: number }>>("/api/transactions", input);
+  // The API returns count, but for single transaction we need the ID
+  // For now return empty string - the hooks will invalidate and refetch
+  return "";
+}
+
+export async function createManyTransactions(inputs: CreateTransactionInput[]): Promise<string[]> {
+  await apiPost<ApiResponse<{ count: number }>>("/api/transactions", inputs);
+  // Return empty array - the hooks will invalidate and refetch
+  return [];
+}
+
+export async function updateTransactionCategory(
+  transactionId: string,
+  categoryId: string | null,
+  isConfirmed: boolean = true
+): Promise<void> {
+  await apiPatch<ApiResponse<TransactionWithRelations>>(`/api/transactions/${transactionId}`, {
+    categoryId,
+    isConfirmed,
+  });
+}
+
+export async function confirmTransaction(
+  transactionId: string,
+  categoryId: string
+): Promise<{ autoTaggedCount: number }> {
+  const response = await apiPost<ApiResponse<{ autoTaggedCount: number }>>(
+    `/api/transactions/${transactionId}/confirm`,
+    { categoryId }
+  );
+  return { autoTaggedCount: response.data?.autoTaggedCount ?? 0 };
+}
+
+export async function toggleTransactionExcluded(transactionId: string): Promise<void> {
+  await apiPost<ApiResponse<TransactionWithRelations>>(
+    `/api/transactions/${transactionId}/toggle-excluded`
   );
 }
 
-export function deleteTransaction(db: DatabaseAdapter, transactionId: string): void {
-  db.run("DELETE FROM transactions WHERE id = ?", [transactionId]);
+export async function deleteTransaction(transactionId: string): Promise<void> {
+  await apiDelete<ApiResponse<void>>(`/api/transactions/${transactionId}`);
 }
 
-export function uncategorizeTransaction(db: DatabaseAdapter, transactionId: string): void {
-  db.run(
-    "UPDATE transactions SET category_id = NULL, is_confirmed = 0 WHERE id = ?",
-    [transactionId]
-  );
+export async function uncategorizeTransaction(transactionId: string): Promise<void> {
+  await apiPatch<ApiResponse<TransactionWithRelations>>(`/api/transactions/${transactionId}`, {
+    categoryId: null,
+    isConfirmed: false,
+  });
 }
 
 // ============ Helpers ============
 
-interface RawTransaction {
-  id: string;
-  account_id: string;
-  category_id: string | null;
-  description: string;
-  amount: number;
-  date: string;
-  excluded: number;
-  is_confirmed: number;
-  created_at: string;
-  plaid_transaction_id: string | null;
-  plaid_authorized_date: string | null;
-  plaid_posted_date: string | null;
-  plaid_merchant_name: string | null;
-  cat_id: string | null;
-  cat_name: string | null;
-  cat_type: string | null;
-  cat_color: string | null;
-  cat_created_at: string | null;
-  acc_id: string;
-  acc_name: string;
-  acc_type: string;
-  acc_created_at: string;
-}
-
-function mapTransactionRow(row: RawTransaction): TransactionWithRelations {
-  return {
-    id: row.id,
-    accountId: row.account_id,
-    categoryId: row.category_id,
-    description: row.description,
-    amount: row.amount,
-    date: row.date,
-    excluded: row.excluded === 1,
-    isConfirmed: row.is_confirmed === 1,
-    createdAt: row.created_at,
-    plaidTransactionId: row.plaid_transaction_id,
-    plaidAuthorizedDate: row.plaid_authorized_date,
-    plaidPostedDate: row.plaid_posted_date,
-    plaidMerchantName: row.plaid_merchant_name,
-    category: row.cat_id
-      ? {
-          id: row.cat_id,
-          name: row.cat_name!,
-          type: row.cat_type as CategoryType,
-          color: row.cat_color!,
-          createdAt: row.cat_created_at!,
-        }
-      : null,
-    account: {
-      id: row.acc_id,
-      name: row.acc_name,
-      type: row.acc_type as AccountType,
-      createdAt: row.acc_created_at,
-      plaidItemId: null,
-      plaidAccountId: null,
-    },
-  };
-}
-
 /**
  * Extract a short, general merchant pattern from a transaction description.
+ * This is a pure function - no API call needed.
  */
 export function extractMerchantPattern(description: string): string {
   let pattern = description.toUpperCase();

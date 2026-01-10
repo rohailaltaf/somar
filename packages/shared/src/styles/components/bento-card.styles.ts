@@ -59,10 +59,10 @@ export const bentoCardStyles = {
   /** Animation timing */
   animation: {
     /** Glow pulse duration in ms */
-    glowDuration: 8000,
+    glowDuration: 8000 as number,
     /** Glow opacity range */
-    glowOpacityMin: 0.03,
-    glowOpacityMax: 0.08,
+    glowOpacityMin: 0.03 as number,
+    glowOpacityMax: 0.08 as number,
   },
 } as const;
 

@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Nav } from "@/components/nav";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { useDatabaseAdapter } from "@somar/shared/hooks";
 import { IncomeOverviewClient } from "./income-overview-client";
 import * as TransactionService from "@somar/shared/services";
 import { getCurrentMonth, getPreviousMonth } from "@somar/shared";
@@ -27,27 +27,47 @@ export default function IncomeOverviewPage() {
 }
 
 function IncomeOverviewContent() {
-  const { adapter } = useDatabaseAdapter();
-
   const currentMonth = useMemo(() => getCurrentMonth(), []);
   const lastMonth = useMemo(() => getPreviousMonth(currentMonth), [currentMonth]);
   const currentYear = useMemo(() => new Date().getFullYear(), []);
 
-  const data = useMemo(() => {
-    if (!adapter) return null;
+  // Fetch all income data using React Query
+  const { data: currentTotal = 0 } = useQuery({
+    queryKey: ["income", "total", currentMonth],
+    queryFn: () => TransactionService.getTotalIncome(currentMonth),
+  });
 
-    return {
-      currentTotal: TransactionService.getTotalIncome(adapter, currentMonth),
-      lastTotal: TransactionService.getTotalIncome(adapter, lastMonth),
-      currentCategoryIncome: TransactionService.getIncomeByCategory(adapter, currentMonth),
-      lastCategoryIncome: TransactionService.getIncomeByCategory(adapter, lastMonth),
-      yearTotal: TransactionService.getYearToDateIncome(adapter, currentYear),
-      yearCategoryIncome: TransactionService.getYearToDateCategoryIncome(adapter, currentYear),
-      yearMonthlyData: TransactionService.getMonthlyIncome(adapter, currentYear),
-    };
-  }, [adapter, currentMonth, lastMonth, currentYear]);
+  const { data: lastTotal = 0 } = useQuery({
+    queryKey: ["income", "total", lastMonth],
+    queryFn: () => TransactionService.getTotalIncome(lastMonth),
+  });
 
-  if (!data) {
+  const { data: yearTotal = 0 } = useQuery({
+    queryKey: ["income", "yearTotal", currentYear],
+    queryFn: () => TransactionService.getYearToDateIncome(currentYear),
+  });
+
+  const { data: currentCategoryIncome = [] } = useQuery({
+    queryKey: ["income", "byCategory", currentMonth],
+    queryFn: () => TransactionService.getIncomeByCategory(currentMonth),
+  });
+
+  const { data: lastCategoryIncome = [] } = useQuery({
+    queryKey: ["income", "byCategory", lastMonth],
+    queryFn: () => TransactionService.getIncomeByCategory(lastMonth),
+  });
+
+  const { data: yearCategoryIncome = [] } = useQuery({
+    queryKey: ["income", "yearByCategory", currentYear],
+    queryFn: () => TransactionService.getYearToDateCategoryIncome(currentYear),
+  });
+
+  const { data: yearMonthlyData = [], isLoading } = useQuery({
+    queryKey: ["income", "monthly", currentYear],
+    queryFn: () => TransactionService.getMonthlyIncome(currentYear),
+  });
+
+  if (isLoading) {
     return <IncomeOverviewSkeleton />;
   }
 
@@ -56,13 +76,13 @@ function IncomeOverviewContent() {
       currentMonth={currentMonth}
       lastMonth={lastMonth}
       currentYear={currentYear}
-      currentTotal={data.currentTotal}
-      lastTotal={data.lastTotal}
-      yearTotal={data.yearTotal}
-      currentCategoryIncome={data.currentCategoryIncome}
-      lastCategoryIncome={data.lastCategoryIncome}
-      yearCategoryIncome={data.yearCategoryIncome}
-      yearMonthlyData={data.yearMonthlyData}
+      currentTotal={currentTotal}
+      lastTotal={lastTotal}
+      yearTotal={yearTotal}
+      currentCategoryIncome={currentCategoryIncome}
+      lastCategoryIncome={lastCategoryIncome}
+      yearCategoryIncome={yearCategoryIncome}
+      yearMonthlyData={yearMonthlyData}
     />
   );
 }

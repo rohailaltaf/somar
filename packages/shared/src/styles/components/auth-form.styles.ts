@@ -1,6 +1,6 @@
 /**
  * Auth form shared styles.
- * Used by login, register, and unlock screens on both web and mobile.
+ * Used by login and register screens on both web and mobile.
  */
 
 export const authFormStyles = {

@@ -36,10 +36,3 @@ export const registerSchema = z
   });
 
 export type RegisterFormData = z.infer<typeof registerSchema>;
-
-// Unlock form schema (for re-authenticating when encryption key is missing)
-export const unlockSchema = z.object({
-  password: z.string().min(1, "Password is required"),
-});
-
-export type UnlockFormData = z.infer<typeof unlockSchema>;

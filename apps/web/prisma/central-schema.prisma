@@ -1,6 +1,5 @@
-// Central database schema for authentication and user management
-// This database stores shared data across all users (auth, Plaid connections, etc.)
-// User-specific finance data is stored in encrypted per-user SQLite blobs
+// Central database schema for authentication and user data
+// All user finance data (transactions, categories, etc.) is stored here
 
 generator client {
   provider = "prisma-client-js"
@@ -26,15 +25,18 @@ model User {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
-  // Custom fields for E2EE
-  publicKey      String?   @map("public_key") // RSA public key for encrypting Plaid data
-  encryptionSalt String?   @map("encryption_salt") // Random salt for key derivation (not secret, but unique per user)
-
+  // Auth relations
   sessions      Session[]
   accounts      Account[]
+
+  // Plaid relations
   plaidItems    PlaidItem[]
-  encryptedDb   EncryptedDatabase?
-  pendingSyncs  PendingPlaidSync[]
+
+  // Finance data relations
+  financeAccounts     FinanceAccount[]
+  categories          Category[]
+  transactions        Transaction[]
+  categorizationRules CategorizationRule[]
 
   @@map("users")
 }
@@ -128,32 +130,100 @@ model PlaidAccountMeta {
   @@map("plaid_account_meta")
 }
 
-// Metadata about user's encrypted database blob
-model EncryptedDatabase {
-  id        String   @id @default(uuid())
-  userId    String   @unique @map("user_id")
-  version   BigInt   @default(1) // For optimistic locking
-  sizeBytes Int      @default(0) @map("size_bytes")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  createdAt DateTime @default(now()) @map("created_at")
+// ============================================================================
+// User Finance Data
+// ============================================================================
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+// Bank/financial accounts (different from Better Auth Account model)
+model FinanceAccount {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  name           String
+  type           String   // checking, credit_card, investment, loan
+  plaidAccountId String?  @map("plaid_account_id")
+  createdAt      DateTime @default(now()) @map("created_at")
 
-  @@map("encrypted_databases")
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@map("finance_accounts")
 }
 
-// Queue for Plaid sync data waiting for client to pick up
-// Data is encrypted with user's public key - server cannot read it
-model PendingPlaidSync {
-  id            String   @id @default(uuid())
-  userId        String   @map("user_id")
-  encryptedData Bytes    @map("encrypted_data") // Encrypted with user's public key
-  syncType      String   @map("sync_type") // "transactions", "accounts", etc.
-  createdAt     DateTime @default(now()) @map("created_at")
+// Transaction categories
+model Category {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  name      String
+  type      String   @default("spending") // spending, income, transfer
+  color     String   @default("#6366f1")
+  createdAt DateTime @default(now()) @map("created_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+  budgets      CategoryBudget[]
+  rules        CategorizationRule[]
 
-  @@index([userId, createdAt])
-  @@map("pending_plaid_syncs")
+  @@unique([userId, name])
+  @@map("categories")
+}
+
+// Monthly budgets per category
+model CategoryBudget {
+  id         String   @id @default(uuid())
+  categoryId String   @map("category_id")
+  amount     Float
+  startMonth String   @map("start_month") // YYYY-MM format
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@index([categoryId, startMonth])
+  @@map("category_budgets")
+}
+
+// Financial transactions
+model Transaction {
+  id                       String   @id @default(uuid())
+  userId                   String   @map("user_id")
+  accountId                String   @map("account_id")
+  categoryId               String?  @map("category_id")
+  description              String
+  amount                   Float    // negative = expense, positive = income
+  date                     String   // YYYY-MM-DD format
+  excluded                 Boolean  @default(false)
+  isConfirmed              Boolean  @default(false) @map("is_confirmed")
+  createdAt                DateTime @default(now()) @map("created_at")
+  plaidTransactionId       String?  @unique @map("plaid_transaction_id")
+  plaidOriginalDescription String?  @map("plaid_original_description")
+  plaidName                String?  @map("plaid_name")
+  plaidMerchantName        String?  @map("plaid_merchant_name")
+  plaidAuthorizedDate      String?  @map("plaid_authorized_date")
+  plaidPostedDate          String?  @map("plaid_posted_date")
+
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account  FinanceAccount  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  category Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([userId, date])
+  @@index([accountId])
+  @@index([categoryId])
+  @@index([isConfirmed])
+  @@map("transactions")
+}
+
+// Learned merchant patterns for auto-categorization
+model CategorizationRule {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  pattern    String
+  categoryId String   @map("category_id")
+  isPreset   Boolean  @default(false) @map("is_preset")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@index([categoryId])
+  @@map("categorization_rules")
 }
 
