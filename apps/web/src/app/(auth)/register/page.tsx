@@ -19,8 +19,6 @@ type Step = "info" | "otp";
 export default function RegisterPage() {
   const { sendOtp, verifyOtp, loginWithGoogle } = useAuth();
   const [step, setStep] = useState<Step>("info");
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
   const [isResending, setIsResending] = useState(false);
 
   // Info form (name + email)
@@ -38,8 +36,6 @@ export default function RegisterPage() {
   async function handleInfoSubmit(data: RegisterEmailFormData) {
     try {
       await sendOtp(data.email);
-      setEmail(data.email);
-      setName(data.name);
       otpForm.setValue("email", data.email);
       setStep("otp");
     } catch (err) {
@@ -51,7 +47,7 @@ export default function RegisterPage() {
 
   async function handleOtpSubmit(data: OtpFormData) {
     try {
-      await verifyOtp(data.email, data.otp, name);
+      await verifyOtp(data.email, data.otp, infoForm.getValues("name"));
     } catch (err) {
       otpForm.setError("root", {
         message: err instanceof Error ? err.message : "Invalid code",
@@ -62,7 +58,7 @@ export default function RegisterPage() {
   async function handleResendCode() {
     setIsResending(true);
     try {
-      await sendOtp(email);
+      await sendOtp(otpForm.getValues("email"));
     } catch (err) {
       otpForm.setError("root", {
         message: err instanceof Error ? err.message : "Failed to resend code",
@@ -115,7 +111,9 @@ export default function RegisterPage() {
 
         <div className={authFormStyles.header.container}>
           <h1 className={authFormStyles.header.title}>Check your email</h1>
-          <p className={authFormStyles.header.subtitle}>We sent a code to {email}</p>
+          <p className={authFormStyles.header.subtitle}>
+            We sent a code to {otpForm.watch("email")}
+          </p>
         </div>
 
         {otpForm.formState.errors.root && (

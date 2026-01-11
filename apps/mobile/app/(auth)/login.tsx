@@ -28,7 +28,6 @@ export default function LoginScreen() {
   const router = useRouter();
   const { sendOtp, verifyOtp, loginWithGoogle } = useAuth();
   const [step, setStep] = useState<Step>("email");
-  const [email, setEmail] = useState("");
   const [isResending, setIsResending] = useState(false);
 
   // Email form
@@ -46,7 +45,6 @@ export default function LoginScreen() {
   async function handleEmailSubmit(data: EmailFormData) {
     try {
       await sendOtp(data.email);
-      setEmail(data.email);
       otpForm.setValue("email", data.email);
       setStep("otp");
     } catch (err) {
@@ -69,7 +67,7 @@ export default function LoginScreen() {
   async function handleResendCode() {
     setIsResending(true);
     try {
-      await sendOtp(email);
+      await sendOtp(otpForm.getValues("email"));
     } catch (err) {
       otpForm.setError("root", {
         message: err instanceof Error ? err.message : "Failed to resend code",
@@ -129,7 +127,9 @@ export default function LoginScreen() {
 
             <View className={authFormStyles.header.container}>
               <Text className={authFormStyles.header.title}>Check your email</Text>
-              <Text className={authFormStyles.header.subtitle}>We sent a code to {email}</Text>
+              <Text className={authFormStyles.header.subtitle}>
+                We sent a code to {otpForm.watch("email")}
+              </Text>
             </View>
 
             {otpForm.formState.errors.root && (

@@ -19,7 +19,6 @@ type Step = "email" | "otp";
 export default function LoginPage() {
   const { sendOtp, verifyOtp, loginWithGoogle } = useAuth();
   const [step, setStep] = useState<Step>("email");
-  const [email, setEmail] = useState("");
   const [isResending, setIsResending] = useState(false);
 
   // Email form
@@ -37,7 +36,6 @@ export default function LoginPage() {
   async function handleEmailSubmit(data: EmailFormData) {
     try {
       await sendOtp(data.email);
-      setEmail(data.email);
       otpForm.setValue("email", data.email);
       setStep("otp");
     } catch (err) {
@@ -60,7 +58,7 @@ export default function LoginPage() {
   async function handleResendCode() {
     setIsResending(true);
     try {
-      await sendOtp(email);
+      await sendOtp(otpForm.getValues("email"));
     } catch (err) {
       otpForm.setError("root", {
         message: err instanceof Error ? err.message : "Failed to resend code",
@@ -113,7 +111,9 @@ export default function LoginPage() {
 
         <div className={authFormStyles.header.container}>
           <h1 className={authFormStyles.header.title}>Check your email</h1>
-          <p className={authFormStyles.header.subtitle}>We sent a code to {email}</p>
+          <p className={authFormStyles.header.subtitle}>
+            We sent a code to {otpForm.watch("email")}
+          </p>
         </div>
 
         {otpForm.formState.errors.root && (
