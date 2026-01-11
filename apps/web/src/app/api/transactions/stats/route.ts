@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { headers } from "next/headers";
+import { parseDate, toDateString } from "@somar/shared/utils";
 
 /**
  * GET /api/transactions/stats
@@ -95,10 +96,10 @@ export async function GET(request: Request) {
       let cumulative = 0;
       const cumulativeData: Array<{ date: string; daily: number; cumulative: number }> = [];
 
-      const start = new Date(startDate + "T00:00:00");
-      const end = new Date(endDate + "T00:00:00");
+      const start = parseDate(startDate);
+      const end = parseDate(endDate);
       for (let d = start; d <= end; d.setDate(d.getDate() + 1)) {
-        const dateStr = d.toISOString().split("T")[0];
+        const dateStr = toDateString(d);
         const daily = dailyTotals[dateStr] || 0;
         cumulative += daily;
         cumulativeData.push({ date: dateStr, daily, cumulative });

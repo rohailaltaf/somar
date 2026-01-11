@@ -44,7 +44,11 @@ export async function POST(request: Request) {
 
     // Upsert: delete existing budget for this month and create new one
     await db.categoryBudget.deleteMany({
-      where: { categoryId, startMonth },
+      where: {
+        categoryId,
+        startMonth,
+        category: { userId: session.user.id },
+      },
     });
 
     const budget = await db.categoryBudget.create({
