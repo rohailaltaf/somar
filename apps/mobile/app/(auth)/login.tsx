@@ -22,31 +22,28 @@ import {
   type OtpFormData,
 } from "@somar/shared/validation";
 
-type Step = "email" | "otp";
-
 export default function LoginScreen() {
   const router = useRouter();
-  const { sendOtp, verifyOtp, loginWithGoogle } = useAuth();
-  const [step, setStep] = useState<Step>("email");
+  const { sendOtp, verifyOtp, loginWithGoogle, otpState, setOtpState, resetOtpState } = useAuth();
   const [isResending, setIsResending] = useState(false);
 
-  // Email form
+  // Email form - use email from context if available
   const emailForm = useForm<EmailFormData>({
     resolver: zodResolver(emailSchema),
-    defaultValues: { email: "" },
+    defaultValues: { email: otpState.email || "" },
   });
 
-  // OTP form
+  // OTP form - use email from context
   const otpForm = useForm<OtpFormData>({
     resolver: zodResolver(otpSchema),
-    defaultValues: { email: "", otp: "" },
+    defaultValues: { email: otpState.email || "", otp: "" },
   });
 
   async function handleEmailSubmit(data: EmailFormData) {
     try {
       await sendOtp(data.email);
       otpForm.setValue("email", data.email);
-      setStep("otp");
+      setOtpState({ step: "otp", email: data.email });
     } catch (err) {
       emailForm.setError("root", {
         message: err instanceof Error ? err.message : "Failed to send code",
@@ -88,15 +85,15 @@ export default function LoginScreen() {
   }
 
   function handleBack() {
-    setStep("email");
+    resetOtpState();
     otpForm.reset();
   }
 
   const isEmailSubmitting = emailForm.formState.isSubmitting;
   const isOtpSubmitting = otpForm.formState.isSubmitting;
 
-  // Loading state
-  if (isOtpSubmitting) {
+  // Loading state - show while submitting OTP or after successful verification (before navigation)
+  if (isOtpSubmitting || otpState.step === "verifying") {
     return (
       <View className={authFormStyles.loading.container}>
         <View className={authFormStyles.loading.spinner} />
@@ -107,7 +104,7 @@ export default function LoginScreen() {
   }
 
   // OTP step
-  if (step === "otp") {
+  if (otpState.step === "otp") {
     return (
       <KeyboardAvoidingView
         className="flex-1 bg-background"

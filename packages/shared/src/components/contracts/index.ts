@@ -36,3 +36,5 @@ export type { AnimatedCurrencyProps } from "./animated-currency";
 
 // Auth components
 export type { OtpInputProps } from "./otp-input";
+export type { OtpStep, OtpState } from "./auth";
+export { initialOtpState } from "./auth";

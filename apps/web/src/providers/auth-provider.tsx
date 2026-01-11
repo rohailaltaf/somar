@@ -4,15 +4,24 @@ import {
   createContext,
   useContext,
   useCallback,
+  useState,
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
 import { signIn, signOut, useSession, emailOtp, updateUser } from "@/lib/auth-client";
+import { initialOtpState, type OtpState } from "@somar/shared/components";
+
+const OTP_STATE_KEY = "somar_otp_state";
 
 interface AuthContextValue {
   // Session state (from Better Auth)
   session: ReturnType<typeof useSession>["data"];
   isLoading: boolean;
+
+  // OTP step state (persists across component remounts)
+  otpState: OtpState;
+  setOtpState: (state: OtpState) => void;
+  resetOtpState: () => void;
 
   // OTP auth actions
   sendOtp: (email: string) => Promise<void>;
@@ -36,6 +45,32 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const router = useRouter();
   const { data: session, isPending: isLoading } = useSession();
+
+  // OTP state with sessionStorage persistence
+  const [otpState, setOtpStateInternal] = useState<OtpState>(() => {
+    // Initialize from sessionStorage if available (client-side only)
+    if (typeof window !== "undefined") {
+      const stored = sessionStorage.getItem(OTP_STATE_KEY);
+      if (stored) {
+        try {
+          return JSON.parse(stored) as OtpState;
+        } catch {
+          // Invalid JSON, use initial state
+        }
+      }
+    }
+    return initialOtpState;
+  });
+
+  const setOtpState = useCallback((state: OtpState) => {
+    setOtpStateInternal(state);
+    sessionStorage.setItem(OTP_STATE_KEY, JSON.stringify(state));
+  }, []);
+
+  const resetOtpState = useCallback(() => {
+    setOtpStateInternal(initialOtpState);
+    sessionStorage.removeItem(OTP_STATE_KEY);
+  }, []);
 
   const sendOtp = useCallback(async (email: string) => {
     const result = await emailOtp.sendVerificationOtp({
@@ -66,7 +101,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
       }
 
-      // Navigate to dashboard
+      // Set verifying state to keep showing loading spinner until navigation completes
+      setOtpStateInternal((prev) => ({ ...prev, step: "verifying" }));
+      sessionStorage.removeItem(OTP_STATE_KEY);
       router.push("/");
     },
     [router]
@@ -81,12 +118,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const logout = useCallback(async () => {
     await signOut();
+    setOtpStateInternal(initialOtpState);
+    sessionStorage.removeItem(OTP_STATE_KEY);
     router.push("/login");
   }, [router]);
 
   const value: AuthContextValue = {
     session,
     isLoading,
+    otpState,
+    setOtpState,
+    resetOtpState,
     sendOtp,
     verifyOtp,
     loginWithGoogle,

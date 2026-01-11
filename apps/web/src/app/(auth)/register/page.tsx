@@ -14,30 +14,27 @@ import {
   type OtpFormData,
 } from "@somar/shared/validation";
 
-type Step = "info" | "otp";
-
 export default function RegisterPage() {
-  const { sendOtp, verifyOtp, loginWithGoogle } = useAuth();
-  const [step, setStep] = useState<Step>("info");
+  const { sendOtp, verifyOtp, loginWithGoogle, otpState, setOtpState, resetOtpState } = useAuth();
   const [isResending, setIsResending] = useState(false);
 
-  // Info form (name + email)
+  // Info form (name + email) - use values from context if available
   const infoForm = useForm<RegisterEmailFormData>({
     resolver: zodResolver(registerEmailSchema),
-    defaultValues: { name: "", email: "" },
+    defaultValues: { name: otpState.name || "", email: otpState.email || "" },
   });
 
-  // OTP form
+  // OTP form - use email from context
   const otpForm = useForm<OtpFormData>({
     resolver: zodResolver(otpSchema),
-    defaultValues: { email: "", otp: "" },
+    defaultValues: { email: otpState.email || "", otp: "" },
   });
 
   async function handleInfoSubmit(data: RegisterEmailFormData) {
     try {
       await sendOtp(data.email);
       otpForm.setValue("email", data.email);
-      setStep("otp");
+      setOtpState({ step: "otp", email: data.email, name: data.name });
     } catch (err) {
       infoForm.setError("root", {
         message: err instanceof Error ? err.message : "Failed to send code",
@@ -47,7 +44,9 @@ export default function RegisterPage() {
 
   async function handleOtpSubmit(data: OtpFormData) {
     try {
-      await verifyOtp(data.email, data.otp, infoForm.getValues("name"));
+      // Use name from context (persists across remounts) or fall back to form
+      const name = otpState.name || infoForm.getValues("name");
+      await verifyOtp(data.email, data.otp, name);
     } catch (err) {
       otpForm.setError("root", {
         message: err instanceof Error ? err.message : "Invalid code",
@@ -79,15 +78,15 @@ export default function RegisterPage() {
   }
 
   function handleBack() {
-    setStep("info");
+    resetOtpState();
     otpForm.reset();
   }
 
   const isInfoSubmitting = infoForm.formState.isSubmitting;
   const isOtpSubmitting = otpForm.formState.isSubmitting;
 
-  // Loading state
-  if (isOtpSubmitting) {
+  // Loading state - show while submitting OTP or after successful verification (before navigation)
+  if (isOtpSubmitting || otpState.step === "verifying") {
     return (
       <div className={authFormStyles.loading.container}>
         <div className={authFormStyles.loading.spinner} />
@@ -98,7 +97,7 @@ export default function RegisterPage() {
   }
 
   // OTP step
-  if (step === "otp") {
+  if (otpState.step === "otp") {
     return (
       <div className={`${authFormStyles.cardWithBack} relative`}>
         <button
