@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/providers";
@@ -211,13 +210,6 @@ export default function LoginPage() {
           </span>
         </button>
       </form>
-
-      <div className={authFormStyles.footer.container}>
-        <span className={authFormStyles.footer.text}>Don't have an account?</span>
-        <Link href="/register" className={authFormStyles.footer.link}>
-          Sign up
-        </Link>
-      </div>
     </div>
   );
 }

@@ -8,7 +8,6 @@ import {
   Platform,
   ScrollView,
 } from "react-native";
-import { useRouter } from "expo-router";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "../../src/providers";
@@ -23,7 +22,6 @@ import {
 } from "@somar/shared/validation";
 
 export default function LoginScreen() {
-  const router = useRouter();
   const { sendOtp, verifyOtp, loginWithGoogle, otpState, setOtpState, resetOtpState } = useAuth();
   const [isResending, setIsResending] = useState(false);
 
@@ -239,13 +237,6 @@ export default function LoginScreen() {
               {isEmailSubmitting ? "Sending code..." : "Continue with email"}
             </Text>
           </TouchableOpacity>
-
-          <View className={authFormStyles.footer.container}>
-            <Text className={authFormStyles.footer.text}>Don't have an account?</Text>
-            <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
-              <Text className={authFormStyles.footer.link}>Sign up</Text>
-            </TouchableOpacity>
-          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

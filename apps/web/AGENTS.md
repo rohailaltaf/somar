@@ -8,7 +8,7 @@ Next.js 16 with App Router, shadcn/ui, Tailwind CSS v4, Framer Motion.
 src/
 ├── app/                    # Next.js App Router
 │   ├── page.tsx            # Dashboard
-│   ├── (auth)/             # Login, register, signout
+│   ├── (auth)/             # Login, signout
 │   ├── accounts/           # Account management + Plaid
 │   ├── categories/         # Category + budget management
 │   ├── transactions/       # Transaction list (paginated)

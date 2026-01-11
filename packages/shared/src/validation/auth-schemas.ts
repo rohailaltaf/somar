@@ -25,20 +25,3 @@ export const otpSchema = z.object({
 });
 
 export type OtpFormData = z.infer<typeof otpSchema>;
-
-// Registration schema (name + email, then OTP)
-export const registerEmailSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  email: z
-    .string()
-    .min(1, "Email is required")
-    .email("Please enter a valid email address"),
-});
-
-export type RegisterEmailFormData = z.infer<typeof registerEmailSchema>;
-
-// Legacy exports for backwards compatibility during migration
-export const loginSchema = emailSchema;
-export type LoginFormData = EmailFormData;
-export const registerSchema = registerEmailSchema;
-export type RegisterFormData = RegisterEmailFormData;

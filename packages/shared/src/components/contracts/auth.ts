@@ -5,12 +5,11 @@
 
 /**
  * OTP flow step.
- * - "email": Enter email (login)
- * - "info": Enter name + email (register)
+ * - "email": Enter email
  * - "otp": Enter OTP code
  * - "verifying": OTP verified, navigating to app
  */
-export type OtpStep = "email" | "info" | "otp" | "verifying";
+export type OtpStep = "email" | "otp" | "verifying";
 
 /**
  * OTP flow state.
@@ -19,7 +18,6 @@ export type OtpStep = "email" | "info" | "otp" | "verifying";
 export interface OtpState {
   step: OtpStep;
   email: string;
-  name?: string;
 }
 
 /**
@@ -28,5 +26,4 @@ export interface OtpState {
 export const initialOtpState: OtpState = {
   step: "email",
   email: "",
-  name: undefined,
 };
