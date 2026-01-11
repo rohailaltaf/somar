@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { IncomeOverviewClient } from "./income-overview-client";
 import * as TransactionService from "@somar/shared/services";
-import { getCurrentMonth, getPreviousMonth } from "@somar/shared";
+import { getCurrentMonth, getPreviousMonth, getMonthDateRange } from "@somar/shared";
 
 export default function IncomeOverviewPage() {
   return (
@@ -31,15 +31,18 @@ function IncomeOverviewContent() {
   const lastMonth = useMemo(() => getPreviousMonth(currentMonth), [currentMonth]);
   const currentYear = useMemo(() => new Date().getFullYear(), []);
 
+  const currentRange = useMemo(() => getMonthDateRange(currentMonth), [currentMonth]);
+  const lastRange = useMemo(() => getMonthDateRange(lastMonth), [lastMonth]);
+
   // Fetch all income data using React Query
   const { data: currentTotal = 0 } = useQuery({
-    queryKey: ["income", "total", currentMonth],
-    queryFn: () => TransactionService.getTotalIncome(currentMonth),
+    queryKey: ["income", "total", currentRange.startDate, currentRange.endDate],
+    queryFn: () => TransactionService.getTotalIncome(currentRange.startDate, currentRange.endDate),
   });
 
   const { data: lastTotal = 0 } = useQuery({
-    queryKey: ["income", "total", lastMonth],
-    queryFn: () => TransactionService.getTotalIncome(lastMonth),
+    queryKey: ["income", "total", lastRange.startDate, lastRange.endDate],
+    queryFn: () => TransactionService.getTotalIncome(lastRange.startDate, lastRange.endDate),
   });
 
   const { data: yearTotal = 0 } = useQuery({
@@ -48,13 +51,13 @@ function IncomeOverviewContent() {
   });
 
   const { data: currentCategoryIncome = [] } = useQuery({
-    queryKey: ["income", "byCategory", currentMonth],
-    queryFn: () => TransactionService.getIncomeByCategory(currentMonth),
+    queryKey: ["income", "byCategory", currentRange.startDate, currentRange.endDate],
+    queryFn: () => TransactionService.getIncomeByCategory(currentRange.startDate, currentRange.endDate),
   });
 
   const { data: lastCategoryIncome = [] } = useQuery({
-    queryKey: ["income", "byCategory", lastMonth],
-    queryFn: () => TransactionService.getIncomeByCategory(lastMonth),
+    queryKey: ["income", "byCategory", lastRange.startDate, lastRange.endDate],
+    queryFn: () => TransactionService.getIncomeByCategory(lastRange.startDate, lastRange.endDate),
   });
 
   const { data: yearCategoryIncome = [] } = useQuery({

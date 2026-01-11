@@ -60,16 +60,7 @@ export async function getUnconfirmedCount(): Promise<number> {
   return response.total ?? 0;
 }
 
-function monthToDateRange(month: string): { startDate: string; endDate: string } {
-  const [year, monthNum] = month.split("-").map(Number);
-  const startDate = `${year}-${String(monthNum).padStart(2, "0")}-01`;
-  const lastDay = new Date(year, monthNum, 0).getDate();
-  const endDate = `${year}-${String(monthNum).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
-  return { startDate, endDate };
-}
-
-export async function getTotalSpending(month: string): Promise<number> {
-  const { startDate, endDate } = monthToDateRange(month);
+export async function getTotalSpending(startDate: string, endDate: string): Promise<number> {
   const response = await apiGet<ApiResponse<{ total: number }>>(
     `/api/transactions/stats?startDate=${startDate}&endDate=${endDate}&stat=total`
   );
@@ -82,10 +73,10 @@ export interface SpendingByCategoryOptions {
 }
 
 export async function getSpendingByCategory(
-  month: string,
+  startDate: string,
+  endDate: string,
   options?: SpendingByCategoryOptions
 ): Promise<Array<{ id: string; name: string; color: string; spent: number; budget: number | null }>> {
-  const { startDate, endDate } = monthToDateRange(month);
   const response = await apiGet<ApiResponse<{ byCategory: Array<{ id: string; name: string; color: string; amount: number }> }>>(
     `/api/transactions/stats?startDate=${startDate}&endDate=${endDate}&stat=byCategory`
   );
@@ -109,9 +100,9 @@ export async function getSpendingByCategory(
 }
 
 export async function getDailyCumulativeSpending(
-  month: string
+  startDate: string,
+  endDate: string
 ): Promise<Array<{ day: number; date: string; cumulative: number }>> {
-  const { startDate, endDate } = monthToDateRange(month);
   const response = await apiGet<ApiResponse<{ cumulative: Array<{ date: string; daily: number; cumulative: number }> }>>(
     `/api/transactions/stats?startDate=${startDate}&endDate=${endDate}&stat=cumulative`
   );
@@ -154,19 +145,30 @@ export async function getYearToDateCategorySpending(
     .sort((a, b) => b.spent - a.spent);
 }
 
+function getMonthDateRange(year: number, month: number): { startDate: string; endDate: string } {
+  const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
+  const lastDay = new Date(year, month, 0).getDate();
+  const endDate = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+  return { startDate, endDate };
+}
+
 export async function getMonthlyCumulativeSpending(
   year: number
 ): Promise<Array<{ month: number; monthStr: string; cumulative: number }>> {
   const currentMonth = new Date().getMonth() + 1;
   const months = Array.from({ length: currentMonth }, (_, i) => i + 1);
-  const monthStrs = months.map((m) => `${year}-${String(m).padStart(2, "0")}`);
 
-  const totals = await Promise.all(monthStrs.map((m) => getTotalSpending(m)));
+  const totals = await Promise.all(
+    months.map((m) => {
+      const { startDate, endDate } = getMonthDateRange(year, m);
+      return getTotalSpending(startDate, endDate);
+    })
+  );
 
   let cumulative = 0;
   return months.map((month, i) => {
     cumulative += totals[i];
-    return { month, monthStr: monthStrs[i], cumulative };
+    return { month, monthStr: `${year}-${String(month).padStart(2, "0")}`, cumulative };
   });
 }
 
@@ -180,11 +182,7 @@ export interface SpendingTransaction {
   accountName: string | null;
 }
 
-export async function getSpendingTransactions(month: string): Promise<SpendingTransaction[]> {
-  const [year, monthNum] = month.split("-");
-  const startDate = `${year}-${monthNum}-01`;
-  const endDate = `${year}-${monthNum}-31`;
-
+export async function getSpendingTransactions(startDate: string, endDate: string): Promise<SpendingTransaction[]> {
   const transactions = await getTransactionsFiltered({
     startDate,
     endDate,
@@ -227,8 +225,7 @@ export async function getYearSpendingTransactions(year: number): Promise<Spendin
     }));
 }
 
-export async function getTotalIncome(month: string): Promise<number> {
-  const { startDate, endDate } = monthToDateRange(month);
+export async function getTotalIncome(startDate: string, endDate: string): Promise<number> {
   const response = await apiGet<ApiResponse<{ income: number }>>(
     `/api/transactions/stats?startDate=${startDate}&endDate=${endDate}&stat=income`
   );
@@ -236,13 +233,9 @@ export async function getTotalIncome(month: string): Promise<number> {
 }
 
 export async function getIncomeByCategory(
-  month: string
+  startDate: string,
+  endDate: string
 ): Promise<Array<{ id: string; name: string; color: string; income: number }>> {
-  // Fetch transactions and aggregate by income categories
-  const [year, monthNum] = month.split("-");
-  const startDate = `${year}-${monthNum}-01`;
-  const endDate = `${year}-${monthNum}-31`;
-
   const transactions = await getTransactionsFiltered({
     startDate,
     endDate,
@@ -288,9 +281,13 @@ export async function getYearToDateCategoryIncome(
 ): Promise<Array<{ id: string; name: string; color: string; income: number }>> {
   const currentMonth = new Date().getMonth() + 1;
   const months = Array.from({ length: currentMonth }, (_, i) => i + 1);
-  const monthStrs = months.map((m) => `${year}-${String(m).padStart(2, "0")}`);
 
-  const monthlyData = await Promise.all(monthStrs.map((m) => getIncomeByCategory(m)));
+  const monthlyData = await Promise.all(
+    months.map((m) => {
+      const { startDate, endDate } = getMonthDateRange(year, m);
+      return getIncomeByCategory(startDate, endDate);
+    })
+  );
 
   const categoryTotals: Map<string, { id: string; name: string; color: string; income: number }> = new Map();
   for (const monthData of monthlyData) {
@@ -312,11 +309,19 @@ export async function getMonthlyIncome(
 ): Promise<Array<{ month: number; monthStr: string; amount: number }>> {
   const currentMonth = new Date().getMonth() + 1;
   const months = Array.from({ length: currentMonth }, (_, i) => i + 1);
-  const monthStrs = months.map((m) => `${year}-${String(m).padStart(2, "0")}`);
 
-  const amounts = await Promise.all(monthStrs.map((m) => getTotalIncome(m)));
+  const amounts = await Promise.all(
+    months.map((m) => {
+      const { startDate, endDate } = getMonthDateRange(year, m);
+      return getTotalIncome(startDate, endDate);
+    })
+  );
 
-  return months.map((month, i) => ({ month, monthStr: monthStrs[i], amount: amounts[i] }));
+  return months.map((month, i) => ({
+    month,
+    monthStr: `${year}-${String(month).padStart(2, "0")}`,
+    amount: amounts[i],
+  }));
 }
 
 // ============ Mutations ============

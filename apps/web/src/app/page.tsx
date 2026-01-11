@@ -32,6 +32,7 @@ import {
 import {
   getCurrentMonth,
   getPreviousMonth,
+  getMonthDateRange,
   getPercentageChange,
   getBudgetProgress,
   getBudgetRemaining,
@@ -67,13 +68,15 @@ function DashboardContent() {
   const router = useRouter();
   const currentMonth = useMemo(() => getCurrentMonth(), []);
   const previousMonth = useMemo(() => getPreviousMonth(currentMonth), [currentMonth]);
+  const currentRange = useMemo(() => getMonthDateRange(currentMonth), [currentMonth]);
+  const previousRange = useMemo(() => getMonthDateRange(previousMonth), [previousMonth]);
 
-  const spendingResult = useSpendingByCategory(currentMonth);
+  const spendingResult = useSpendingByCategory(currentRange.startDate, currentRange.endDate);
   const categorySpending: CategorySpendingItem[] = spendingResult.data ?? [];
   const loadingSpending = spendingResult.isLoading;
   const { data: totalSpending = 0, isLoading: loadingTotal } =
-    useTotalSpending(currentMonth);
-  const { data: lastMonthSpending = 0 } = useTotalSpending(previousMonth);
+    useTotalSpending(currentRange.startDate, currentRange.endDate);
+  const { data: lastMonthSpending = 0 } = useTotalSpending(previousRange.startDate, previousRange.endDate);
   const { data: unconfirmedCount = 0, isLoading: loadingUnconfirmed } =
     useUnconfirmedCount();
   const transactionsResult = useRecentTransactions(6);

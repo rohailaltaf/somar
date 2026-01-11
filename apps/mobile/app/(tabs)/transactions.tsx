@@ -10,7 +10,7 @@ import {
 import { Search, X } from "lucide-react-native";
 import { useTransactions, useTotalSpending } from "@somar/shared/hooks";
 import type { TransactionWithRelations } from "@somar/shared";
-import { getCurrentMonth } from "@somar/shared";
+import { getCurrentMonth, getMonthDateRange } from "@somar/shared";
 import {
   TransactionsEmptyState,
   SearchEmptyState,
@@ -53,7 +53,8 @@ export default function Transactions() {
   const searchInputRef = useRef<TextInput>(null);
 
   const currentMonth = useMemo(() => getCurrentMonth(), []);
-  const { data: monthlySpending = 0 } = useTotalSpending(currentMonth);
+  const currentRange = useMemo(() => getMonthDateRange(currentMonth), [currentMonth]);
+  const { data: monthlySpending = 0 } = useTotalSpending(currentRange.startDate, currentRange.endDate);
   const { data: transactions = [], isLoading, refetch } = useTransactions();
 
   const onRefresh = useCallback(async () => {
