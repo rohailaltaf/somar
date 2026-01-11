@@ -5,20 +5,19 @@
  */
 
 /**
- * Parse a YYYY-MM-DD string into a Date object in local time.
- * Avoids timezone issues that occur with `new Date("YYYY-MM-DD")`.
+ * Parse a YYYY-MM-DD date string into a Date object.
+ * Uses timezone-safe parsing to avoid day shifts.
  */
 export function parseDate(dateStr: string): Date {
+  if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    throw new Error(`Invalid date format: ${dateStr}. Expected YYYY-MM-DD`);
+  }
   const [year, month, day] = dateStr.split("-").map(Number);
-  return new Date(year, month - 1, day);
-}
-
-/**
- * Format a Date object as YYYY-MM-DD string.
- * Avoids timezone issues that occur with `toISOString().split("T")[0]`.
- */
-export function toDateString(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  const date = new Date(year, month - 1, day);
+  if (isNaN(date.getTime())) {
+    throw new Error(`Invalid date: ${dateStr}`);
+  }
+  return date;
 }
 
 /**
@@ -75,6 +74,17 @@ export function formatMonth(month: string): string {
 export function getPercentageChange(current: number, previous: number): number | null {
   if (previous === 0) return null;
   return Math.round(((current - previous) / previous) * 100);
+}
+
+/**
+ * Convert a Date object to YYYY-MM-DD string using local time.
+ * Avoids timezone issues that occur with toISOString().
+ */
+export function toDateString(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 /**
