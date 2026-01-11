@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { headers } from "next/headers";
+import { serializeTransactions } from "@/lib/date-helpers";
 
 /**
  * GET /api/transactions/unconfirmed
@@ -50,7 +51,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       success: true,
-      data: transactions,
+      data: serializeTransactions(transactions),
       total,
     });
   } catch (error) {

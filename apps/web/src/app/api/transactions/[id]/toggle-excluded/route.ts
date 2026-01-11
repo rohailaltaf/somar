@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { headers } from "next/headers";
+import { serializeTransaction } from "@/lib/date-helpers";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -45,7 +46,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       include: { category: true, account: true },
     });
 
-    return NextResponse.json({ success: true, data: updated });
+    return NextResponse.json({ success: true, data: serializeTransaction(updated) });
   } catch (error) {
     console.error("[Transactions] Error toggling excluded:", error);
     return NextResponse.json(

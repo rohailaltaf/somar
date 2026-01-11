@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { headers } from "next/headers";
 import { parseDate, toDateString } from "@somar/shared/utils";
+import { toDateField, fromDateField } from "@/lib/date-helpers";
 
 /**
  * GET /api/transactions/stats
@@ -39,7 +40,7 @@ export async function GET(request: Request) {
 
     const baseWhere = {
       userId: session.user.id,
-      date: { gte: startDate, lte: endDate },
+      date: { gte: toDateField(startDate), lte: toDateField(endDate) },
       excluded: false,
       amount: { lt: 0 }, // Only expenses (negative amounts)
     };
@@ -89,7 +90,8 @@ export async function GET(request: Request) {
 
       const dailyTotals: Record<string, number> = {};
       for (const txn of transactions) {
-        dailyTotals[txn.date] = (dailyTotals[txn.date] || 0) + Math.abs(txn.amount);
+        const dateStr = fromDateField(txn.date);
+        dailyTotals[dateStr] = (dailyTotals[dateStr] || 0) + Math.abs(txn.amount);
       }
 
       // Build cumulative data for each day in range
@@ -113,7 +115,7 @@ export async function GET(request: Request) {
       const incomeResult = await db.transaction.aggregate({
         where: {
           userId: session.user.id,
-          date: { gte: startDate, lte: endDate },
+          date: { gte: toDateField(startDate), lte: toDateField(endDate) },
           excluded: false,
           amount: { gt: 0 }, // Only income (positive amounts)
         },

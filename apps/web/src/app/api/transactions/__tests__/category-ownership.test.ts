@@ -337,6 +337,7 @@ describe("Transaction Category Ownership Validation", () => {
       mockDb.transaction.update.mockResolvedValue({
         id: mockTransactionId,
         categoryId: mockCategoryId,
+        date: new Date(Date.UTC(2024, 0, 15)),
         category: { id: mockCategoryId, name: "Food" },
         account: { id: mockAccountId, name: "Checking" },
       });
@@ -375,6 +376,7 @@ describe("Transaction Category Ownership Validation", () => {
       mockDb.transaction.update.mockResolvedValue({
         id: mockTransactionId,
         categoryId: null,
+        date: new Date(Date.UTC(2024, 0, 15)),
         category: null,
         account: { id: mockAccountId, name: "Checking" },
       });
@@ -415,6 +417,7 @@ describe("Transaction Category Ownership Validation", () => {
       mockDb.transaction.update.mockResolvedValue({
         id: mockTransactionId,
         description: "Updated description",
+        date: new Date(Date.UTC(2024, 0, 15)),
         category: null,
         account: { id: mockAccountId, name: "Checking" },
       });

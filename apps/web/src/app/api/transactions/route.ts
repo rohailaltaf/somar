@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { headers } from "next/headers";
+import { toDateField, serializeTransactions } from "@/lib/date-helpers";
 
 /**
  * GET /api/transactions
@@ -43,8 +44,8 @@ export async function GET(request: Request) {
       userId: session.user.id,
       ...(accountId && { accountId }),
       ...(categoryId === "null" ? { categoryId: null } : categoryId ? { categoryId } : {}),
-      ...(startDate && { date: { gte: startDate } }),
-      ...(endDate && { date: { ...(startDate ? { gte: startDate } : {}), lte: endDate } }),
+      ...(startDate && { date: { gte: toDateField(startDate) } }),
+      ...(endDate && { date: { ...(startDate ? { gte: toDateField(startDate) } : {}), lte: toDateField(endDate) } }),
       ...(!showExcluded && { excluded: false }),
       ...(search && { description: { contains: search, mode: "insensitive" as const } }),
     };
@@ -65,7 +66,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       success: true,
-      data: transactions,
+      data: serializeTransactions(transactions),
       pagination: {
         total,
         limit,
@@ -149,7 +150,7 @@ export async function POST(request: Request) {
         categoryId: txn.categoryId || null,
         description: txn.description,
         amount: txn.amount,
-        date: txn.date,
+        date: toDateField(txn.date),
         excluded: txn.excluded || false,
         isConfirmed: txn.isConfirmed || false,
         plaidTransactionId: txn.plaidTransactionId || null,

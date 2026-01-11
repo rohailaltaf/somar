@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { headers } from "next/headers";
+import { serializeTransaction, toDateField } from "@/lib/date-helpers";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -38,7 +39,7 @@ export async function GET(request: Request, { params }: RouteParams) {
       );
     }
 
-    return NextResponse.json({ success: true, data: transaction });
+    return NextResponse.json({ success: true, data: serializeTransaction(transaction) });
   } catch (error) {
     console.error("[Transactions] Error fetching:", error);
     return NextResponse.json(
@@ -102,14 +103,14 @@ export async function PATCH(request: Request, { params }: RouteParams) {
         ...(categoryId !== undefined && { categoryId }),
         ...(description !== undefined && { description }),
         ...(amount !== undefined && { amount }),
-        ...(date !== undefined && { date }),
+        ...(date !== undefined && { date: toDateField(date) }),
         ...(excluded !== undefined && { excluded }),
         ...(isConfirmed !== undefined && { isConfirmed }),
       },
       include: { category: true, account: true },
     });
 
-    return NextResponse.json({ success: true, data: transaction });
+    return NextResponse.json({ success: true, data: serializeTransaction(transaction) });
   } catch (error) {
     console.error("[Transactions] Error updating:", error);
     return NextResponse.json(
