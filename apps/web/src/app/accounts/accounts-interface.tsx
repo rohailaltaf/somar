@@ -48,6 +48,7 @@ import {
   TrendingUp,
   ArrowRight,
 } from "lucide-react";
+import { PlaidSyncModal } from "@/components/plaid-sync-modal";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -117,6 +118,11 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
   // State for update mode (managing accounts) - uses shared linkToken
   const [updateModeItemId, setUpdateModeItemId] = useState<string | null>(null);
   const [isUpdatingAccounts, setIsUpdatingAccounts] = useState(false);
+
+  // State for sync modal
+  const [syncModalOpen, setSyncModalOpen] = useState(false);
+  const [syncModalInstitution, setSyncModalInstitution] = useState("");
+  const [pendingSyncItemId, setPendingSyncItemId] = useState<string | null>(null);
 
   const invalidateQueries = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["accounts"] });
@@ -275,34 +281,11 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
 
         invalidateQueries();
 
-        // Auto-sync: Server handles retry logic for initial sync
+        // Show sync modal for initial sync
         if (data.itemId) {
-          toast.info("Fetching transactions from your bank...", {
-            description: "This may take up to a minute",
-            duration: 3000,
-          });
-
-          try {
-            const result = await plaidSyncItem(data.itemId);
-
-            if (result.errors.length > 0) {
-              toast.error(result.errors[0]);
-            } else {
-              if (result.added > 0) {
-                toast.success(`Synced ${result.added} transaction${result.added !== 1 ? "s" : ""}`, {
-                  duration: 5000,
-                });
-              } else {
-                toast.info("No transactions yet - sync again in a few minutes", {
-                  duration: 5000,
-                });
-              }
-            }
-
-            queryClient.invalidateQueries({ queryKey: ["transactions"] });
-          } catch {
-            toast.error("Failed to sync - try again in a few minutes");
-          }
+          setSyncModalInstitution(metadata.institution?.name || "your bank");
+          setPendingSyncItemId(data.itemId);
+          setSyncModalOpen(true);
         }
       } catch {
         toast.error("Failed to connect institution");
@@ -320,6 +303,22 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
     setUpdateModeItemId(null);
     setLinkToken(null);
   }, []);
+
+  // Handle sync modal completion
+  const handleSyncModalComplete = useCallback(() => {
+    setSyncModalOpen(false);
+    setPendingSyncItemId(null);
+    queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    invalidateQueries();
+  }, [queryClient, invalidateQueries]);
+
+  // Sync function for the modal
+  const performModalSync = useCallback(async () => {
+    if (!pendingSyncItemId) {
+      return { added: 0, errors: ["No item to sync"] };
+    }
+    return plaidSyncItem(pendingSyncItemId);
+  }, [pendingSyncItemId, plaidSyncItem]);
 
   const handleSync = async (itemId: string) => {
     setSyncingItems((prev) => new Set(prev).add(itemId));
@@ -1158,6 +1157,14 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Plaid Sync Modal */}
+      <PlaidSyncModal
+        isOpen={syncModalOpen}
+        institutionName={syncModalInstitution}
+        onComplete={handleSyncModalComplete}
+        syncFunction={performModalSync}
+      />
     </>
   );
 }

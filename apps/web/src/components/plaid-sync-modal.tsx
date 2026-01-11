@@ -1,0 +1,489 @@
+"use client";
+
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Building2, Check, Sparkles } from "lucide-react";
+
+// Custom smooth easing
+const smoothEase = [0.16, 1, 0.3, 1] as const;
+
+type SyncStage = "connecting" | "syncing" | "success";
+
+interface PlaidSyncModalProps {
+  isOpen: boolean;
+  institutionName: string;
+  onComplete: () => void;
+  syncFunction: () => Promise<{ added: number; errors: string[] }>;
+}
+
+// Animated orbital dots around the bank icon
+function OrbitalDots({ stage }: { stage: SyncStage }) {
+  const dotCount = 8;
+  const dots = Array.from({ length: dotCount }, (_, i) => i);
+
+  return (
+    <div className="absolute inset-0">
+      {dots.map((i) => {
+        const angle = (i / dotCount) * 360;
+        const delay = i * 0.1;
+
+        return (
+          <motion.div
+            key={i}
+            className="absolute top-1/2 left-1/2 w-2 h-2"
+            style={{
+              originX: 0,
+              originY: 0,
+            }}
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{
+              opacity: stage === "success" ? 0 : [0.3, 0.8, 0.3],
+              scale: stage === "success" ? 0 : 1,
+              rotate: [angle, angle + 360],
+            }}
+            transition={{
+              opacity: {
+                duration: 2,
+                repeat: Infinity,
+                delay,
+              },
+              rotate: {
+                duration: 8,
+                repeat: Infinity,
+                ease: "linear",
+              },
+              scale: {
+                duration: 0.3,
+              },
+            }}
+          >
+            <motion.div
+              className="absolute rounded-full bg-primary"
+              style={{
+                width: 6,
+                height: 6,
+                x: 52,
+                y: -3,
+              }}
+              animate={{
+                scale: [1, 1.5, 1],
+              }}
+              transition={{
+                duration: 1.5,
+                repeat: Infinity,
+                delay,
+              }}
+            />
+          </motion.div>
+        );
+      })}
+    </div>
+  );
+}
+
+// Pulsing rings behind the icon
+function PulsingRings({ stage }: { stage: SyncStage }) {
+  return (
+    <>
+      {[0, 1, 2].map((i) => (
+        <motion.div
+          key={i}
+          className="absolute inset-0 rounded-full border-2 border-primary/30"
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={
+            stage === "success"
+              ? { scale: 1.5, opacity: 0 }
+              : {
+                  scale: [1, 1.8, 2],
+                  opacity: [0.4, 0.2, 0],
+                }
+          }
+          transition={{
+            duration: 2,
+            repeat: stage === "success" ? 0 : Infinity,
+            delay: i * 0.6,
+            ease: "easeOut",
+          }}
+        />
+      ))}
+    </>
+  );
+}
+
+// Seeded random for consistent particle positions
+function seededRandom(seed: number) {
+  const x = Math.sin(seed) * 10000;
+  return x - Math.floor(x);
+}
+
+// Floating particles in the background
+function FloatingParticles() {
+  const particles = useMemo(
+    () =>
+      Array.from({ length: 20 }, (_, i) => ({
+        id: i,
+        x: seededRandom(i * 1.1) * 100,
+        y: seededRandom(i * 2.2) * 100,
+        size: seededRandom(i * 3.3) * 4 + 2,
+        duration: seededRandom(i * 4.4) * 3 + 4,
+        delay: seededRandom(i * 5.5) * 2,
+      })),
+    []
+  );
+
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {particles.map((p) => (
+        <motion.div
+          key={p.id}
+          className="absolute rounded-full bg-primary/20"
+          style={{
+            left: `${p.x}%`,
+            top: `${p.y}%`,
+            width: p.size,
+            height: p.size,
+          }}
+          animate={{
+            y: [-20, 20, -20],
+            opacity: [0.2, 0.5, 0.2],
+          }}
+          transition={{
+            duration: p.duration,
+            repeat: Infinity,
+            delay: p.delay,
+            ease: "easeInOut",
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// Progress messages that cycle during sync
+const syncMessages = [
+  "Connecting to your bank...",
+  "Securely fetching transactions...",
+  "Processing your data...",
+  "Almost there...",
+  "Organizing your finances...",
+];
+
+export function PlaidSyncModal({
+  isOpen,
+  institutionName,
+  onComplete,
+  syncFunction,
+}: PlaidSyncModalProps) {
+  const [stage, setStage] = useState<SyncStage>("connecting");
+  const [messageIndex, setMessageIndex] = useState(0);
+  const [transactionCount, setTransactionCount] = useState(0);
+  const [hasError, setHasError] = useState(false);
+
+  // Cycle through messages during sync
+  useEffect(() => {
+    if (stage !== "syncing") return;
+
+    const interval = setInterval(() => {
+      setMessageIndex((prev) => (prev + 1) % syncMessages.length);
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [stage]);
+
+  // Handle the sync process
+  const performSync = useCallback(async () => {
+    setStage("connecting");
+    setHasError(false);
+
+    // Brief connecting animation
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+
+    setStage("syncing");
+
+    try {
+      const result = await syncFunction();
+
+      if (result.errors.length > 0) {
+        setHasError(true);
+        // Still show success but note the error
+        setTimeout(() => onComplete(), 2000);
+        return;
+      }
+
+      setTransactionCount(result.added);
+      setStage("success");
+
+      // Auto-close after success animation
+      setTimeout(() => {
+        onComplete();
+      }, 2500);
+    } catch {
+      setHasError(true);
+      setTimeout(() => onComplete(), 2000);
+    }
+  }, [syncFunction, onComplete]);
+
+  // Start sync when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      performSync();
+    } else {
+      // Reset state when closed
+      setStage("connecting");
+      setMessageIndex(0);
+      setTransactionCount(0);
+      setHasError(false);
+    }
+  }, [isOpen, performSync]);
+
+  const getMessage = () => {
+    switch (stage) {
+      case "connecting":
+        return `Connecting to ${institutionName}...`;
+      case "syncing":
+        return syncMessages[messageIndex];
+      case "success":
+        if (transactionCount > 0) {
+          return `${transactionCount} transaction${transactionCount !== 1 ? "s" : ""} synced!`;
+        }
+        return "All synced up!";
+    }
+  };
+
+  const getSubMessage = () => {
+    switch (stage) {
+      case "connecting":
+        return "Establishing secure connection";
+      case "syncing":
+        return "This may take up to a minute";
+      case "success":
+        return hasError
+          ? "Completed with some issues"
+          : "Your transactions are ready";
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          {/* Backdrop */}
+          <motion.div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          />
+
+          {/* Modal Container - fullscreen on mobile, centered modal on desktop */}
+          <motion.div
+            className="relative w-full h-full sm:w-auto sm:h-auto sm:max-w-md sm:mx-4"
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            transition={{ duration: 0.4, ease: smoothEase }}
+          >
+            {/* Content */}
+            <div className="relative h-full sm:h-auto flex flex-col items-center justify-center bg-background sm:rounded-3xl overflow-hidden">
+              {/* Background gradient */}
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-primary/5" />
+
+              {/* Floating particles */}
+              <FloatingParticles />
+
+              {/* Main content */}
+              <div className="relative flex flex-col items-center justify-center px-8 py-16 sm:py-12 min-h-[400px]">
+                {/* Animated icon container */}
+                <div className="relative w-32 h-32 mb-8">
+                  <PulsingRings stage={stage} />
+                  <OrbitalDots stage={stage} />
+
+                  {/* Main icon */}
+                  <motion.div
+                    className="absolute inset-0 flex items-center justify-center"
+                    animate={{
+                      scale: stage === "success" ? [1, 1.1, 1] : 1,
+                    }}
+                    transition={{
+                      duration: 0.5,
+                      ease: smoothEase,
+                    }}
+                  >
+                    <motion.div
+                      className="relative w-24 h-24 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shadow-lg shadow-primary/20"
+                      animate={{
+                        rotate: stage === "syncing" ? [0, 5, -5, 0] : 0,
+                      }}
+                      transition={{
+                        duration: 4,
+                        repeat: stage === "syncing" ? Infinity : 0,
+                        ease: "easeInOut",
+                      }}
+                    >
+                      {/* Glow effect */}
+                      <div className="absolute inset-0 rounded-2xl bg-primary/30 blur-xl" />
+
+                      {/* Icon */}
+                      <AnimatePresence mode="wait">
+                        {stage === "success" ? (
+                          <motion.div
+                            key="success"
+                            initial={{ scale: 0, rotate: -180 }}
+                            animate={{ scale: 1, rotate: 0 }}
+                            transition={{ duration: 0.5, ease: smoothEase }}
+                            className="relative z-10"
+                          >
+                            <div className="w-16 h-16 rounded-full bg-success flex items-center justify-center">
+                              <Check className="w-8 h-8 text-white" strokeWidth={3} />
+                            </div>
+                          </motion.div>
+                        ) : (
+                          <motion.div
+                            key="bank"
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            exit={{ scale: 0 }}
+                            className="relative z-10"
+                          >
+                            <Building2 className="w-10 h-10 text-primary" />
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+                  </motion.div>
+                </div>
+
+                {/* Institution name */}
+                <motion.div
+                  className="flex items-center gap-2 mb-4"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2, duration: 0.5, ease: smoothEase }}
+                >
+                  <Sparkles className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-medium text-primary">
+                    {institutionName}
+                  </span>
+                  <Sparkles className="w-4 h-4 text-primary" />
+                </motion.div>
+
+                {/* Main message */}
+                <motion.div
+                  className="text-center mb-2"
+                  layout
+                >
+                  <AnimatePresence mode="wait">
+                    <motion.h2
+                      key={getMessage()}
+                      className="text-xl sm:text-2xl font-semibold text-foreground"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      {getMessage()}
+                    </motion.h2>
+                  </AnimatePresence>
+                </motion.div>
+
+                {/* Sub message */}
+                <motion.p
+                  className="text-sm text-muted-foreground text-center mb-8"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  {getSubMessage()}
+                </motion.p>
+
+                {/* Progress indicator */}
+                <div className="w-full max-w-xs">
+                  {stage !== "success" ? (
+                    <div className="relative h-1.5 bg-muted rounded-full overflow-hidden">
+                      <motion.div
+                        className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary to-primary/70 rounded-full"
+                        initial={{ width: "0%" }}
+                        animate={{
+                          width: stage === "connecting" ? "30%" : "90%",
+                        }}
+                        transition={{
+                          duration: stage === "connecting" ? 1.5 : 25,
+                          ease: "easeOut",
+                        }}
+                      />
+                      {/* Shimmer effect */}
+                      <motion.div
+                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                        animate={{
+                          x: ["-100%", "200%"],
+                        }}
+                        transition={{
+                          duration: 1.5,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <motion.div
+                      className="h-1.5 bg-success rounded-full"
+                      initial={{ width: "90%" }}
+                      animate={{ width: "100%" }}
+                      transition={{ duration: 0.3, ease: smoothEase }}
+                    />
+                  )}
+                </div>
+
+                {/* Success celebration particles */}
+                <AnimatePresence>
+                  {stage === "success" && (
+                    <motion.div
+                      className="absolute inset-0 pointer-events-none"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                    >
+                      {Array.from({ length: 30 }).map((_, i) => (
+                        <motion.div
+                          key={i}
+                          className="absolute w-2 h-2 rounded-full"
+                          style={{
+                            left: "50%",
+                            top: "35%",
+                            backgroundColor:
+                              i % 3 === 0
+                                ? "var(--primary)"
+                                : i % 3 === 1
+                                  ? "var(--success)"
+                                  : "var(--gold)",
+                          }}
+                          initial={{ scale: 0, x: 0, y: 0 }}
+                          animate={{
+                            scale: [0, 1, 0],
+                            x: (seededRandom(i * 7.7) - 0.5) * 300,
+                            y: (seededRandom(i * 8.8) - 0.5) * 300,
+                          }}
+                          transition={{
+                            duration: 1,
+                            delay: i * 0.02,
+                            ease: "easeOut",
+                          }}
+                        />
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
