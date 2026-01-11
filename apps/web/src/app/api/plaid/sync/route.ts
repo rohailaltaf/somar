@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { plaidClient, isPlaidConfigured } from "@/lib/plaid";
+import { plaidClient, isPlaidConfigured, mapPlaidAccountType } from "@/lib/plaid";
 import { headers } from "next/headers";
 import type { Transaction as PlaidTransaction } from "plaid";
 import { parseDate, parseDateNullable } from "@somar/shared/utils";
@@ -27,20 +27,6 @@ function delay(ms: number): Promise<void> {
 function areTransactionsEnriched(transactions: PlaidTransaction[]): boolean {
   const nonPendingTx = transactions.find((tx) => !tx.pending);
   return !!(nonPendingTx && nonPendingTx.authorized_date);
-}
-
-/**
- * Map Plaid account type to our account type.
- */
-function mapPlaidAccountType(type: string, subtype?: string | null): string {
-  if (type === "credit") return "credit_card";
-  if (type === "depository") {
-    if (subtype === "savings") return "savings";
-    return "checking";
-  }
-  if (type === "investment") return "investment";
-  if (type === "loan") return "loan";
-  return "checking";
 }
 
 interface PlaidSyncRequest {
@@ -101,7 +87,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<PlaidSync
 
   // Get PlaidItem from central DB (verify ownership + get access token + cursor)
   const item = await db.plaidItem.findFirst({
-    where: { id: plaidItemId, userId: session.user.id },
+    where: { id: plaidItemId, userId: session.user.id, deletedAt: null },
     include: { plaidAccounts: true },
   });
 
@@ -114,7 +100,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<PlaidSync
 
   try {
     const isInitialSync = !item.cursor;
-    const maxRetries = isInitialSync ? 8 : 1;
+    // Client waits 20s before first sync, so fewer retries needed
+    const maxRetries = isInitialSync ? 3 : 1;
     let lastError: unknown = null;
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -168,7 +155,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<PlaidSync
               data: {
                 userId: session.user.id,
                 name: plaidAccount.name,
-                type: mapPlaidAccountType(plaidAccount.type),
+                type: mapPlaidAccountType(plaidAccount.type, plaidAccount.subtype),
                 plaidAccountId: plaidAccount.plaidAccountId,
               },
             });

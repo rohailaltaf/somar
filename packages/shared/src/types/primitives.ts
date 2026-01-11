@@ -5,12 +5,13 @@
 
 /**
  * The type of financial account.
- * - checking: Bank checking/savings accounts
+ * - checking: Bank checking accounts
+ * - savings: Bank savings accounts
  * - credit_card: Credit card accounts
  * - investment: Brokerage, retirement, crypto accounts
  * - loan: Mortgages, auto loans, student loans, etc.
  */
-export type AccountType = "checking" | "credit_card" | "investment" | "loan";
+export type AccountType = "checking" | "savings" | "credit_card" | "investment" | "loan";
 
 /**
  * The type of transaction category.

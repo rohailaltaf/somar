@@ -6,6 +6,7 @@
 // Transaction hooks
 export {
   useTransactions,
+  useTransactionsPaginated,
   useUnconfirmedTransactions,
   useRecentTransactions,
   useUnconfirmedCount,
@@ -13,6 +14,7 @@ export {
   useSpendingByCategory,
   useTransactionMutations,
   type TransactionFilterOptions,
+  type TransactionPaginationOptions,
   type SpendingByCategoryOptions,
 } from "./use-transactions";
 

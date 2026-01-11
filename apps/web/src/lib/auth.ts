@@ -27,10 +27,10 @@ export const auth = betterAuth({
 
   plugins: [expo()],
 
-  user: {
-    hooks: {
-      after: {
-        createUser: async ({ user }) => {
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (user) => {
           await db.category.createMany({
             data: DEFAULT_CATEGORIES.map((cat) => ({
               userId: user.id,

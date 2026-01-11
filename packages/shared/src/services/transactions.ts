@@ -16,6 +16,16 @@ export async function getAllTransactions(): Promise<TransactionWithRelations[]> 
   return response.data ?? [];
 }
 
+export interface PaginatedTransactionsResult {
+  data: TransactionWithRelations[];
+  pagination: {
+    total: number;
+    limit: number;
+    offset: number;
+    hasMore: boolean;
+  };
+}
+
 export async function getTransactionsFiltered(options: {
   accountId?: string;
   categoryId?: string | null;
@@ -26,6 +36,20 @@ export async function getTransactionsFiltered(options: {
   limit?: number;
   offset?: number;
 }): Promise<TransactionWithRelations[]> {
+  const result = await getTransactionsPaginated(options);
+  return result.data;
+}
+
+export async function getTransactionsPaginated(options: {
+  accountId?: string;
+  categoryId?: string | null;
+  startDate?: string;
+  endDate?: string;
+  showExcluded?: boolean;
+  search?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<PaginatedTransactionsResult> {
   const params = new URLSearchParams();
 
   if (options.accountId) params.set("accountId", options.accountId);
@@ -38,10 +62,16 @@ export async function getTransactionsFiltered(options: {
   if (options.limit) params.set("limit", String(options.limit));
   if (options.offset) params.set("offset", String(options.offset));
 
-  const response = await apiGet<ApiResponse<TransactionWithRelations[]>>(
-    `/api/transactions?${params.toString()}`
-  );
-  return response.data ?? [];
+  const response = await apiGet<{
+    success: boolean;
+    data: TransactionWithRelations[];
+    pagination: { total: number; limit: number; offset: number; hasMore: boolean };
+  }>(`/api/transactions?${params.toString()}`);
+
+  return {
+    data: response.data ?? [],
+    pagination: response.pagination ?? { total: 0, limit: 50, offset: 0, hasMore: false },
+  };
 }
 
 export async function getUnconfirmedTransactions(): Promise<TransactionWithRelations[]> {

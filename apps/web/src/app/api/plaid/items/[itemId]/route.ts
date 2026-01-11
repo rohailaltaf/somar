@@ -42,9 +42,9 @@ export async function DELETE(
     );
   }
 
-  // Get the item and verify ownership
+  // Get the item and verify ownership (exclude already soft-deleted items)
   const item = await db.plaidItem.findFirst({
-    where: { id: itemId, userId: session.user.id },
+    where: { id: itemId, userId: session.user.id, deletedAt: null },
   });
 
   if (!item) {
@@ -55,27 +55,35 @@ export async function DELETE(
   }
 
   try {
-    // Remove from Plaid first - if this fails, don't delete from our DB
-    // otherwise we lose the access token and can never clean up the orphan
+    // Remove from Plaid first - if this fails, don't soft delete from our DB
+    // otherwise the user might think it's disconnected but Plaid is still active
     await plaidClient.itemRemove({
       access_token: item.accessToken,
     });
 
-    // Only delete from our DB after Plaid confirms removal
-    await db.plaidItem.delete({
-      where: { id: itemId },
-    });
+    // Soft delete PlaidItem and hard delete PlaidAccountMeta (not needed for recovery)
+    await db.$transaction([
+      db.plaidAccountMeta.deleteMany({ where: { plaidItemId: itemId } }),
+      db.plaidItem.update({
+        where: { id: itemId },
+        data: { deletedAt: new Date() },
+      }),
+    ]);
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     const plaidError = error as { response?: { data?: { error_code?: string } } };
     const errorCode = plaidError?.response?.data?.error_code;
 
-    // If Plaid says item doesn't exist, safe to delete from our DB
+    // If Plaid says item doesn't exist, safe to soft delete from our DB
     if (errorCode === "ITEM_NOT_FOUND") {
-      await db.plaidItem.delete({
-        where: { id: itemId },
-      });
+      await db.$transaction([
+        db.plaidAccountMeta.deleteMany({ where: { plaidItemId: itemId } }),
+        db.plaidItem.update({
+          where: { id: itemId },
+          data: { deletedAt: new Date() },
+        }),
+      ]);
       return NextResponse.json({ success: true });
     }
 

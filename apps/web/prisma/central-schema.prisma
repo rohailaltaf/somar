@@ -107,6 +107,7 @@ model PlaidItem {
   cursor          String?   // For incremental transaction sync
   lastSyncedAt    DateTime? @map("last_synced_at")
   createdAt       DateTime  @default(now()) @map("created_at")
+  deletedAt       DateTime? @map("deleted_at") // Soft delete - keeps access token for recovery
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -118,11 +119,12 @@ model PlaidItem {
 
 // Minimal Plaid account metadata for syncing purposes
 model PlaidAccountMeta {
-  id             String @id @default(uuid())
-  plaidItemId    String @map("plaid_item_id")
-  plaidAccountId String @map("plaid_account_id") // Plaid's account ID
+  id             String  @id @default(uuid())
+  plaidItemId    String  @map("plaid_item_id")
+  plaidAccountId String  @map("plaid_account_id") // Plaid's account ID
   name           String
-  type           String // checking, credit_card, etc.
+  type           String  // Plaid account type (depository, credit, loan, etc.)
+  subtype        String? // Plaid account subtype (checking, savings, credit card, etc.)
 
   plaidItem PlaidItem @relation(fields: [plaidItemId], references: [id], onDelete: Cascade)
 

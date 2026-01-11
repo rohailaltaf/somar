@@ -54,9 +54,9 @@ export async function POST(
     );
   }
 
-  // Get the item with existing accounts
-  const item = await db.plaidItem.findUnique({
-    where: { id: itemId, userId: session.user.id },
+  // Get the item with existing accounts (exclude soft-deleted)
+  const item = await db.plaidItem.findFirst({
+    where: { id: itemId, userId: session.user.id, deletedAt: null },
     include: { plaidAccounts: true },
   });
 
