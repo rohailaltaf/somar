@@ -180,6 +180,7 @@ export function PlaidSyncModal({
   const [transactionCount, setTransactionCount] = useState(0);
   const [errorMessages, setErrorMessages] = useState<string[]>([]);
   const syncStartedRef = useRef(false);
+  const timeoutIdsRef = useRef<NodeJS.Timeout[]>([]);
 
   // Cycle through messages during sync
   useEffect(() => {
@@ -209,7 +210,8 @@ export function PlaidSyncModal({
         setErrorMessages(result.errors);
         setStage("error");
         // Auto-close after showing error
-        setTimeout(() => onComplete(), 4000);
+        const timeoutId = setTimeout(() => onComplete(), 4000);
+        timeoutIdsRef.current.push(timeoutId);
         return;
       }
 
@@ -217,15 +219,17 @@ export function PlaidSyncModal({
       setStage("success");
 
       // Auto-close after success animation
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         onComplete();
       }, 2500);
+      timeoutIdsRef.current.push(timeoutId);
     } catch (err) {
       setErrorMessages([
         err instanceof Error ? err.message : "An unexpected error occurred",
       ]);
       setStage("error");
-      setTimeout(() => onComplete(), 4000);
+      const timeoutId = setTimeout(() => onComplete(), 4000);
+      timeoutIdsRef.current.push(timeoutId);
     }
   }, [syncFunction, onComplete]);
 
@@ -237,6 +241,12 @@ export function PlaidSyncModal({
         performSync();
       }
     } else {
+      // Clear any pending timeouts to prevent memory leaks
+      for (const timeoutId of timeoutIdsRef.current) {
+        clearTimeout(timeoutId);
+      }
+      timeoutIdsRef.current = [];
+
       // Reset state when closed
       syncStartedRef.current = false;
       setStage("connecting");

@@ -386,6 +386,7 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
               await deleteAccount.mutateAsync(localAccount.id);
             }
           }
+          toast.success(`Disconnected ${disconnectingItem.institutionName} and deleted transactions`);
         } else {
           // Convert to manual accounts (clear plaid_account_id)
           for (const plaidAccountId of plaidAccountIds) {
@@ -399,6 +400,7 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
               });
             }
           }
+          toast.success(`Disconnected ${disconnectingItem.institutionName} (transactions kept)`);
         }
 
         invalidateQueries();
