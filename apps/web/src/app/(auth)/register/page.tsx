@@ -21,6 +21,7 @@ export default function RegisterPage() {
   const [step, setStep] = useState<Step>("info");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [isResending, setIsResending] = useState(false);
 
   // Info form (name + email)
   const infoForm = useForm<RegisterEmailFormData>({
@@ -59,12 +60,15 @@ export default function RegisterPage() {
   }
 
   async function handleResendCode() {
+    setIsResending(true);
     try {
       await sendOtp(email);
     } catch (err) {
       otpForm.setError("root", {
         message: err instanceof Error ? err.message : "Failed to resend code",
       });
+    } finally {
+      setIsResending(false);
     }
   }
 
@@ -141,10 +145,12 @@ export default function RegisterPage() {
         <button
           type="button"
           onClick={handleResendCode}
-          disabled={isOtpSubmitting}
+          disabled={isOtpSubmitting || isResending}
           className={authFormStyles.button.ghost}
         >
-          <span className={authFormStyles.button.ghostText}>Resend code</span>
+          <span className={authFormStyles.button.ghostText}>
+            {isResending ? "Sending..." : "Resend code"}
+          </span>
         </button>
       </div>
     );

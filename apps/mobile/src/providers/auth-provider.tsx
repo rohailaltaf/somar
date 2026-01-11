@@ -4,6 +4,7 @@ import {
   useCallback,
   type ReactNode,
 } from "react";
+import { useRouter } from "expo-router";
 import { signIn, signOut, useSession, emailOtp, updateUser } from "../lib/auth-client";
 
 interface AuthContextValue {
@@ -32,6 +33,7 @@ interface AuthProviderProps {
  * All user data is stored server-side in PostgreSQL.
  */
 export function AuthProvider({ children }: AuthProviderProps) {
+  const router = useRouter();
   const { data: session, isPending: isLoading } = useSession();
 
   const sendOtp = useCallback(async (email: string) => {
@@ -45,25 +47,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, []);
 
-  const verifyOtp = useCallback(async (email: string, otp: string, name?: string) => {
-    const result = await signIn.emailOtp({ email, otp });
+  const verifyOtp = useCallback(
+    async (email: string, otp: string, name?: string) => {
+      const result = await signIn.emailOtp({ email, otp });
 
-    if (result.error) {
-      throw new Error(result.error.message || "Invalid code");
-    }
-
-    // If name was provided (registration flow), update the user profile
-    if (name) {
-      try {
-        await updateUser({ name });
-      } catch (err) {
-        console.error("Failed to update user name:", err);
-        // Don't throw - user is already signed in, name can be updated later
+      if (result.error) {
+        throw new Error(result.error.message || "Invalid code");
       }
-    }
 
-    // Categories are seeded server-side when user is created
-  }, []);
+      // If name was provided (registration flow), update the user profile
+      if (name) {
+        try {
+          await updateUser({ name });
+        } catch (err) {
+          console.error("Failed to update user name:", err);
+          // Don't throw - user is already signed in, name can be updated later
+        }
+      }
+
+      // Categories are seeded server-side when user is created
+
+      // Navigate to tabs
+      router.replace("/(tabs)");
+    },
+    [router]
+  );
 
   const loginWithGoogle = useCallback(async () => {
     await signIn.social({
@@ -73,7 +81,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const logout = useCallback(async () => {
     await signOut();
-  }, []);
+    router.replace("/(auth)/login");
+  }, [router]);
 
   const value: AuthContextValue = {
     session,

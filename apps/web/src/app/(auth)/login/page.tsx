@@ -20,6 +20,7 @@ export default function LoginPage() {
   const { sendOtp, verifyOtp, loginWithGoogle } = useAuth();
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
+  const [isResending, setIsResending] = useState(false);
 
   // Email form
   const emailForm = useForm<EmailFormData>({
@@ -57,12 +58,15 @@ export default function LoginPage() {
   }
 
   async function handleResendCode() {
+    setIsResending(true);
     try {
       await sendOtp(email);
     } catch (err) {
       otpForm.setError("root", {
         message: err instanceof Error ? err.message : "Failed to resend code",
       });
+    } finally {
+      setIsResending(false);
     }
   }
 
@@ -139,10 +143,12 @@ export default function LoginPage() {
         <button
           type="button"
           onClick={handleResendCode}
-          disabled={isOtpSubmitting}
+          disabled={isOtpSubmitting || isResending}
           className={authFormStyles.button.ghost}
         >
-          <span className={authFormStyles.button.ghostText}>Resend code</span>
+          <span className={authFormStyles.button.ghostText}>
+            {isResending ? "Sending..." : "Resend code"}
+          </span>
         </button>
       </div>
     );

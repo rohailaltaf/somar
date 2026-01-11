@@ -13,6 +13,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "../../src/providers";
 import { OtpInput } from "../../src/components/ui";
+import { colors } from "../../src/lib/theme";
 import { authFormStyles, getButtonClass } from "@somar/shared/styles";
 import {
   registerEmailSchema,
@@ -29,6 +30,7 @@ export default function RegisterScreen() {
   const [step, setStep] = useState<Step>("info");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [isResending, setIsResending] = useState(false);
 
   // Info form (name + email)
   const infoForm = useForm<RegisterEmailFormData>({
@@ -59,7 +61,6 @@ export default function RegisterScreen() {
   async function handleOtpSubmit(data: OtpFormData) {
     try {
       await verifyOtp(data.email, data.otp, name);
-      router.replace("/(tabs)");
     } catch (err) {
       otpForm.setError("root", {
         message: err instanceof Error ? err.message : "Invalid code",
@@ -68,19 +69,21 @@ export default function RegisterScreen() {
   }
 
   async function handleResendCode() {
+    setIsResending(true);
     try {
       await sendOtp(email);
     } catch (err) {
       otpForm.setError("root", {
         message: err instanceof Error ? err.message : "Failed to resend code",
       });
+    } finally {
+      setIsResending(false);
     }
   }
 
   async function handleGoogleRegister() {
     try {
       await loginWithGoogle();
-      router.replace("/(tabs)");
     } catch (err) {
       infoForm.setError("root", {
         message: err instanceof Error ? err.message : "Failed to sign up with Google",
@@ -155,10 +158,12 @@ export default function RegisterScreen() {
 
             <TouchableOpacity
               onPress={handleResendCode}
-              disabled={isOtpSubmitting}
+              disabled={isOtpSubmitting || isResending}
               className={authFormStyles.button.ghost}
             >
-              <Text className={authFormStyles.button.ghostText}>Resend code</Text>
+              <Text className={authFormStyles.button.ghostText}>
+                {isResending ? "Sending..." : "Resend code"}
+              </Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -213,7 +218,7 @@ export default function RegisterScreen() {
                 <TextInput
                   className={`${authFormStyles.field.input} w-full px-4 py-3`}
                   placeholder="John Doe"
-                  placeholderTextColor="#6b7280"
+                  placeholderTextColor={colors.mutedForeground}
                   autoCapitalize="words"
                   onBlur={onBlur}
                   onChangeText={onChange}
@@ -237,7 +242,7 @@ export default function RegisterScreen() {
                 <TextInput
                   className={`${authFormStyles.field.input} w-full px-4 py-3`}
                   placeholder="you@example.com"
-                  placeholderTextColor="#6b7280"
+                  placeholderTextColor={colors.mutedForeground}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
