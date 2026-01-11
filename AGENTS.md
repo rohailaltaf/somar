@@ -56,13 +56,14 @@ See [docs/commands.md](docs/commands.md) for full reference.
 - Enforced throughout: `amount < 0` filters for expenses
 
 ### Date Handling
-Store as `YYYY-MM-DD` strings. Use shared helpers to avoid timezone issues:
+Database stores dates as `DateTime @db.Date` (PostgreSQL DATE type). All date conversions use UTC:
 ```typescript
 import { parseDate, toDateString } from "@somar/shared/utils";
 
-const date = parseDate("2024-01-15");     // YYYY-MM-DD → Date (local time)
-const str = toDateString(new Date());      // Date → YYYY-MM-DD
+const date = parseDate("2024-01-15");     // YYYY-MM-DD → Date (midnight UTC)
+const str = toDateString(date);            // Date → YYYY-MM-DD (using UTC)
 ```
+API accepts and returns dates as `YYYY-MM-DD` strings. Use `serializeTransaction()` from `@/lib/serializers` for API responses.
 
 ### Database Architecture
 All user data is stored server-side in PostgreSQL:
@@ -104,7 +105,7 @@ import { hexColors, oklchColors } from "@somar/shared/theme";
 
 4. **Never fetch all transactions**: Use pagination. Even 1,000 rows causes 700ms+ render times.
 
-5. **Timezone dates**: Never use `new Date(dateString)` or `.toISOString()` for date strings - causes day shifts. Use `parseDate()` and `toDateString()` from `@somar/shared/utils`.
+5. **Date handling**: Always use `parseDate()` and `toDateString()` from `@somar/shared/utils` - they use UTC consistently. Never use `new Date(dateString)` directly.
 
 6. **Theme colors in shared**: All colors defined in `@somar/shared/theme`. After changes, run:
    ```bash

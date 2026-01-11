@@ -337,6 +337,7 @@ describe("Transaction Category Ownership Validation", () => {
       mockDb.transaction.update.mockResolvedValue({
         id: mockTransactionId,
         categoryId: mockCategoryId,
+        date: new Date(Date.UTC(2024, 0, 15)),
         category: { id: mockCategoryId, name: "Food" },
         account: { id: mockAccountId, name: "Checking" },
       });
@@ -375,6 +376,7 @@ describe("Transaction Category Ownership Validation", () => {
       mockDb.transaction.update.mockResolvedValue({
         id: mockTransactionId,
         categoryId: null,
+        date: new Date(Date.UTC(2024, 0, 15)),
         category: null,
         account: { id: mockAccountId, name: "Checking" },
       });
@@ -415,6 +417,7 @@ describe("Transaction Category Ownership Validation", () => {
       mockDb.transaction.update.mockResolvedValue({
         id: mockTransactionId,
         description: "Updated description",
+        date: new Date(Date.UTC(2024, 0, 15)),
         category: null,
         account: { id: mockAccountId, name: "Checking" },
       });
@@ -467,6 +470,45 @@ describe("Transaction Category Ownership Validation", () => {
       // Neither category check nor update should happen
       expect(mockDb.category.findFirst).not.toHaveBeenCalled();
       expect(mockDb.transaction.update).not.toHaveBeenCalled();
+    });
+
+    it("should serialize date field in response", async () => {
+      mockDb.transaction.findFirst.mockResolvedValue({
+        id: mockTransactionId,
+        userId: mockUserId,
+      });
+
+      mockDb.category.findFirst.mockResolvedValue({
+        id: mockCategoryId,
+        userId: mockUserId,
+      });
+
+      mockDb.transaction.update.mockResolvedValue({
+        id: mockTransactionId,
+        categoryId: mockCategoryId,
+        date: new Date(Date.UTC(2024, 0, 15)),
+        category: { id: mockCategoryId, name: "Food" },
+        account: { id: mockAccountId, name: "Checking" },
+      });
+
+      const request = new Request(
+        `http://localhost/api/transactions/${mockTransactionId}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            categoryId: mockCategoryId,
+          }),
+        }
+      );
+
+      const response = await PATCH(request, {
+        params: Promise.resolve({ id: mockTransactionId }),
+      });
+      const data = await response.json();
+
+      // Verify date is serialized as string in API response
+      expect(data.data.date).toBe("2024-01-15");
+      expect(typeof data.data.date).toBe("string");
     });
   });
 

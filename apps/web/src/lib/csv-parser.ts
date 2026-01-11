@@ -299,12 +299,12 @@ export function parseDate(dateStr: string): string {
     }
   }
 
-  // Fallback: try native Date parsing (with timezone-safe approach)
-  const date = new Date(cleaned + "T12:00:00"); // Add noon time to avoid timezone shifts
+  // Fallback: try native Date parsing (with UTC approach)
+  const date = new Date(cleaned + "T12:00:00Z"); // Add noon UTC time
   if (!isNaN(date.getTime())) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(date.getUTCDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   }
 

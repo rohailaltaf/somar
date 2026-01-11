@@ -47,7 +47,7 @@ export async function GET(request: Request) {
 
     const baseWhere = {
       userId: session.user.id,
-      date: { gte: startDate, lte: endDate },
+      date: { gte: parseDate(startDate), lte: parseDate(endDate) },
       excluded: false,
       amount: { lt: 0 }, // Only expenses (negative amounts)
     };
@@ -97,7 +97,8 @@ export async function GET(request: Request) {
 
       const dailyTotals: Record<string, number> = {};
       for (const txn of transactions) {
-        dailyTotals[txn.date] = (dailyTotals[txn.date] || 0) + Math.abs(txn.amount);
+        const dateStr = toDateString(txn.date);
+        dailyTotals[dateStr] = (dailyTotals[dateStr] || 0) + Math.abs(txn.amount);
       }
 
       // Build cumulative data for each day in range
@@ -106,7 +107,7 @@ export async function GET(request: Request) {
 
       const start = parseDate(startDate);
       const end = parseDate(endDate);
-      for (let d = start; d <= end; d.setDate(d.getDate() + 1)) {
+      for (let d = start; d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
         const dateStr = toDateString(d);
         const daily = dailyTotals[dateStr] || 0;
         cumulative += daily;
@@ -121,7 +122,7 @@ export async function GET(request: Request) {
       const incomeResult = await db.transaction.aggregate({
         where: {
           userId: session.user.id,
-          date: { gte: startDate, lte: endDate },
+          date: { gte: parseDate(startDate), lte: parseDate(endDate) },
           excluded: false,
           amount: { gt: 0 }, // Only income (positive amounts)
         },
