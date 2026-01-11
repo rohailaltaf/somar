@@ -9,15 +9,15 @@
  * Uses timezone-safe parsing to avoid day shifts.
  */
 export function parseDate(dateStr: string): Date {
-  const parts = dateStr.split("-");
-  if (parts.length !== 3) {
+  if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
     throw new Error(`Invalid date format: ${dateStr}. Expected YYYY-MM-DD`);
   }
-  const [year, month, day] = parts.map(Number);
-  if (isNaN(year) || isNaN(month) || isNaN(day)) {
-    throw new Error(`Invalid date format: ${dateStr}. Expected numeric values`);
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  if (isNaN(date.getTime())) {
+    throw new Error(`Invalid date: ${dateStr}`);
   }
-  return new Date(year, month - 1, day);
+  return date;
 }
 
 /**
@@ -77,12 +77,23 @@ export function getPercentageChange(current: number, previous: number): number |
 }
 
 /**
+ * Convert a Date object to YYYY-MM-DD string using local time.
+ * Avoids timezone issues that occur with toISOString().
+ */
+export function toDateString(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+/**
  * Get date N days ago in YYYY-MM-DD format.
  */
 export function getDaysAgo(days: number): string {
   const date = new Date();
   date.setDate(date.getDate() - days);
-  return date.toISOString().split("T")[0];
+  return toDateString(date);
 }
 
 /**

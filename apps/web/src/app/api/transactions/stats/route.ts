@@ -36,6 +36,14 @@ export async function GET(request: Request) {
       );
     }
 
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_FORMAT", message: "Dates must be in YYYY-MM-DD format" } },
+        { status: 400 }
+      );
+    }
+
     const baseWhere = {
       userId: session.user.id,
       date: { gte: startDate, lte: endDate },

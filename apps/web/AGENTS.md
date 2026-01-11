@@ -75,7 +75,6 @@ All user data is accessed through API routes using Prisma ORM:
 | `/api/transactions/[id]` | GET, PATCH, DELETE | Get/update/delete transaction |
 | `/api/transactions/[id]/confirm` | POST | Confirm + learn pattern |
 | `/api/transactions/stats` | GET | Spending analytics |
-| `/api/user/seed-categories` | POST | Seed default categories |
 
 ## Patterns
 
