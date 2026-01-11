@@ -7,7 +7,7 @@ import type {
   CreateTransactionInput,
   TransactionWithRelations,
 } from "../types";
-import { getMonthDateRange } from "../utils/date";
+import { getMonthDateRange, toDateString } from "../utils/date";
 
 // ============ Queries ============
 
@@ -119,7 +119,7 @@ export async function getYearToDateSpending(year: number): Promise<number> {
   const startDate = `${year}-01-01`;
   const today = new Date();
   const endDate = today.getFullYear() === year
-    ? today.toISOString().split("T")[0]
+    ? toDateString(today)
     : `${year}-12-31`;
 
   const response = await apiGet<ApiResponse<{ total: number }>>(
@@ -134,7 +134,7 @@ export async function getYearToDateCategorySpending(
   const startDate = `${year}-01-01`;
   const today = new Date();
   const endDate = today.getFullYear() === year
-    ? today.toISOString().split("T")[0]
+    ? toDateString(today)
     : `${year}-12-31`;
 
   const response = await apiGet<ApiResponse<{ byCategory: Array<{ id: string; name: string; color: string; amount: number }> }>>(
@@ -266,7 +266,7 @@ export async function getYearToDateIncome(year: number): Promise<number> {
   const startDate = `${year}-01-01`;
   const today = new Date();
   const endDate = today.getFullYear() === year
-    ? today.toISOString().split("T")[0]
+    ? toDateString(today)
     : `${year}-12-31`;
 
   const response = await apiGet<ApiResponse<{ income: number }>>(
