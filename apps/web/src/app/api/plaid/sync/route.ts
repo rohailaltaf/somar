@@ -101,7 +101,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<PlaidSync
 
   // Get PlaidItem from central DB (verify ownership + get access token + cursor)
   const item = await db.plaidItem.findFirst({
-    where: { id: plaidItemId, userId: session.user.id },
+    where: { id: plaidItemId, userId: session.user.id, deletedAt: null },
     include: { plaidAccounts: true },
   });
 
@@ -114,7 +114,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<PlaidSync
 
   try {
     const isInitialSync = !item.cursor;
-    const maxRetries = isInitialSync ? 8 : 1;
+    // Client waits 20s before first sync, so fewer retries needed
+    const maxRetries = isInitialSync ? 3 : 1;
     let lastError: unknown = null;
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {

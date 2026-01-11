@@ -83,9 +83,9 @@ export async function createUpdateModeLinkToken(
     return { error: "Plaid is not configured" };
   }
 
-  // Get the existing item
+  // Get the existing item (exclude soft-deleted)
   const item = await db.plaidItem.findFirst({
-    where: { id: plaidItemId, userId },
+    where: { id: plaidItemId, userId, deletedAt: null },
   });
 
   if (!item) {
@@ -188,7 +188,7 @@ export async function checkAllPlaidItemsStatus(userId: string): Promise<{
   }>;
 }> {
   const plaidItems = await db.plaidItem.findMany({
-    where: { userId },
+    where: { userId, deletedAt: null },
   });
 
   const results = await Promise.all(

@@ -56,10 +56,14 @@ async function main() {
   console.log("─".repeat(70));
 
   for (const item of plaidItems) {
-    console.log(`\n📦 ${item.institutionName}`);
+    const deletedMarker = item.deletedAt ? " [SOFT DELETED]" : "";
+    console.log(`\n📦 ${item.institutionName}${deletedMarker}`);
     console.log(`   Local ID: ${item.id}`);
     console.log(`   Created: ${item.createdAt}`);
     console.log(`   Last Synced: ${item.lastSyncedAt || "Never"}`);
+    if (item.deletedAt) {
+      console.log(`   Deleted At: ${item.deletedAt}`);
+    }
     console.log(`   Local Accounts: ${item.plaidAccounts.length}`);
     
     // Check status with Plaid

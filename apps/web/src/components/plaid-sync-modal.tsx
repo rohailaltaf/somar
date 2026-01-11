@@ -8,7 +8,10 @@ import { hexColors } from "@somar/shared/theme";
 // Custom smooth easing
 const smoothEase = [0.16, 1, 0.3, 1] as const;
 
-type SyncStage = "connecting" | "syncing" | "success" | "error";
+type SyncStage = "connecting" | "preparing" | "syncing" | "success" | "error";
+
+// Duration for the preparation phase (ms) - gives Plaid time to enrich transaction data
+const PREPARATION_DURATION = 20000;
 
 interface PlaidSyncModalProps {
   isOpen: boolean;
@@ -16,6 +19,9 @@ interface PlaidSyncModalProps {
   onComplete: () => void;
   syncFunction: () => Promise<{ added: number; errors: string[] }>;
 }
+
+// Helper to check if stage is a terminal state
+const isTerminalStage = (stage: SyncStage) => stage === "success" || stage === "error";
 
 // Animated orbital dots around the bank icon
 function OrbitalDots({ stage }: { stage: SyncStage }) {
@@ -38,8 +44,8 @@ function OrbitalDots({ stage }: { stage: SyncStage }) {
             }}
             initial={{ opacity: 0, scale: 0 }}
             animate={{
-              opacity: stage === "success" || stage === "error" ? 0 : [0.3, 0.8, 0.3],
-              scale: stage === "success" || stage === "error" ? 0 : 1,
+              opacity: isTerminalStage(stage) ? 0 : [0.3, 0.8, 0.3],
+              scale: isTerminalStage(stage) ? 0 : 1,
               rotate: [angle, angle + 360],
             }}
             transition={{
@@ -92,7 +98,7 @@ function PulsingRings({ stage }: { stage: SyncStage }) {
           className="absolute inset-0 rounded-full border-2 border-primary/30"
           initial={{ scale: 0.8, opacity: 0 }}
           animate={
-            stage === "success" || stage === "error"
+            isTerminalStage(stage)
               ? { scale: 1.5, opacity: 0 }
               : {
                   scale: [1, 1.8, 2],
@@ -101,7 +107,7 @@ function PulsingRings({ stage }: { stage: SyncStage }) {
           }
           transition={{
             duration: 2,
-            repeat: stage === "success" || stage === "error" ? 0 : Infinity,
+            repeat: isTerminalStage(stage) ? 0 : Infinity,
             delay: i * 0.6,
             ease: "easeOut",
           }}
@@ -160,13 +166,21 @@ function FloatingParticles() {
   );
 }
 
-// Progress messages that cycle during sync
+// Messages that cycle during preparation phase (while waiting for Plaid to enrich data)
+const preparingMessages = [
+  { main: "Establishing secure connection", sub: "Your data is encrypted end-to-end" },
+  { main: "Verifying your credentials", sub: "Confirming access with your bank" },
+  { main: "Your bank is preparing your data", sub: "This usually takes a few moments" },
+  { main: "Gathering your transactions", sub: "Looking back at recent activity" },
+  { main: "Organizing account information", sub: "Sorting through your accounts" },
+  { main: "Almost ready", sub: "Just a few more seconds" },
+];
+
+// Messages that cycle during the actual sync
 const syncMessages = [
-  "Connecting to your bank...",
-  "Securely fetching transactions...",
-  "Processing your data...",
-  "Almost there...",
-  "Organizing your finances...",
+  { main: "Downloading transactions", sub: "Securely transferring your data" },
+  { main: "Processing your data", sub: "Categorizing and organizing" },
+  { main: "Finalizing sync", sub: "Almost done" },
 ];
 
 export function PlaidSyncModal({
@@ -177,10 +191,12 @@ export function PlaidSyncModal({
 }: PlaidSyncModalProps) {
   const [stage, setStage] = useState<SyncStage>("connecting");
   const [messageIndex, setMessageIndex] = useState(0);
+  const [preparationProgress, setPreparationProgress] = useState(0);
   const [transactionCount, setTransactionCount] = useState(0);
   const [errorMessages, setErrorMessages] = useState<string[]>([]);
   const syncStartedRef = useRef(false);
   const timeoutIdsRef = useRef<NodeJS.Timeout[]>([]);
+  const intervalIdsRef = useRef<NodeJS.Timeout[]>([]);
   const syncFunctionRef = useRef(syncFunction);
   const onCompleteRef = useRef(onComplete);
 
@@ -188,13 +204,41 @@ export function PlaidSyncModal({
   syncFunctionRef.current = syncFunction;
   onCompleteRef.current = onComplete;
 
+  // Cycle through messages during preparing phase
+  useEffect(() => {
+    if (stage !== "preparing") return;
+
+    // Calculate message interval to show all messages during preparation
+    const messageInterval = PREPARATION_DURATION / preparingMessages.length;
+
+    const interval = setInterval(() => {
+      setMessageIndex((prev) => Math.min(prev + 1, preparingMessages.length - 1));
+    }, messageInterval);
+    intervalIdsRef.current.push(interval);
+
+    // Progress animation - update every 100ms for smooth progress
+    const progressInterval = setInterval(() => {
+      setPreparationProgress((prev) => Math.min(prev + (100 / PREPARATION_DURATION) * 100, 100));
+    }, 100);
+    intervalIdsRef.current.push(progressInterval);
+
+    return () => {
+      clearInterval(interval);
+      clearInterval(progressInterval);
+    };
+  }, [stage]);
+
   // Cycle through messages during sync
   useEffect(() => {
     if (stage !== "syncing") return;
 
+    // Reset message index for sync messages
+    setMessageIndex(0);
+
     const interval = setInterval(() => {
       setMessageIndex((prev) => (prev + 1) % syncMessages.length);
-    }, 3000);
+    }, 2000);
+    intervalIdsRef.current.push(interval);
 
     return () => clearInterval(interval);
   }, [stage]);
@@ -203,11 +247,21 @@ export function PlaidSyncModal({
   const performSync = useCallback(async () => {
     setStage("connecting");
     setErrorMessages([]);
+    setPreparationProgress(0);
+    setMessageIndex(0);
 
     // Brief connecting animation
     await new Promise((resolve) => setTimeout(resolve, 1500));
 
+    // Enter preparation phase - wait for Plaid to enrich transaction data
+    setStage("preparing");
+
+    // Wait for the full preparation duration
+    await new Promise((resolve) => setTimeout(resolve, PREPARATION_DURATION));
+
+    // Now perform the actual sync
     setStage("syncing");
+    setMessageIndex(0);
 
     try {
       const result = await syncFunctionRef.current();
@@ -253,10 +307,17 @@ export function PlaidSyncModal({
       }
       timeoutIdsRef.current = [];
 
+      // Clear any pending intervals
+      for (const intervalId of intervalIdsRef.current) {
+        clearInterval(intervalId);
+      }
+      intervalIdsRef.current = [];
+
       // Reset state when closed
       syncStartedRef.current = false;
       setStage("connecting");
       setMessageIndex(0);
+      setPreparationProgress(0);
       setTransactionCount(0);
       setErrorMessages([]);
     }
@@ -266,8 +327,10 @@ export function PlaidSyncModal({
     switch (stage) {
       case "connecting":
         return `Connecting to ${institutionName}...`;
+      case "preparing":
+        return preparingMessages[messageIndex]?.main || "Preparing your data...";
       case "syncing":
-        return syncMessages[messageIndex];
+        return syncMessages[messageIndex]?.main || "Syncing...";
       case "success":
         if (transactionCount > 0) {
           return `${transactionCount} transaction${transactionCount !== 1 ? "s" : ""} synced!`;
@@ -282,8 +345,10 @@ export function PlaidSyncModal({
     switch (stage) {
       case "connecting":
         return "Establishing secure connection";
+      case "preparing":
+        return preparingMessages[messageIndex]?.sub || "This won't take long";
       case "syncing":
-        return "This may take up to a minute";
+        return syncMessages[messageIndex]?.sub || "Almost there";
       case "success":
         return `${institutionName} is now connected`;
       case "error":
@@ -346,11 +411,11 @@ export function PlaidSyncModal({
                     <motion.div
                       className="relative w-24 h-24 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shadow-lg shadow-primary/20"
                       animate={{
-                        rotate: stage === "syncing" ? [0, 5, -5, 0] : 0,
+                        rotate: stage === "preparing" || stage === "syncing" ? [0, 5, -5, 0] : 0,
                       }}
                       transition={{
                         duration: 4,
-                        repeat: stage === "syncing" ? Infinity : 0,
+                        repeat: stage === "preparing" || stage === "syncing" ? Infinity : 0,
                         ease: "easeInOut",
                       }}
                     >
@@ -462,12 +527,27 @@ export function PlaidSyncModal({
                     <div className="relative h-1.5 bg-muted rounded-full overflow-hidden">
                       <motion.div
                         className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary to-primary/70 rounded-full"
+                        style={{
+                          // Progress bar segments:
+                          // - connecting: 0-10% (fast animation)
+                          // - preparing: 10-85% (smooth 20s animation via preparationProgress)
+                          // - syncing: 85-95% (indeterminate while waiting for API)
+                          width: stage === "connecting"
+                            ? "10%"
+                            : stage === "preparing"
+                              ? `${10 + (preparationProgress * 0.75)}%`
+                              : "95%",
+                        }}
                         initial={{ width: "0%" }}
                         animate={{
-                          width: stage === "connecting" ? "30%" : "90%",
+                          width: stage === "connecting"
+                            ? "10%"
+                            : stage === "preparing"
+                              ? `${10 + (preparationProgress * 0.75)}%`
+                              : "95%",
                         }}
                         transition={{
-                          duration: stage === "connecting" ? 1.5 : 25,
+                          duration: stage === "connecting" ? 1.5 : 0.1,
                           ease: "easeOut",
                         }}
                       />
