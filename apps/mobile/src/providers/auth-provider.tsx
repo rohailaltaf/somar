@@ -8,7 +8,7 @@ import {
 } from "react";
 import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
-import { signIn, signOut, useSession, emailOtp, updateUser } from "../lib/auth-client";
+import { signIn, signOut, useSession, emailOtp } from "../lib/auth-client";
 import { initialOtpState, type OtpState } from "@somar/shared/components";
 
 const OTP_STATE_KEY = "somar_otp_state";
@@ -25,7 +25,7 @@ interface AuthContextValue {
 
   // OTP auth actions
   sendOtp: (email: string) => Promise<void>;
-  verifyOtp: (email: string, otp: string, name?: string) => Promise<void>;
+  verifyOtp: (email: string, otp: string) => Promise<void>;
 
   // Social auth
   loginWithGoogle: () => Promise<void>;
@@ -96,21 +96,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   const verifyOtp = useCallback(
-    async (email: string, otp: string, name?: string) => {
+    async (email: string, otp: string) => {
       const result = await signIn.emailOtp({ email, otp });
 
       if (result.error) {
         throw new Error(result.error.message || "Invalid code");
-      }
-
-      // If name was provided (registration flow), update the user profile
-      if (name) {
-        try {
-          await updateUser({ name });
-        } catch (err) {
-          console.error("Failed to update user name:", err);
-          // Don't throw - user is already signed in, name can be updated later
-        }
       }
 
       // Categories are seeded server-side when user is created

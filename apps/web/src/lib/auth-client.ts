@@ -19,6 +19,5 @@ export const {
   useSession,
   getSession,
   emailOtp,
-  updateUser,
 } = authClient;
 
