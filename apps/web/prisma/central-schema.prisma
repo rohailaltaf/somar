@@ -197,8 +197,8 @@ model Transaction {
   plaidOriginalDescription String?  @map("plaid_original_description")
   plaidName                String?  @map("plaid_name")
   plaidMerchantName        String?  @map("plaid_merchant_name")
-  plaidAuthorizedDate      String?  @map("plaid_authorized_date")
-  plaidPostedDate          String?  @map("plaid_posted_date")
+  plaidAuthorizedDate      DateTime?  @db.Date @map("plaid_authorized_date")
+  plaidPostedDate          DateTime?  @db.Date @map("plaid_posted_date")
 
   user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   account  FinanceAccount  @relation(fields: [accountId], references: [id], onDelete: Cascade)

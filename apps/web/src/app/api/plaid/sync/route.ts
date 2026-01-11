@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { plaidClient, isPlaidConfigured } from "@/lib/plaid";
 import { headers } from "next/headers";
 import type { Transaction as PlaidTransaction } from "plaid";
-import { toDateField } from "@/lib/date-helpers";
+import { toDateField, toDateFieldNullable } from "@/lib/date-helpers";
 
 /**
  * POST /api/plaid/sync
@@ -208,8 +208,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<PlaidSync
               plaidOriginalDescription: tx.original_description,
               plaidName: tx.name,
               plaidMerchantName: tx.merchant_name,
-              plaidAuthorizedDate: tx.authorized_date,
-              plaidPostedDate: tx.date,
+              plaidAuthorizedDate: toDateFieldNullable(tx.authorized_date),
+              plaidPostedDate: toDateFieldNullable(tx.date),
             },
           });
           addedCount++;
@@ -237,8 +237,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<PlaidSync
               amount: -tx.amount,
               date: toDateField(tx.authorized_date || tx.date),
               plaidMerchantName: tx.merchant_name,
-              plaidAuthorizedDate: tx.authorized_date,
-              plaidPostedDate: tx.date,
+              plaidAuthorizedDate: toDateFieldNullable(tx.authorized_date),
+              plaidPostedDate: toDateFieldNullable(tx.date),
             },
           });
           modifiedCount++;

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { headers } from "next/headers";
-import { toDateField, serializeTransactions } from "@/lib/date-helpers";
+import { toDateField, toDateFieldNullable, serializeTransactions } from "@/lib/date-helpers";
 
 /**
  * GET /api/transactions
@@ -157,8 +157,8 @@ export async function POST(request: Request) {
         plaidOriginalDescription: txn.plaidOriginalDescription || null,
         plaidName: txn.plaidName || null,
         plaidMerchantName: txn.plaidMerchantName || null,
-        plaidAuthorizedDate: txn.plaidAuthorizedDate || null,
-        plaidPostedDate: txn.plaidPostedDate || null,
+        plaidAuthorizedDate: toDateFieldNullable(txn.plaidAuthorizedDate),
+        plaidPostedDate: toDateFieldNullable(txn.plaidPostedDate),
       })),
     });
 

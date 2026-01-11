@@ -16,6 +16,13 @@ export function toDateField(dateStr: string): Date {
 }
 
 /**
+ * Null-safe version of toDateField for optional date strings.
+ */
+export function toDateFieldNullable(dateStr: string | null | undefined): Date | null {
+  return dateStr ? toDateField(dateStr) : null;
+}
+
+/**
  * Convert Prisma DATE field (Date at midnight UTC) back to YYYY-MM-DD string.
  * Uses UTC methods since PostgreSQL DATE is stored/returned as UTC.
  */
@@ -27,22 +34,43 @@ export function fromDateField(date: Date): string {
 }
 
 /**
- * Serialize a transaction for API response - converts Date field to YYYY-MM-DD string.
+ * Null-safe version of fromDateField for optional date fields.
  */
-export function serializeTransaction<T extends { date: Date }>(
+export function fromDateFieldNullable(date: Date | null | undefined): string | null {
+  return date ? fromDateField(date) : null;
+}
+
+/**
+ * Serialize a transaction for API response - converts Date fields to YYYY-MM-DD strings.
+ */
+export function serializeTransaction<
+  T extends { date: Date; plaidAuthorizedDate?: Date | null; plaidPostedDate?: Date | null }
+>(
   transaction: T
-): Omit<T, "date"> & { date: string } {
+): Omit<T, "date" | "plaidAuthorizedDate" | "plaidPostedDate"> & {
+  date: string;
+  plaidAuthorizedDate: string | null;
+  plaidPostedDate: string | null;
+} {
   return {
     ...transaction,
     date: fromDateField(transaction.date),
+    plaidAuthorizedDate: fromDateFieldNullable(transaction.plaidAuthorizedDate),
+    plaidPostedDate: fromDateFieldNullable(transaction.plaidPostedDate),
   };
 }
 
 /**
  * Serialize multiple transactions for API response.
  */
-export function serializeTransactions<T extends { date: Date }>(
+export function serializeTransactions<
+  T extends { date: Date; plaidAuthorizedDate?: Date | null; plaidPostedDate?: Date | null }
+>(
   transactions: T[]
-): (Omit<T, "date"> & { date: string })[] {
+): (Omit<T, "date" | "plaidAuthorizedDate" | "plaidPostedDate"> & {
+  date: string;
+  plaidAuthorizedDate: string | null;
+  plaidPostedDate: string | null;
+})[] {
   return transactions.map(serializeTransaction);
 }
