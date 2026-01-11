@@ -7,7 +7,7 @@ import type {
   CreateTransactionInput,
   TransactionWithRelations,
 } from "../types";
-import { toDateString } from "../utils/date";
+import { getMonthDateRange, toDateString } from "../utils/date";
 
 // ============ Queries ============
 
@@ -146,11 +146,9 @@ export async function getYearToDateCategorySpending(
     .sort((a, b) => b.spent - a.spent);
 }
 
-function getMonthDateRange(year: number, month: number): { startDate: string; endDate: string } {
-  const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
-  const lastDay = new Date(year, month, 0).getDate();
-  const endDate = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
-  return { startDate, endDate };
+/** Helper to format year+month as YYYY-MM string */
+function formatMonthStr(year: number, month: number): string {
+  return `${year}-${String(month).padStart(2, "0")}`;
 }
 
 export async function getMonthlyCumulativeSpending(
@@ -161,7 +159,7 @@ export async function getMonthlyCumulativeSpending(
 
   const totals = await Promise.all(
     months.map((m) => {
-      const { startDate, endDate } = getMonthDateRange(year, m);
+      const { startDate, endDate } = getMonthDateRange(formatMonthStr(year, m));
       return getTotalSpending(startDate, endDate);
     })
   );
@@ -169,7 +167,7 @@ export async function getMonthlyCumulativeSpending(
   let cumulative = 0;
   return months.map((month, i) => {
     cumulative += totals[i];
-    return { month, monthStr: `${year}-${String(month).padStart(2, "0")}`, cumulative };
+    return { month, monthStr: formatMonthStr(year, month), cumulative };
   });
 }
 
@@ -285,7 +283,7 @@ export async function getYearToDateCategoryIncome(
 
   const monthlyData = await Promise.all(
     months.map((m) => {
-      const { startDate, endDate } = getMonthDateRange(year, m);
+      const { startDate, endDate } = getMonthDateRange(formatMonthStr(year, m));
       return getIncomeByCategory(startDate, endDate);
     })
   );
@@ -313,14 +311,14 @@ export async function getMonthlyIncome(
 
   const amounts = await Promise.all(
     months.map((m) => {
-      const { startDate, endDate } = getMonthDateRange(year, m);
+      const { startDate, endDate } = getMonthDateRange(formatMonthStr(year, m));
       return getTotalIncome(startDate, endDate);
     })
   );
 
   return months.map((month, i) => ({
     month,
-    monthStr: `${year}-${String(month).padStart(2, "0")}`,
+    monthStr: formatMonthStr(year, month),
     amount: amounts[i],
   }));
 }
