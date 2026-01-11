@@ -97,11 +97,12 @@ export async function GET(request: Request) {
 
       const start = new Date(startDate + "T00:00:00");
       const end = new Date(endDate + "T00:00:00");
-      for (let d = start; d <= end; d.setDate(d.getDate() + 1)) {
+      for (let d = start; d <= end; ) {
         const dateStr = d.toISOString().split("T")[0];
         const daily = dailyTotals[dateStr] || 0;
         cumulative += daily;
         cumulativeData.push({ date: dateStr, daily, cumulative });
+        d.setDate(d.getDate() + 1);
       }
 
       result.cumulative = cumulativeData;
