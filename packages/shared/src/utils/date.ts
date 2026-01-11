@@ -5,6 +5,22 @@
  */
 
 /**
+ * Parse a YYYY-MM-DD date string into a Date object.
+ * Uses timezone-safe parsing to avoid day shifts.
+ */
+export function parseDate(dateStr: string): Date {
+  const parts = dateStr.split("-");
+  if (parts.length !== 3) {
+    throw new Error(`Invalid date format: ${dateStr}. Expected YYYY-MM-DD`);
+  }
+  const [year, month, day] = parts.map(Number);
+  if (isNaN(year) || isNaN(month) || isNaN(day)) {
+    throw new Error(`Invalid date format: ${dateStr}. Expected numeric values`);
+  }
+  return new Date(year, month - 1, day);
+}
+
+/**
  * Get current month in YYYY-MM format.
  */
 export function getCurrentMonth(): string {
