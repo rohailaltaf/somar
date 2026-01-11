@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { headers } from "next/headers";
-import { serializeTransaction, toDateField } from "@/lib/date-helpers";
+import { parseDate } from "@somar/shared/utils";
+import { serializeTransaction } from "@/lib/serializers";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -103,7 +104,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
         ...(categoryId !== undefined && { categoryId }),
         ...(description !== undefined && { description }),
         ...(amount !== undefined && { amount }),
-        ...(date !== undefined && { date: toDateField(date) }),
+        ...(date !== undefined && { date: parseDate(date) }),
         ...(excluded !== undefined && { excluded }),
         ...(isConfirmed !== undefined && { isConfirmed }),
       },

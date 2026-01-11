@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { plaidClient, isPlaidConfigured } from "@/lib/plaid";
 import { headers } from "next/headers";
 import type { Transaction as PlaidTransaction } from "plaid";
-import { toDateField, toDateFieldNullable } from "@/lib/date-helpers";
+import { parseDate, parseDateNullable } from "@somar/shared/utils";
 
 /**
  * POST /api/plaid/sync
@@ -201,15 +201,15 @@ export async function POST(request: NextRequest): Promise<NextResponse<PlaidSync
               accountId,
               description: tx.merchant_name || tx.name || "Unknown",
               amount: -tx.amount, // Plaid uses positive for debits, we use negative for expenses
-              date: toDateField(tx.authorized_date || tx.date),
+              date: parseDate(tx.authorized_date || tx.date),
               isConfirmed: false,
               excluded: false,
               plaidTransactionId: tx.transaction_id,
               plaidOriginalDescription: tx.original_description,
               plaidName: tx.name,
               plaidMerchantName: tx.merchant_name,
-              plaidAuthorizedDate: toDateFieldNullable(tx.authorized_date),
-              plaidPostedDate: toDateFieldNullable(tx.date),
+              plaidAuthorizedDate: parseDateNullable(tx.authorized_date),
+              plaidPostedDate: parseDateNullable(tx.date),
             },
           });
           addedCount++;
@@ -235,10 +235,10 @@ export async function POST(request: NextRequest): Promise<NextResponse<PlaidSync
             data: {
               description: tx.merchant_name || tx.name || existing.description,
               amount: -tx.amount,
-              date: toDateField(tx.authorized_date || tx.date),
+              date: parseDate(tx.authorized_date || tx.date),
               plaidMerchantName: tx.merchant_name,
-              plaidAuthorizedDate: toDateFieldNullable(tx.authorized_date),
-              plaidPostedDate: toDateFieldNullable(tx.date),
+              plaidAuthorizedDate: parseDateNullable(tx.authorized_date),
+              plaidPostedDate: parseDateNullable(tx.date),
             },
           });
           modifiedCount++;

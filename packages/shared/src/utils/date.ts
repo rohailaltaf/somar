@@ -2,23 +2,42 @@
  * Date utilities shared across web and mobile apps.
  * All month strings use YYYY-MM format.
  * All date strings use YYYY-MM-DD format.
+ *
+ * IMPORTANT: All date<->string conversions use UTC to ensure consistency
+ * between client and server, regardless of timezone.
  */
 
 /**
- * Parse a YYYY-MM-DD string into a Date object in local time.
- * Avoids timezone issues that occur with `new Date("YYYY-MM-DD")`.
+ * Parse a YYYY-MM-DD string into a Date object at midnight UTC.
+ * Used for database queries and date comparisons.
  */
 export function parseDate(dateStr: string): Date {
   const [year, month, day] = dateStr.split("-").map(Number);
-  return new Date(year, month - 1, day);
+  return new Date(Date.UTC(year, month - 1, day));
 }
 
 /**
- * Format a Date object as YYYY-MM-DD string.
- * Avoids timezone issues that occur with `toISOString().split("T")[0]`.
+ * Null-safe version of parseDate for optional date strings.
+ */
+export function parseDateNullable(
+  dateStr: string | null | undefined
+): Date | null {
+  return dateStr ? parseDate(dateStr) : null;
+}
+
+/**
+ * Format a Date object as YYYY-MM-DD string using UTC.
+ * Used for API responses and date serialization.
  */
 export function toDateString(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
+}
+
+/**
+ * Null-safe version of toDateString for optional date fields.
+ */
+export function toDateStringNullable(date: Date | null | undefined): string | null {
+  return date ? toDateString(date) : null;
 }
 
 /**
@@ -75,15 +94,6 @@ export function formatMonth(month: string): string {
 export function getPercentageChange(current: number, previous: number): number | null {
   if (previous === 0) return null;
   return Math.round(((current - previous) / previous) * 100);
-}
-
-/**
- * Get date N days ago in YYYY-MM-DD format.
- */
-export function getDaysAgo(days: number): string {
-  const date = new Date();
-  date.setDate(date.getDate() - days);
-  return toDateString(date);
 }
 
 /**

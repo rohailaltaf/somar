@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { headers } from "next/headers";
-import { toDateField, toDateFieldNullable, serializeTransactions } from "@/lib/date-helpers";
+import { parseDate, parseDateNullable } from "@somar/shared/utils";
+import { serializeTransactions } from "@/lib/serializers";
 
 /**
  * GET /api/transactions
@@ -44,8 +45,8 @@ export async function GET(request: Request) {
       userId: session.user.id,
       ...(accountId && { accountId }),
       ...(categoryId === "null" ? { categoryId: null } : categoryId ? { categoryId } : {}),
-      ...(startDate && { date: { gte: toDateField(startDate) } }),
-      ...(endDate && { date: { ...(startDate ? { gte: toDateField(startDate) } : {}), lte: toDateField(endDate) } }),
+      ...(startDate && { date: { gte: parseDate(startDate) } }),
+      ...(endDate && { date: { ...(startDate ? { gte: parseDate(startDate) } : {}), lte: parseDate(endDate) } }),
       ...(!showExcluded && { excluded: false }),
       ...(search && { description: { contains: search, mode: "insensitive" as const } }),
     };
@@ -150,15 +151,15 @@ export async function POST(request: Request) {
         categoryId: txn.categoryId || null,
         description: txn.description,
         amount: txn.amount,
-        date: toDateField(txn.date),
+        date: parseDate(txn.date),
         excluded: txn.excluded || false,
         isConfirmed: txn.isConfirmed || false,
         plaidTransactionId: txn.plaidTransactionId || null,
         plaidOriginalDescription: txn.plaidOriginalDescription || null,
         plaidName: txn.plaidName || null,
         plaidMerchantName: txn.plaidMerchantName || null,
-        plaidAuthorizedDate: toDateFieldNullable(txn.plaidAuthorizedDate),
-        plaidPostedDate: toDateFieldNullable(txn.plaidPostedDate),
+        plaidAuthorizedDate: parseDateNullable(txn.plaidAuthorizedDate),
+        plaidPostedDate: parseDateNullable(txn.plaidPostedDate),
       })),
     });
 
