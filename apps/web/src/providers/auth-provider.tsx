@@ -5,6 +5,7 @@ import {
   useContext,
   useCallback,
   useState,
+  useEffect,
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
@@ -45,22 +46,21 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const router = useRouter();
   const { data: session, isPending: isLoading } = useSession();
+  const [otpState, setOtpStateInternal] = useState<OtpState>(initialOtpState);
+  const [isOtpStateLoaded, setIsOtpStateLoaded] = useState(false);
 
-  // OTP state with sessionStorage persistence
-  const [otpState, setOtpStateInternal] = useState<OtpState>(() => {
-    // Initialize from sessionStorage if available (client-side only)
-    if (typeof window !== "undefined") {
-      const stored = sessionStorage.getItem(OTP_STATE_KEY);
-      if (stored) {
-        try {
-          return JSON.parse(stored) as OtpState;
-        } catch {
-          // Invalid JSON, use initial state
-        }
+  // Restore OTP state from sessionStorage on mount (avoids SSR hydration mismatch)
+  useEffect(() => {
+    const stored = sessionStorage.getItem(OTP_STATE_KEY);
+    if (stored) {
+      try {
+        setOtpStateInternal(JSON.parse(stored) as OtpState);
+      } catch {
+        // Invalid JSON, use initial state
       }
     }
-    return initialOtpState;
-  });
+    setIsOtpStateLoaded(true);
+  }, []);
 
   const setOtpState = useCallback((state: OtpState) => {
     setOtpStateInternal(state);
@@ -115,7 +115,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const value: AuthContextValue = {
     session,
-    isLoading,
+    isLoading: isLoading || !isOtpStateLoaded,
     otpState,
     setOtpState,
     resetOtpState,
