@@ -50,7 +50,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const verifyOtp = useCallback(
     async (email: string, otp: string) => {
-      const result = await emailOtp.verifyOtp({ email, otp });
+      const result = await signIn.emailOtp({ email, otp });
 
       if (result.error) {
         throw new Error(result.error.message || "Invalid code");

@@ -7,6 +7,15 @@ export const authFormStyles = {
   /** Card container */
   card: "rounded-xl border border-border bg-card p-6",
 
+  /** Card with back button needs extra top padding */
+  cardWithBack: "rounded-xl border border-border bg-card p-6 pt-12",
+
+  /** Back button positioning */
+  backButton: {
+    container: "absolute left-4 top-4",
+    text: "text-muted-foreground text-sm",
+  },
+
   /** Header section */
   header: {
     container: "text-center mb-6",
@@ -34,27 +43,35 @@ export const authFormStyles = {
   /** Error alert */
   error: {
     container: "bg-destructive/10 border border-destructive rounded-lg p-3 mb-4",
-    text: "text-destructive text-sm",
+    text: "text-destructive text-sm text-center",
   },
 
   /** Buttons */
   button: {
     primary: "bg-primary rounded-lg py-3.5 items-center w-full",
+    primaryDisabled: "bg-primary rounded-lg py-3.5 items-center w-full opacity-70",
     primaryText: "text-primary-foreground font-semibold text-base",
     oauth: "bg-foreground rounded-lg py-3 items-center w-full mb-6",
-    oauthText: "text-background font-medium",
+    oauthText: "text-background font-semibold text-base",
+    ghost: "py-3 items-center w-full",
+    ghostText: "text-muted-foreground text-sm",
     link: "text-primary text-sm",
   },
 
   /** Footer with sign up/sign in link */
   footer: {
-    container: "flex flex-row justify-center items-center mt-4 gap-1",
+    container: "flex flex-row justify-center items-center mt-6 gap-1",
     text: "text-muted-foreground text-sm",
     link: "text-primary text-sm font-medium",
   },
 
-  /** Password hint */
-  passwordHint: "text-xs text-muted-foreground text-center mt-4",
+  /** OTP input styles */
+  otp: {
+    container: "flex flex-row justify-center gap-2 mb-6",
+    slot: "w-12 h-14 border border-border rounded-lg text-center text-xl text-foreground bg-surface-elevated",
+    slotActive: "border-primary ring-2 ring-primary",
+    slotError: "border-destructive",
+  },
 
   /** Loading state overlay */
   loading: {
@@ -69,6 +86,8 @@ export const authFormStyles = {
     inputHeight: 48,
     inputPaddingHorizontal: 16,
     buttonPaddingVertical: 14,
+    otpSlotWidth: 48,
+    otpSlotHeight: 56,
   },
 } as const;
 
@@ -77,4 +96,11 @@ export const authFormStyles = {
  */
 export function getInputClass(hasError: boolean): string {
   return `${authFormStyles.field.input} ${hasError ? authFormStyles.field.inputError : ""}`;
+}
+
+/**
+ * Get button class based on disabled state.
+ */
+export function getButtonClass(isDisabled: boolean): string {
+  return isDisabled ? authFormStyles.button.primaryDisabled : authFormStyles.button.primary;
 }

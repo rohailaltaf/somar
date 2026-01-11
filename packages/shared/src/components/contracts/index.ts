@@ -33,3 +33,6 @@ export type {
 export type { StatCardProps } from "./stat-card";
 export type { QuickActionProps } from "./quick-action";
 export type { AnimatedCurrencyProps } from "./animated-currency";
+
+// Auth components
+export type { OtpInputProps } from "./otp-input";

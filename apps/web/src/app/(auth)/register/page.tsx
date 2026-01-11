@@ -5,27 +5,13 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/providers";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-} from "@/components/ui/input-otp";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, ArrowLeft } from "lucide-react";
+import { OtpInput } from "@/components/ui/otp-input";
+import { authFormStyles, getButtonClass } from "@somar/shared/styles";
 import {
   registerEmailSchema,
+  otpSchema,
   type RegisterEmailFormData,
+  type OtpFormData,
 } from "@somar/shared/validation";
 
 type Step = "info" | "otp";
@@ -34,268 +20,219 @@ export default function RegisterPage() {
   const { sendOtp, verifyOtp, loginWithGoogle } = useAuth();
   const [step, setStep] = useState<Step>("info");
   const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
-  const [otp, setOtp] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isRedirecting, setIsRedirecting] = useState(false);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<RegisterEmailFormData>({
+  // Info form (name + email)
+  const infoForm = useForm<RegisterEmailFormData>({
     resolver: zodResolver(registerEmailSchema),
-    defaultValues: {
-      name: "",
-      email: "",
-    },
+    defaultValues: { name: "", email: "" },
+  });
+
+  // OTP form
+  const otpForm = useForm<OtpFormData>({
+    resolver: zodResolver(otpSchema),
+    defaultValues: { email: "", otp: "" },
   });
 
   async function handleInfoSubmit(data: RegisterEmailFormData) {
-    setIsSubmitting(true);
-    setError(null);
     try {
       await sendOtp(data.email);
       setEmail(data.email);
-      setName(data.name);
+      otpForm.setValue("email", data.email);
       setStep("otp");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to send code");
-    } finally {
-      setIsSubmitting(false);
+      infoForm.setError("root", {
+        message: err instanceof Error ? err.message : "Failed to send code",
+      });
     }
   }
 
-  async function handleOtpSubmit() {
-    if (otp.length !== 6) return;
-    setIsSubmitting(true);
-    setError(null);
+  async function handleOtpSubmit(data: OtpFormData) {
     try {
-      await verifyOtp(email, otp);
-      setIsRedirecting(true);
+      await verifyOtp(data.email, data.otp);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Invalid code");
-      setIsSubmitting(false);
+      otpForm.setError("root", {
+        message: err instanceof Error ? err.message : "Invalid code",
+      });
     }
   }
 
   async function handleResendCode() {
-    setIsSubmitting(true);
-    setError(null);
     try {
       await sendOtp(email);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to resend code");
-    } finally {
-      setIsSubmitting(false);
+      otpForm.setError("root", {
+        message: err instanceof Error ? err.message : "Failed to resend code",
+      });
     }
   }
 
   async function handleGoogleRegister() {
-    setIsSubmitting(true);
-    setError(null);
     try {
       await loginWithGoogle();
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to sign up with Google"
-      );
-      setIsSubmitting(false);
+      infoForm.setError("root", {
+        message: err instanceof Error ? err.message : "Failed to sign up with Google",
+      });
     }
   }
 
-  // Show fullscreen loading when redirecting
-  if (isRedirecting) {
+  function handleBack() {
+    setStep("info");
+    otpForm.reset();
+  }
+
+  const isInfoSubmitting = infoForm.formState.isSubmitting;
+  const isOtpSubmitting = otpForm.formState.isSubmitting;
+
+  // Loading state
+  if (isOtpSubmitting) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-surface-deep">
-        <div className="text-center space-y-4">
-          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-          <h2 className="text-xl font-semibold text-foreground">
-            Creating your account...
-          </h2>
-          <p className="text-muted-foreground">Please wait</p>
-        </div>
+      <div className={authFormStyles.loading.container}>
+        <div className={authFormStyles.loading.spinner} />
+        <p className={authFormStyles.loading.text}>Creating your account...</p>
+        <p className={authFormStyles.loading.subtext}>Please wait</p>
       </div>
     );
   }
 
-  // OTP verification step
+  // OTP step
   if (step === "otp") {
     return (
-      <Card className="border-border bg-surface relative">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="absolute left-4 top-4"
-          onClick={() => {
-            setStep("info");
-            setOtp("");
-            setError(null);
-          }}
+      <div className={`${authFormStyles.cardWithBack} relative`}>
+        <button
+          type="button"
+          onClick={handleBack}
+          className={authFormStyles.backButton.container}
         >
-          <ArrowLeft className="h-4 w-4 mr-1" /> Back
-        </Button>
-        <CardHeader className="text-center pt-12">
-          <CardTitle className="text-2xl font-bold text-foreground">
-            Check your email
-          </CardTitle>
-          <CardDescription className="text-muted-foreground">
-            We sent a code to {email}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {error && (
-            <Alert
-              variant="destructive"
-              className="border-red-500/50 bg-red-950/20"
-            >
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription className="text-red-200">
-                {error}
-              </AlertDescription>
-            </Alert>
-          )}
-          <div className="flex justify-center">
-            <InputOTP maxLength={6} value={otp} onChange={setOtp}>
-              <InputOTPGroup>
-                {[0, 1, 2, 3, 4, 5].map((i) => (
-                  <InputOTPSlot key={i} index={i} />
-                ))}
-              </InputOTPGroup>
-            </InputOTP>
+          <span className={authFormStyles.backButton.text}>← Back</span>
+        </button>
+
+        <div className={authFormStyles.header.container}>
+          <h1 className={authFormStyles.header.title}>Check your email</h1>
+          <p className={authFormStyles.header.subtitle}>We sent a code to {email}</p>
+        </div>
+
+        {otpForm.formState.errors.root && (
+          <div className={authFormStyles.error.container}>
+            <p className={authFormStyles.error.text}>
+              {otpForm.formState.errors.root.message}
+            </p>
           </div>
-          <Button
-            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
-            onClick={handleOtpSubmit}
-            disabled={otp.length !== 6 || isSubmitting}
+        )}
+
+        <form onSubmit={otpForm.handleSubmit(handleOtpSubmit)}>
+          <OtpInput
+            value={otpForm.watch("otp")}
+            onChange={(value) => otpForm.setValue("otp", value)}
+            hasError={!!otpForm.formState.errors.otp}
+          />
+
+          <button
+            type="submit"
+            disabled={otpForm.watch("otp").length !== 6 || isOtpSubmitting}
+            className={getButtonClass(otpForm.watch("otp").length !== 6 || isOtpSubmitting)}
           >
-            {isSubmitting ? "Creating account..." : "Create account"}
-          </Button>
-          <Button
-            variant="ghost"
-            className="w-full text-muted-foreground"
-            onClick={handleResendCode}
-            disabled={isSubmitting}
-          >
-            Resend code
-          </Button>
-        </CardContent>
-      </Card>
+            <span className={authFormStyles.button.primaryText}>Create account</span>
+          </button>
+        </form>
+
+        <button
+          type="button"
+          onClick={handleResendCode}
+          disabled={isOtpSubmitting}
+          className={authFormStyles.button.ghost}
+        >
+          <span className={authFormStyles.button.ghostText}>Resend code</span>
+        </button>
+      </div>
     );
   }
 
-  // Info entry step
+  // Info step
   return (
-    <Card className="border-border bg-surface">
-      <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-bold text-foreground">
-          Create an account
-        </CardTitle>
-        <CardDescription className="text-muted-foreground">
-          Start tracking your finances securely
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <Button
-          variant="outline"
-          className="w-full bg-white text-slate-900 hover:bg-slate-100"
-          onClick={handleGoogleRegister}
-          disabled={isSubmitting}
-        >
-          <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
-            <path
-              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-              fill="#4285F4"
-            />
-            <path
-              d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-              fill="#34A853"
-            />
-            <path
-              d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-              fill="#FBBC05"
-            />
-            <path
-              d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-              fill="#EA4335"
-            />
-          </svg>
-          Continue with Google
-        </Button>
+    <div className={authFormStyles.card}>
+      <div className={authFormStyles.header.container}>
+        <h1 className={authFormStyles.header.title}>Create an account</h1>
+        <p className={authFormStyles.header.subtitle}>Start tracking your finances securely</p>
+      </div>
 
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-border" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-surface px-2 text-muted-foreground">
-              Or continue with email
-            </span>
-          </div>
+      <button
+        type="button"
+        onClick={handleGoogleRegister}
+        disabled={isInfoSubmitting}
+        className={authFormStyles.button.oauth}
+      >
+        <span className={authFormStyles.button.oauthText}>Continue with Google</span>
+      </button>
+
+      <div className={authFormStyles.divider.container}>
+        <div className={authFormStyles.divider.line} />
+        <span className={authFormStyles.divider.text}>Or continue with</span>
+        <div className={authFormStyles.divider.line} />
+      </div>
+
+      {infoForm.formState.errors.root && (
+        <div className={authFormStyles.error.container}>
+          <p className={authFormStyles.error.text}>
+            {infoForm.formState.errors.root.message}
+          </p>
+        </div>
+      )}
+
+      <form onSubmit={infoForm.handleSubmit(handleInfoSubmit)}>
+        <div className={authFormStyles.field.container}>
+          <label htmlFor="name" className={authFormStyles.field.label}>
+            Name
+          </label>
+          <input
+            id="name"
+            type="text"
+            placeholder="John Doe"
+            {...infoForm.register("name")}
+            className={`${authFormStyles.field.input} w-full px-4 py-3`}
+          />
+          {infoForm.formState.errors.name && (
+            <p className={authFormStyles.field.error}>
+              {infoForm.formState.errors.name.message}
+            </p>
+          )}
         </div>
 
-        <form onSubmit={handleSubmit(handleInfoSubmit)} className="space-y-4">
-          {error && (
-            <Alert
-              variant="destructive"
-              className="border-red-500/50 bg-red-950/20"
-            >
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Registration failed</AlertTitle>
-              <AlertDescription className="text-red-200">
-                {error}
-              </AlertDescription>
-            </Alert>
+        <div className={authFormStyles.field.container}>
+          <label htmlFor="email" className={authFormStyles.field.label}>
+            Email
+          </label>
+          <input
+            id="email"
+            type="email"
+            placeholder="you@example.com"
+            {...infoForm.register("email")}
+            className={`${authFormStyles.field.input} w-full px-4 py-3`}
+          />
+          {infoForm.formState.errors.email && (
+            <p className={authFormStyles.field.error}>
+              {infoForm.formState.errors.email.message}
+            </p>
           )}
-          <div className="space-y-2">
-            <Label htmlFor="name" className="text-foreground-secondary">
-              Name
-            </Label>
-            <Input
-              id="name"
-              type="text"
-              placeholder="John Doe"
-              {...register("name")}
-              className="border-border bg-surface-elevated text-foreground placeholder:text-foreground-dim"
-            />
-            {errors.name && (
-              <p className="text-destructive text-xs">{errors.name.message}</p>
-            )}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="email" className="text-foreground-secondary">
-              Email
-            </Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="you@example.com"
-              {...register("email")}
-              className="border-border bg-surface-elevated text-foreground placeholder:text-foreground-dim"
-            />
-            {errors.email && (
-              <p className="text-destructive text-xs">{errors.email.message}</p>
-            )}
-          </div>
-          <Button
-            type="submit"
-            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? "Sending code..." : "Continue"}
-          </Button>
-        </form>
-      </CardContent>
-      <CardFooter>
-        <p className="text-sm text-muted-foreground">
-          Already have an account?{" "}
-          <Link href="/login" className="text-primary hover:underline">
-            Sign in
-          </Link>
-        </p>
-      </CardFooter>
-    </Card>
+        </div>
+
+        <button
+          type="submit"
+          disabled={isInfoSubmitting}
+          className={getButtonClass(isInfoSubmitting)}
+        >
+          <span className={authFormStyles.button.primaryText}>
+            {isInfoSubmitting ? "Sending code..." : "Continue"}
+          </span>
+        </button>
+      </form>
+
+      <div className={authFormStyles.footer.container}>
+        <span className={authFormStyles.footer.text}>Already have an account?</span>
+        <Link href="/login" className={authFormStyles.footer.link}>
+          Sign in
+        </Link>
+      </div>
+    </div>
   );
 }
