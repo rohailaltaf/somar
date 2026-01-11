@@ -1,7 +1,9 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { expo } from "@better-auth/expo";
+import { emailOTP } from "better-auth/plugins";
 import { db } from "./db";
+import { sendOTPEmail } from "./email";
 
 const DEFAULT_CATEGORIES = [
   { name: "personal", type: "spending", color: "oklch(0.65 0.15 280)" },
@@ -25,7 +27,16 @@ export const auth = betterAuth({
     provider: "postgresql",
   }),
 
-  plugins: [expo()],
+  plugins: [
+    expo(),
+    emailOTP({
+      sendVerificationOTP: async ({ email, otp }) => {
+        await sendOTPEmail(email, otp);
+      },
+      otpLength: 6,
+      expiresIn: 600, // 10 minutes
+    }),
+  ],
 
   user: {
     hooks: {
@@ -42,12 +53,6 @@ export const auth = betterAuth({
         },
       },
     },
-  },
-
-  emailAndPassword: {
-    enabled: true,
-    minPasswordLength: 8,
-    maxPasswordLength: 128,
   },
 
   socialProviders: {

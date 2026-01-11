@@ -9,6 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -17,39 +22,80 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
-import { loginSchema, type LoginFormData } from "@somar/shared/validation";
+import { AlertCircle, ArrowLeft } from "lucide-react";
+import { emailSchema, type EmailFormData } from "@somar/shared/validation";
+
+type Step = "email" | "otp";
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { sendOtp, verifyOtp, loginWithGoogle } = useAuth();
+  const [step, setStep] = useState<Step>("email");
+  const [email, setEmail] = useState("");
+  const [otp, setOtp] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [isRedirecting, setIsRedirecting] = useState(false);
-  const [isOAuthLoading, setIsOAuthLoading] = useState(false);
 
   const {
     register,
     handleSubmit,
-    setError,
-    formState: { errors, isSubmitting },
-  } = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
+    formState: { errors },
+  } = useForm<EmailFormData>({
+    resolver: zodResolver(emailSchema),
     defaultValues: {
       email: "",
-      password: "",
     },
   });
 
-  const isDisabled = isSubmitting || isOAuthLoading;
-
-  async function onSubmit(data: LoginFormData) {
+  async function handleEmailSubmit(data: EmailFormData) {
+    setIsSubmitting(true);
+    setError(null);
     try {
-      await login(data.email, data.password);
-      // login() handles navigation via window.location.href
-      // Show redirecting state while browser navigates
+      await sendOtp(data.email);
+      setEmail(data.email);
+      setStep("otp");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to send code");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleOtpSubmit() {
+    if (otp.length !== 6) return;
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      await verifyOtp(email, otp);
       setIsRedirecting(true);
-    } catch (error) {
-      setError("root", {
-        message: error instanceof Error ? error.message : "Failed to sign in",
-      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Invalid code");
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleResendCode() {
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      await sendOtp(email);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to resend code");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleGoogleLogin() {
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      await loginWithGoogle();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to sign in with Google"
+      );
+      setIsSubmitting(false);
     }
   }
 
@@ -59,20 +105,82 @@ export default function LoginPage() {
       <div className="fixed inset-0 flex items-center justify-center bg-surface-deep">
         <div className="text-center space-y-4">
           <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-          <h2 className="text-xl font-semibold text-foreground">Signing in...</h2>
+          <h2 className="text-xl font-semibold text-foreground">
+            Signing in...
+          </h2>
           <p className="text-muted-foreground">Please wait</p>
         </div>
       </div>
     );
   }
 
-  function handleGoogleLogin(): void {
-    // Google OAuth not yet implemented
-    setError("root", {
-      message: "Google login coming soon. Please use email/password for now.",
-    });
+  // OTP verification step
+  if (step === "otp") {
+    return (
+      <Card className="border-border bg-surface relative">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="absolute left-4 top-4"
+          onClick={() => {
+            setStep("email");
+            setOtp("");
+            setError(null);
+          }}
+        >
+          <ArrowLeft className="h-4 w-4 mr-1" /> Back
+        </Button>
+        <CardHeader className="text-center pt-12">
+          <CardTitle className="text-2xl font-bold text-foreground">
+            Check your email
+          </CardTitle>
+          <CardDescription className="text-muted-foreground">
+            We sent a code to {email}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {error && (
+            <Alert
+              variant="destructive"
+              className="border-red-500/50 bg-red-950/20"
+            >
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription className="text-red-200">
+                {error}
+              </AlertDescription>
+            </Alert>
+          )}
+          <div className="flex justify-center">
+            <InputOTP maxLength={6} value={otp} onChange={setOtp}>
+              <InputOTPGroup>
+                {[0, 1, 2, 3, 4, 5].map((i) => (
+                  <InputOTPSlot key={i} index={i} />
+                ))}
+              </InputOTPGroup>
+            </InputOTP>
+          </div>
+          <Button
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+            onClick={handleOtpSubmit}
+            disabled={otp.length !== 6 || isSubmitting}
+          >
+            {isSubmitting ? "Verifying..." : "Continue"}
+          </Button>
+          <Button
+            variant="ghost"
+            className="w-full text-muted-foreground"
+            onClick={handleResendCode}
+            disabled={isSubmitting}
+          >
+            Resend code
+          </Button>
+        </CardContent>
+      </Card>
+    );
   }
 
+  // Email entry step
   return (
     <Card className="border-border bg-surface">
       <CardHeader className="text-center">
@@ -88,7 +196,7 @@ export default function LoginPage() {
           variant="outline"
           className="w-full bg-white dark:bg-white text-slate-900 dark:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-100 border-slate-300"
           onClick={handleGoogleLogin}
-          disabled={isDisabled}
+          disabled={isSubmitting}
         >
           <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
             <path
@@ -122,13 +230,16 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          {errors.root && (
-            <Alert variant="destructive" className="border-red-500/50 bg-red-950/20">
+        <form onSubmit={handleSubmit(handleEmailSubmit)} className="space-y-4">
+          {error && (
+            <Alert
+              variant="destructive"
+              className="border-red-500/50 bg-red-950/20"
+            >
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Sign in failed</AlertTitle>
               <AlertDescription className="text-red-200">
-                {errors.root.message}
+                {error}
               </AlertDescription>
             </Alert>
           )}
@@ -147,27 +258,12 @@ export default function LoginPage() {
               <p className="text-destructive text-xs">{errors.email.message}</p>
             )}
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="password" className="text-foreground-secondary">
-              Password
-            </Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              {...register("password")}
-              className="border-border bg-surface-elevated text-foreground placeholder:text-foreground-dim"
-            />
-            {errors.password && (
-              <p className="text-destructive text-xs">{errors.password.message}</p>
-            )}
-          </div>
           <Button
             type="submit"
             className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
-            disabled={isDisabled}
+            disabled={isSubmitting}
           >
-            {isSubmitting ? "Signing in..." : "Sign in"}
+            {isSubmitting ? "Sending code..." : "Continue with email"}
           </Button>
         </form>
       </CardContent>

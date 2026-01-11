@@ -7,16 +7,20 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
-import { signIn, signUp, signOut, useSession } from "@/lib/auth-client";
+import { signIn, signOut, useSession, emailOtp } from "@/lib/auth-client";
 
 interface AuthContextValue {
   // Session state (from Better Auth)
   session: ReturnType<typeof useSession>["data"];
   isLoading: boolean;
 
-  // Auth actions
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string) => Promise<void>;
+  // OTP auth actions
+  sendOtp: (email: string) => Promise<void>;
+  verifyOtp: (email: string, otp: string) => Promise<void>;
+
+  // Social auth
+  loginWithGoogle: () => Promise<void>;
+
   logout: () => Promise<void>;
 }
 
@@ -33,13 +37,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const router = useRouter();
   const { data: session, isPending: isLoading } = useSession();
 
-  const login = useCallback(
-    async (email: string, password: string) => {
-      // Sign in with Better Auth
-      const result = await signIn.email({ email, password });
+  const sendOtp = useCallback(async (email: string) => {
+    const result = await emailOtp.sendVerificationOtp({
+      email,
+      type: "sign-in",
+    });
+
+    if (result.error) {
+      throw new Error(result.error.message || "Failed to send code");
+    }
+  }, []);
+
+  const verifyOtp = useCallback(
+    async (email: string, otp: string) => {
+      const result = await emailOtp.verifyOtp({ email, otp });
 
       if (result.error) {
-        throw new Error(result.error.message || "Failed to sign in");
+        throw new Error(result.error.message || "Invalid code");
       }
 
       // Navigate to dashboard
@@ -48,34 +62,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
     [router]
   );
 
-  const register = useCallback(
-    async (email: string, password: string, name: string) => {
-      // Register with Better Auth (auto-signs in)
-      const result = await signUp.email({ email, password, name });
-
-      if (result.error) {
-        throw new Error(result.error.message || "Failed to register");
-      }
-
-      // Navigate to dashboard
-      router.push("/");
-    },
-    [router]
-  );
+  const loginWithGoogle = useCallback(async () => {
+    await signIn.social({
+      provider: "google",
+      callbackURL: "/",
+    });
+  }, []);
 
   const logout = useCallback(async () => {
-    // Sign out from Better Auth
     await signOut();
-
-    // Navigate to login page
     router.push("/login");
   }, [router]);
 
   const value: AuthContextValue = {
     session,
     isLoading,
-    login,
-    register,
+    sendOtp,
+    verifyOtp,
+    loginWithGoogle,
     logout,
   };
 

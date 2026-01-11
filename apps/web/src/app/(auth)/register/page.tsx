@@ -9,6 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -17,41 +22,86 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
-import { registerSchema, type RegisterFormData } from "@somar/shared/validation";
+import { AlertCircle, ArrowLeft } from "lucide-react";
+import {
+  registerEmailSchema,
+  type RegisterEmailFormData,
+} from "@somar/shared/validation";
+
+type Step = "info" | "otp";
 
 export default function RegisterPage() {
-  const { register: authRegister } = useAuth();
+  const { sendOtp, verifyOtp, loginWithGoogle } = useAuth();
+  const [step, setStep] = useState<Step>("info");
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [otp, setOtp] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [isRedirecting, setIsRedirecting] = useState(false);
-  const [isOAuthLoading, setIsOAuthLoading] = useState(false);
 
   const {
     register,
     handleSubmit,
-    setError,
-    formState: { errors, isSubmitting },
-  } = useForm<RegisterFormData>({
-    resolver: zodResolver(registerSchema),
+    formState: { errors },
+  } = useForm<RegisterEmailFormData>({
+    resolver: zodResolver(registerEmailSchema),
     defaultValues: {
       name: "",
       email: "",
-      password: "",
-      confirmPassword: "",
     },
   });
 
-  const isDisabled = isSubmitting || isOAuthLoading;
-
-  async function onSubmit(data: RegisterFormData) {
+  async function handleInfoSubmit(data: RegisterEmailFormData) {
+    setIsSubmitting(true);
+    setError(null);
     try {
-      await authRegister(data.email, data.password, data.name);
-      // register() handles navigation via window.location.href
-      // Show redirecting state while browser navigates
+      await sendOtp(data.email);
+      setEmail(data.email);
+      setName(data.name);
+      setStep("otp");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to send code");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleOtpSubmit() {
+    if (otp.length !== 6) return;
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      await verifyOtp(email, otp);
       setIsRedirecting(true);
-    } catch (error) {
-      setError("root", {
-        message: error instanceof Error ? error.message : "Failed to create account",
-      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Invalid code");
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleResendCode() {
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      await sendOtp(email);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to resend code");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleGoogleRegister() {
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      await loginWithGoogle();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to sign up with Google"
+      );
+      setIsSubmitting(false);
     }
   }
 
@@ -61,20 +111,82 @@ export default function RegisterPage() {
       <div className="fixed inset-0 flex items-center justify-center bg-surface-deep">
         <div className="text-center space-y-4">
           <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-          <h2 className="text-xl font-semibold text-foreground">Creating your account...</h2>
+          <h2 className="text-xl font-semibold text-foreground">
+            Creating your account...
+          </h2>
           <p className="text-muted-foreground">Please wait</p>
         </div>
       </div>
     );
   }
 
-  function handleGoogleRegister(): void {
-    // Google OAuth not yet implemented
-    setError("root", {
-      message: "Google login coming soon. Please use email/password for now.",
-    });
+  // OTP verification step
+  if (step === "otp") {
+    return (
+      <Card className="border-border bg-surface relative">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="absolute left-4 top-4"
+          onClick={() => {
+            setStep("info");
+            setOtp("");
+            setError(null);
+          }}
+        >
+          <ArrowLeft className="h-4 w-4 mr-1" /> Back
+        </Button>
+        <CardHeader className="text-center pt-12">
+          <CardTitle className="text-2xl font-bold text-foreground">
+            Check your email
+          </CardTitle>
+          <CardDescription className="text-muted-foreground">
+            We sent a code to {email}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {error && (
+            <Alert
+              variant="destructive"
+              className="border-red-500/50 bg-red-950/20"
+            >
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription className="text-red-200">
+                {error}
+              </AlertDescription>
+            </Alert>
+          )}
+          <div className="flex justify-center">
+            <InputOTP maxLength={6} value={otp} onChange={setOtp}>
+              <InputOTPGroup>
+                {[0, 1, 2, 3, 4, 5].map((i) => (
+                  <InputOTPSlot key={i} index={i} />
+                ))}
+              </InputOTPGroup>
+            </InputOTP>
+          </div>
+          <Button
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+            onClick={handleOtpSubmit}
+            disabled={otp.length !== 6 || isSubmitting}
+          >
+            {isSubmitting ? "Creating account..." : "Create account"}
+          </Button>
+          <Button
+            variant="ghost"
+            className="w-full text-muted-foreground"
+            onClick={handleResendCode}
+            disabled={isSubmitting}
+          >
+            Resend code
+          </Button>
+        </CardContent>
+      </Card>
+    );
   }
 
+  // Info entry step
   return (
     <Card className="border-border bg-surface">
       <CardHeader className="text-center">
@@ -90,7 +202,7 @@ export default function RegisterPage() {
           variant="outline"
           className="w-full bg-white text-slate-900 hover:bg-slate-100"
           onClick={handleGoogleRegister}
-          disabled={isDisabled}
+          disabled={isSubmitting}
         >
           <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
             <path
@@ -124,13 +236,16 @@ export default function RegisterPage() {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          {errors.root && (
-            <Alert variant="destructive" className="border-red-500/50 bg-red-950/20">
+        <form onSubmit={handleSubmit(handleInfoSubmit)} className="space-y-4">
+          {error && (
+            <Alert
+              variant="destructive"
+              className="border-red-500/50 bg-red-950/20"
+            >
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Registration failed</AlertTitle>
               <AlertDescription className="text-red-200">
-                {errors.root.message}
+                {error}
               </AlertDescription>
             </Alert>
           )}
@@ -164,42 +279,12 @@ export default function RegisterPage() {
               <p className="text-destructive text-xs">{errors.email.message}</p>
             )}
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="password" className="text-foreground-secondary">
-              Password
-            </Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              {...register("password")}
-              className="border-border bg-surface-elevated text-foreground placeholder:text-foreground-dim"
-            />
-            {errors.password && (
-              <p className="text-destructive text-xs">{errors.password.message}</p>
-            )}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword" className="text-foreground-secondary">
-              Confirm Password
-            </Label>
-            <Input
-              id="confirmPassword"
-              type="password"
-              placeholder="••••••••"
-              {...register("confirmPassword")}
-              className="border-border bg-surface-elevated text-foreground placeholder:text-foreground-dim"
-            />
-            {errors.confirmPassword && (
-              <p className="text-destructive text-xs">{errors.confirmPassword.message}</p>
-            )}
-          </div>
           <Button
             type="submit"
             className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
-            disabled={isDisabled}
+            disabled={isSubmitting}
           >
-            {isSubmitting ? "Creating account..." : "Create account"}
+            {isSubmitting ? "Sending code..." : "Continue"}
           </Button>
         </form>
       </CardContent>

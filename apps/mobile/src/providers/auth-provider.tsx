@@ -4,16 +4,20 @@ import {
   useCallback,
   type ReactNode,
 } from "react";
-import { signIn, signUp, signOut, useSession } from "../lib/auth-client";
+import { signIn, signOut, useSession, emailOtp } from "../lib/auth-client";
 
 interface AuthContextValue {
   // Session state (from Better Auth)
   session: ReturnType<typeof useSession>["data"];
   isLoading: boolean;
 
-  // Auth actions
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string) => Promise<void>;
+  // OTP auth actions
+  sendOtp: (email: string) => Promise<void>;
+  verifyOtp: (email: string, otp: string) => Promise<void>;
+
+  // Social auth
+  loginWithGoogle: () => Promise<void>;
+
   logout: () => Promise<void>;
 }
 
@@ -25,34 +29,37 @@ interface AuthProviderProps {
 
 /**
  * Provides authentication state and actions for mobile.
- * All user data is now stored server-side in PostgreSQL.
+ * All user data is stored server-side in PostgreSQL.
  */
 export function AuthProvider({ children }: AuthProviderProps) {
   const { data: session, isPending: isLoading } = useSession();
 
-  const login = useCallback(async (email: string, password: string) => {
-    const result = await signIn.email({ email, password });
+  const sendOtp = useCallback(async (email: string) => {
+    const result = await emailOtp.sendVerificationOtp({
+      email,
+      type: "sign-in",
+    });
 
     if (result.error) {
-      throw new Error(result.error.message || "Failed to sign in");
+      throw new Error(result.error.message || "Failed to send code");
     }
-
-    // Seed categories for new users (idempotent - won't create duplicates)
-    // Note: This is now handled server-side on first login
   }, []);
 
-  const register = useCallback(
-    async (email: string, password: string, name: string) => {
-      const result = await signUp.email({ email, password, name });
+  const verifyOtp = useCallback(async (email: string, otp: string) => {
+    const result = await emailOtp.verifyOtp({ email, otp });
 
-      if (result.error) {
-        throw new Error(result.error.message || "Failed to register");
-      }
+    if (result.error) {
+      throw new Error(result.error.message || "Invalid code");
+    }
 
-      // Categories are seeded server-side when user first logs in
-    },
-    []
-  );
+    // Categories are seeded server-side when user is created
+  }, []);
+
+  const loginWithGoogle = useCallback(async () => {
+    await signIn.social({
+      provider: "google",
+    });
+  }, []);
 
   const logout = useCallback(async () => {
     await signOut();
@@ -61,8 +68,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const value: AuthContextValue = {
     session,
     isLoading,
-    login,
-    register,
+    sendOtp,
+    verifyOtp,
+    loginWithGoogle,
     logout,
   };
 
