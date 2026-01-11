@@ -28,6 +28,7 @@ export default function RegisterScreen() {
   const { sendOtp, verifyOtp, loginWithGoogle } = useAuth();
   const [step, setStep] = useState<Step>("info");
   const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
 
   // Info form (name + email)
   const infoForm = useForm<RegisterEmailFormData>({
@@ -45,6 +46,7 @@ export default function RegisterScreen() {
     try {
       await sendOtp(data.email);
       setEmail(data.email);
+      setName(data.name);
       otpForm.setValue("email", data.email);
       setStep("otp");
     } catch (err) {
@@ -56,7 +58,7 @@ export default function RegisterScreen() {
 
   async function handleOtpSubmit(data: OtpFormData) {
     try {
-      await verifyOtp(data.email, data.otp);
+      await verifyOtp(data.email, data.otp, name);
       router.replace("/(tabs)");
     } catch (err) {
       otpForm.setError("root", {

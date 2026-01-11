@@ -20,6 +20,7 @@ export default function RegisterPage() {
   const { sendOtp, verifyOtp, loginWithGoogle } = useAuth();
   const [step, setStep] = useState<Step>("info");
   const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
 
   // Info form (name + email)
   const infoForm = useForm<RegisterEmailFormData>({
@@ -37,6 +38,7 @@ export default function RegisterPage() {
     try {
       await sendOtp(data.email);
       setEmail(data.email);
+      setName(data.name);
       otpForm.setValue("email", data.email);
       setStep("otp");
     } catch (err) {
@@ -48,7 +50,7 @@ export default function RegisterPage() {
 
   async function handleOtpSubmit(data: OtpFormData) {
     try {
-      await verifyOtp(data.email, data.otp);
+      await verifyOtp(data.email, data.otp, name);
     } catch (err) {
       otpForm.setError("root", {
         message: err instanceof Error ? err.message : "Invalid code",
