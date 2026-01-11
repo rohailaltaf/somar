@@ -181,6 +181,12 @@ export function PlaidSyncModal({
   const [errorMessages, setErrorMessages] = useState<string[]>([]);
   const syncStartedRef = useRef(false);
   const timeoutIdsRef = useRef<NodeJS.Timeout[]>([]);
+  const syncFunctionRef = useRef(syncFunction);
+  const onCompleteRef = useRef(onComplete);
+
+  // Keep refs up to date
+  syncFunctionRef.current = syncFunction;
+  onCompleteRef.current = onComplete;
 
   // Cycle through messages during sync
   useEffect(() => {
@@ -204,13 +210,13 @@ export function PlaidSyncModal({
     setStage("syncing");
 
     try {
-      const result = await syncFunction();
+      const result = await syncFunctionRef.current();
 
       if (result.errors.length > 0) {
         setErrorMessages(result.errors);
         setStage("error");
         // Auto-close after showing error
-        const timeoutId = setTimeout(() => onComplete(), 4000);
+        const timeoutId = setTimeout(() => onCompleteRef.current(), 4000);
         timeoutIdsRef.current.push(timeoutId);
         return;
       }
@@ -220,7 +226,7 @@ export function PlaidSyncModal({
 
       // Auto-close after success animation
       const timeoutId = setTimeout(() => {
-        onComplete();
+        onCompleteRef.current();
       }, 2500);
       timeoutIdsRef.current.push(timeoutId);
     } catch (err) {
@@ -228,10 +234,10 @@ export function PlaidSyncModal({
         err instanceof Error ? err.message : "An unexpected error occurred",
       ]);
       setStage("error");
-      const timeoutId = setTimeout(() => onComplete(), 4000);
+      const timeoutId = setTimeout(() => onCompleteRef.current(), 4000);
       timeoutIdsRef.current.push(timeoutId);
     }
-  }, [syncFunction, onComplete]);
+  }, []);
 
   // Start sync when modal opens
   useEffect(() => {
@@ -254,8 +260,7 @@ export function PlaidSyncModal({
       setTransactionCount(0);
       setErrorMessages([]);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
+  }, [isOpen, performSync]);
 
   const getMessage = () => {
     switch (stage) {

@@ -290,7 +290,7 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
         setLinkToken(null);
       }
     },
-    [invalidateQueries, createAccount, plaidSyncItem, queryClient, updateModeItemId]
+    [invalidateQueries, createAccount, updateModeItemId]
   );
 
   const handlePlaidExit = useCallback(() => {
