@@ -2,22 +2,45 @@
  * Date utilities shared across web and mobile apps.
  * All month strings use YYYY-MM format.
  * All date strings use YYYY-MM-DD format.
+ *
+ * IMPORTANT: All date<->string conversions use UTC to ensure consistency
+ * between client and server, regardless of timezone.
  */
 
 /**
- * Parse a YYYY-MM-DD date string into a Date object.
- * Uses timezone-safe parsing to avoid day shifts.
+ * Parse a YYYY-MM-DD string into a Date object at midnight UTC.
+ * Used for database queries and date comparisons.
  */
 export function parseDate(dateStr: string): Date {
   if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
     throw new Error(`Invalid date format: ${dateStr}. Expected YYYY-MM-DD`);
   }
   const [year, month, day] = dateStr.split("-").map(Number);
-  const date = new Date(year, month - 1, day);
-  if (isNaN(date.getTime())) {
-    throw new Error(`Invalid date: ${dateStr}`);
-  }
-  return date;
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+/**
+ * Null-safe version of parseDate for optional date strings.
+ */
+export function parseDateNullable(
+  dateStr: string | null | undefined
+): Date | null {
+  return dateStr ? parseDate(dateStr) : null;
+}
+
+/**
+ * Format a Date object as YYYY-MM-DD string using UTC.
+ * Used for API responses and date serialization.
+ */
+export function toDateString(date: Date): string {
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
+}
+
+/**
+ * Null-safe version of toDateString for optional date fields.
+ */
+export function toDateStringNullable(date: Date | null | undefined): string | null {
+  return date ? toDateString(date) : null;
 }
 
 /**
@@ -35,7 +58,7 @@ export function getCurrentMonth(): string {
 export function getMonthDateRange(month: string): { startDate: string; endDate: string } {
   const [year, monthNum] = month.split("-").map(Number);
   const startDate = `${year}-${String(monthNum).padStart(2, "0")}-01`;
-  const lastDay = new Date(year, monthNum, 0).getDate();
+  const lastDay = new Date(Date.UTC(year, monthNum, 0)).getUTCDate();
   const endDate = `${year}-${String(monthNum).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
   return { startDate, endDate };
 }
@@ -74,26 +97,6 @@ export function formatMonth(month: string): string {
 export function getPercentageChange(current: number, previous: number): number | null {
   if (previous === 0) return null;
   return Math.round(((current - previous) / previous) * 100);
-}
-
-/**
- * Convert a Date object to YYYY-MM-DD string using local time.
- * Avoids timezone issues that occur with toISOString().
- */
-export function toDateString(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-/**
- * Get date N days ago in YYYY-MM-DD format.
- */
-export function getDaysAgo(days: number): string {
-  const date = new Date();
-  date.setDate(date.getDate() - days);
-  return toDateString(date);
 }
 
 /**

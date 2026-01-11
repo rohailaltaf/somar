@@ -33,7 +33,7 @@ export async function GET(): Promise<NextResponse<PlaidItemsResponse>> {
 
   try {
     const items = await db.plaidItem.findMany({
-      where: { userId: session.user.id },
+      where: { userId: session.user.id, deletedAt: null },
       include: {
         plaidAccounts: {
           select: {

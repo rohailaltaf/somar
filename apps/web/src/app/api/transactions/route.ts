@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { headers } from "next/headers";
+import { parseDate, parseDateNullable } from "@somar/shared/utils";
+import { serializeTransactions } from "@/lib/serializers";
 
 /**
  * GET /api/transactions
@@ -43,8 +45,8 @@ export async function GET(request: Request) {
       userId: session.user.id,
       ...(accountId && { accountId }),
       ...(categoryId === "null" ? { categoryId: null } : categoryId ? { categoryId } : {}),
-      ...(startDate && { date: { gte: startDate } }),
-      ...(endDate && { date: { ...(startDate ? { gte: startDate } : {}), lte: endDate } }),
+      ...(startDate && { date: { gte: parseDate(startDate) } }),
+      ...(endDate && { date: { ...(startDate ? { gte: parseDate(startDate) } : {}), lte: parseDate(endDate) } }),
       ...(!showExcluded && { excluded: false }),
       ...(search && { description: { contains: search, mode: "insensitive" as const } }),
     };
@@ -65,7 +67,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       success: true,
-      data: transactions,
+      data: serializeTransactions(transactions),
       pagination: {
         total,
         limit,
@@ -149,15 +151,15 @@ export async function POST(request: Request) {
         categoryId: txn.categoryId || null,
         description: txn.description,
         amount: txn.amount,
-        date: txn.date,
+        date: parseDate(txn.date),
         excluded: txn.excluded || false,
         isConfirmed: txn.isConfirmed || false,
         plaidTransactionId: txn.plaidTransactionId || null,
         plaidOriginalDescription: txn.plaidOriginalDescription || null,
         plaidName: txn.plaidName || null,
         plaidMerchantName: txn.plaidMerchantName || null,
-        plaidAuthorizedDate: txn.plaidAuthorizedDate || null,
-        plaidPostedDate: txn.plaidPostedDate || null,
+        plaidAuthorizedDate: parseDateNullable(txn.plaidAuthorizedDate),
+        plaidPostedDate: parseDateNullable(txn.plaidPostedDate),
       })),
     });
 

@@ -40,13 +40,14 @@ async function main() {
   );
   console.log("Secret:", process.env.PLAID_SECRET ? "✓ Set" : "✗ Missing");
 
-  // Get the specific item or all items
+  // Get the specific item or all items (exclude soft-deleted)
   const items = itemId
     ? await db.plaidItem.findMany({
-        where: { id: itemId },
+        where: { id: itemId, deletedAt: null },
         include: { plaidAccounts: true },
       })
     : await db.plaidItem.findMany({
+        where: { deletedAt: null },
         include: { plaidAccounts: true },
       });
 

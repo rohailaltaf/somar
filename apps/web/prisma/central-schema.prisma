@@ -107,6 +107,7 @@ model PlaidItem {
   cursor          String?   // For incremental transaction sync
   lastSyncedAt    DateTime? @map("last_synced_at")
   createdAt       DateTime  @default(now()) @map("created_at")
+  deletedAt       DateTime? @map("deleted_at") // Soft delete - keeps access token for recovery
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -118,11 +119,12 @@ model PlaidItem {
 
 // Minimal Plaid account metadata for syncing purposes
 model PlaidAccountMeta {
-  id             String @id @default(uuid())
-  plaidItemId    String @map("plaid_item_id")
-  plaidAccountId String @map("plaid_account_id") // Plaid's account ID
+  id             String  @id @default(uuid())
+  plaidItemId    String  @map("plaid_item_id")
+  plaidAccountId String  @map("plaid_account_id") // Plaid's account ID
   name           String
-  type           String // checking, credit_card, etc.
+  type           String  // Plaid account type (depository, credit, loan, etc.)
+  subtype        String? // Plaid account subtype (checking, savings, credit card, etc.)
 
   plaidItem PlaidItem @relation(fields: [plaidItemId], references: [id], onDelete: Cascade)
 
@@ -189,7 +191,7 @@ model Transaction {
   categoryId               String?  @map("category_id")
   description              String
   amount                   Float    // negative = expense, positive = income
-  date                     String   // YYYY-MM-DD format
+  date                     DateTime @db.Date
   excluded                 Boolean  @default(false)
   isConfirmed              Boolean  @default(false) @map("is_confirmed")
   createdAt                DateTime @default(now()) @map("created_at")
@@ -197,8 +199,8 @@ model Transaction {
   plaidOriginalDescription String?  @map("plaid_original_description")
   plaidName                String?  @map("plaid_name")
   plaidMerchantName        String?  @map("plaid_merchant_name")
-  plaidAuthorizedDate      String?  @map("plaid_authorized_date")
-  plaidPostedDate          String?  @map("plaid_posted_date")
+  plaidAuthorizedDate      DateTime?  @db.Date @map("plaid_authorized_date")
+  plaidPostedDate          DateTime?  @db.Date @map("plaid_posted_date")
 
   user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   account  FinanceAccount  @relation(fields: [accountId], references: [id], onDelete: Cascade)

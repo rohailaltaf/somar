@@ -21,7 +21,7 @@ import { configureApiClient, apiRequest, apiGet, apiPost } from "@somar/shared/a
 import { hexColors, oklchColors, rgbColors } from "@somar/shared/theme";
 
 // Utilities
-import { oklchToHex, formatDate, parseDate, toDateString } from "@somar/shared/utils";
+import { oklchToHex, formatDate, parseDate, toDateString, parseDateNullable, toDateStringNullable } from "@somar/shared/utils";
 ```
 
 ## API Client

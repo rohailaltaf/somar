@@ -17,7 +17,16 @@ export interface TransactionFilterOptions {
 }
 
 /**
+ * Pagination options for transaction queries.
+ */
+export interface TransactionPaginationOptions extends TransactionFilterOptions {
+  limit?: number;
+  offset?: number;
+}
+
+/**
  * Hook for accessing transactions with filtering and relations.
+ * Returns just the data array for backward compatibility.
  */
 export function useTransactions(options?: TransactionFilterOptions) {
   return useQuery({
@@ -26,6 +35,17 @@ export function useTransactions(options?: TransactionFilterOptions) {
       options
         ? TransactionService.getTransactionsFiltered(options)
         : TransactionService.getAllTransactions(),
+  });
+}
+
+/**
+ * Hook for accessing transactions with server-side pagination.
+ * Returns both data and pagination metadata.
+ */
+export function useTransactionsPaginated(options: TransactionPaginationOptions) {
+  return useQuery({
+    queryKey: ["transactions", "paginated", options],
+    queryFn: () => TransactionService.getTransactionsPaginated(options),
   });
 }
 
