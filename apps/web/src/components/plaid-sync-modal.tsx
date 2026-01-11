@@ -321,6 +321,18 @@ export function PlaidSyncModal({
       setTransactionCount(0);
       setErrorMessages([]);
     }
+
+    // Cleanup on unmount (handles case where component unmounts while isOpen is true)
+    return () => {
+      for (const timeoutId of timeoutIdsRef.current) {
+        clearTimeout(timeoutId);
+      }
+      for (const intervalId of intervalIdsRef.current) {
+        clearInterval(intervalId);
+      }
+      timeoutIdsRef.current = [];
+      intervalIdsRef.current = [];
+    };
   }, [isOpen, performSync]);
 
   const getMessage = () => {

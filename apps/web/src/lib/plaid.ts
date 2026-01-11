@@ -32,18 +32,18 @@ export function isPlaidConfigured(): boolean {
 }
 
 // Helper function to map Plaid account types to our account types
-function mapPlaidAccountType(plaidType: string): AccountType {
-  switch (plaidType) {
-    case "credit":
-      return "credit_card";
-    case "investment":
-      return "investment";
-    case "loan":
-      return "loan";
-    case "depository":
-    default:
-      return "checking";
+export function mapPlaidAccountType(
+  plaidType: string,
+  subtype?: string | null
+): AccountType {
+  if (plaidType === "credit") return "credit_card";
+  if (plaidType === "depository") {
+    if (subtype === "savings") return "savings";
+    return "checking";
   }
+  if (plaidType === "investment") return "investment";
+  if (plaidType === "loan") return "loan";
+  return "checking";
 }
 
 // Create a link token for Plaid Link
@@ -156,6 +156,7 @@ export async function exchangePublicToken(
           plaidAccountId: account.account_id,
           name: account.name,
           type: account.type,
+          subtype: account.subtype,
         },
       });
 
@@ -163,7 +164,7 @@ export async function exchangePublicToken(
       accountsForClient.push({
         plaidAccountId: account.account_id,
         name: `${institutionName} - ${account.name}`,
-        type: mapPlaidAccountType(account.type),
+        type: mapPlaidAccountType(account.type, account.subtype),
       });
     }
 
