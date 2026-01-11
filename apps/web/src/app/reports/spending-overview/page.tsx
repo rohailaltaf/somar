@@ -1,13 +1,13 @@
 "use client";
 
 import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Nav } from "@/components/nav";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { useDatabaseAdapter } from "@somar/shared/hooks";
 import { SpendingOverviewClient } from "./spending-overview-client";
 import * as TransactionService from "@somar/shared/services";
-import { getCurrentMonth, getPreviousMonth } from "@somar/shared";
+import { getCurrentMonth, getPreviousMonth, getMonthDateRange } from "@somar/shared";
 
 export default function SpendingOverviewPage() {
   return (
@@ -27,32 +27,75 @@ export default function SpendingOverviewPage() {
 }
 
 function SpendingOverviewContent() {
-  const { adapter } = useDatabaseAdapter();
-
   const currentMonth = useMemo(() => getCurrentMonth(), []);
   const lastMonth = useMemo(() => getPreviousMonth(currentMonth), [currentMonth]);
   const currentYear = useMemo(() => new Date().getFullYear(), []);
 
-  const data = useMemo(() => {
-    if (!adapter) return null;
+  const currentRange = useMemo(() => getMonthDateRange(currentMonth), [currentMonth]);
+  const lastRange = useMemo(() => getMonthDateRange(lastMonth), [lastMonth]);
 
-    return {
-      currentTotal: TransactionService.getTotalSpending(adapter, currentMonth),
-      lastTotal: TransactionService.getTotalSpending(adapter, lastMonth),
-      currentCategorySpending: TransactionService.getSpendingByCategory(adapter, currentMonth),
-      lastCategorySpending: TransactionService.getSpendingByCategory(adapter, lastMonth),
-      currentDailyData: TransactionService.getDailyCumulativeSpending(adapter, currentMonth),
-      lastDailyData: TransactionService.getDailyCumulativeSpending(adapter, lastMonth),
-      yearTotal: TransactionService.getYearToDateSpending(adapter, currentYear),
-      yearCategorySpending: TransactionService.getYearToDateCategorySpending(adapter, currentYear),
-      yearMonthlyData: TransactionService.getMonthlyCumulativeSpending(adapter, currentYear),
-      currentTransactions: TransactionService.getSpendingTransactions(adapter, currentMonth),
-      lastTransactions: TransactionService.getSpendingTransactions(adapter, lastMonth),
-      yearTransactions: TransactionService.getYearSpendingTransactions(adapter, currentYear),
-    };
-  }, [adapter, currentMonth, lastMonth, currentYear]);
+  // Fetch all spending data using React Query
+  const { data: currentTotal = 0 } = useQuery({
+    queryKey: ["spending", "total", currentRange.startDate, currentRange.endDate],
+    queryFn: () => TransactionService.getTotalSpending(currentRange.startDate, currentRange.endDate),
+  });
 
-  if (!data) {
+  const { data: lastTotal = 0 } = useQuery({
+    queryKey: ["spending", "total", lastRange.startDate, lastRange.endDate],
+    queryFn: () => TransactionService.getTotalSpending(lastRange.startDate, lastRange.endDate),
+  });
+
+  const { data: yearTotal = 0 } = useQuery({
+    queryKey: ["spending", "yearTotal", currentYear],
+    queryFn: () => TransactionService.getYearToDateSpending(currentYear),
+  });
+
+  const { data: currentCategorySpending = [] } = useQuery({
+    queryKey: ["spending", "byCategory", currentRange.startDate, currentRange.endDate],
+    queryFn: () => TransactionService.getSpendingByCategory(currentRange.startDate, currentRange.endDate),
+  });
+
+  const { data: lastCategorySpending = [] } = useQuery({
+    queryKey: ["spending", "byCategory", lastRange.startDate, lastRange.endDate],
+    queryFn: () => TransactionService.getSpendingByCategory(lastRange.startDate, lastRange.endDate),
+  });
+
+  const { data: yearCategorySpending = [] } = useQuery({
+    queryKey: ["spending", "yearByCategory", currentYear],
+    queryFn: () => TransactionService.getYearToDateCategorySpending(currentYear),
+  });
+
+  const { data: currentDailyData = [] } = useQuery({
+    queryKey: ["spending", "cumulative", currentRange.startDate, currentRange.endDate],
+    queryFn: () => TransactionService.getDailyCumulativeSpending(currentRange.startDate, currentRange.endDate),
+  });
+
+  const { data: lastDailyData = [] } = useQuery({
+    queryKey: ["spending", "cumulative", lastRange.startDate, lastRange.endDate],
+    queryFn: () => TransactionService.getDailyCumulativeSpending(lastRange.startDate, lastRange.endDate),
+  });
+
+  const { data: yearMonthlyData = [] } = useQuery({
+    queryKey: ["spending", "monthlyCumulative", currentYear],
+    queryFn: () => TransactionService.getMonthlyCumulativeSpending(currentYear),
+  });
+
+  const { data: currentTransactions = [] } = useQuery({
+    queryKey: ["spending", "transactions", currentRange.startDate, currentRange.endDate],
+    queryFn: () => TransactionService.getSpendingTransactions(currentRange.startDate, currentRange.endDate),
+  });
+
+  const { data: lastTransactions = [] } = useQuery({
+    queryKey: ["spending", "transactions", lastRange.startDate, lastRange.endDate],
+    queryFn: () => TransactionService.getSpendingTransactions(lastRange.startDate, lastRange.endDate),
+  });
+
+  const { data: yearTransactions = [], isLoading } = useQuery({
+    queryKey: ["spending", "yearTransactions", currentYear],
+    queryFn: () => TransactionService.getYearSpendingTransactions(currentYear),
+  });
+
+  if (isLoading) {
     return <SpendingOverviewSkeleton />;
   }
 
@@ -61,18 +104,18 @@ function SpendingOverviewContent() {
       currentMonth={currentMonth}
       lastMonth={lastMonth}
       currentYear={currentYear}
-      currentTotal={data.currentTotal}
-      lastTotal={data.lastTotal}
-      yearTotal={data.yearTotal}
-      currentCategorySpending={data.currentCategorySpending}
-      lastCategorySpending={data.lastCategorySpending}
-      yearCategorySpending={data.yearCategorySpending}
-      currentDailyData={data.currentDailyData}
-      lastDailyData={data.lastDailyData}
-      yearMonthlyData={data.yearMonthlyData}
-      currentTransactions={data.currentTransactions}
-      lastTransactions={data.lastTransactions}
-      yearTransactions={data.yearTransactions}
+      currentTotal={currentTotal}
+      lastTotal={lastTotal}
+      yearTotal={yearTotal}
+      currentCategorySpending={currentCategorySpending}
+      lastCategorySpending={lastCategorySpending}
+      yearCategorySpending={yearCategorySpending}
+      currentDailyData={currentDailyData}
+      lastDailyData={lastDailyData}
+      yearMonthlyData={yearMonthlyData}
+      currentTransactions={currentTransactions}
+      lastTransactions={lastTransactions}
+      yearTransactions={yearTransactions}
     />
   );
 }

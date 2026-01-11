@@ -43,14 +43,13 @@ mobile/
 │   ├── components/ui/      # Shared UI components
 │   ├── providers/          # React context providers
 │   │   ├── auth-provider.tsx
-│   │   └── database-provider.tsx
+│   │   └── api-provider.tsx
 │   └── lib/
-│       ├── storage/        # ExpoSqliteAdapter
 │       ├── auth-client.ts  # Better Auth client
 │       ├── api.ts          # API helpers
 │       ├── theme.ts        # Theme colors for native components
 │       └── color.ts        # Color conversion (oklch → hex)
-├── assets/                 # Images, fonts, animations
+├── assets/                 # Images, fonts
 ├── global.css              # NativeWind theme variables
 ├── tailwind.config.js      # Tailwind/NativeWind config
 ├── app.json                # Expo configuration
@@ -162,20 +161,32 @@ const hexColor = oklchToHex(category.color); // "oklch(0.65 0.2 30)" → "#e04d2
 The mobile app uses `@somar/shared` for platform-agnostic business logic:
 
 ```typescript
-// Services (data access layer)
+// Services (API callers - all async)
 import { getAllTransactions, confirmTransaction } from "@somar/shared/services";
 
-// Hooks (shared React hooks)
+// Hooks (shared React hooks with React Query)
 import { useTransactions, useAccounts, useCategories } from "@somar/shared/hooks";
 
 // Types and utilities
-import { type Transaction, type Account } from "@somar/shared";
+import { type TransactionWithRelations, type AccountType } from "@somar/shared";
 ```
 
-The `ExpoSqliteAdapter` in `src/lib/storage/` implements the `DatabaseAdapter` interface, allowing the same services and hooks to work on both web and mobile.
+The `ApiProvider` configures the shared API client for mobile:
+
+```typescript
+// src/providers/api-provider.tsx
+configureApiClient({
+  baseUrl: API_URL,
+  getAuthHeaders: async () => {
+    const cookies = await authClient.getCookie();
+    return cookies ? { Cookie: cookies } : {};
+  },
+});
+```
 
 ## Notes
 
 - Uses `@expo/metro-runtime` as explicit dependency for pnpm compatibility
 - Custom `metro.config.js` enables pnpm symlink support
 - Each app (web/mobile) has its own node_modules with isolated React versions
+- Set `EXPO_PUBLIC_API_URL` environment variable to point to the web app's API

@@ -13,9 +13,8 @@ app/                        # Expo Router pages
 
 src/
 ├── components/ui/          # Shared UI components
-├── providers/              # Auth + database providers
+├── providers/              # Auth + API providers
 └── lib/
-    ├── storage/            # expo-sqlite adapter
     ├── auth-client.ts      # Better Auth client
     ├── api.ts              # API helpers
     ├── theme.ts            # Theme colors (from @somar/shared)
@@ -50,19 +49,23 @@ pnpm --filter mobile generate:theme
 ```
 This regenerates `global.css` from `@somar/shared/theme`.
 
-## Database
+## API Client
 
-Uses expo-sqlite with the same `DatabaseAdapter` interface as web:
+Mobile uses the shared API client configured in `ApiProvider`:
 ```typescript
-// src/lib/storage/expo-sqlite-adapter.ts
-import * as SQLite from "expo-sqlite";
+// src/providers/api-provider.tsx
+configureApiClient({
+  baseUrl: API_URL,
+  getAuthHeaders: async () => {
+    const cookies = await authClient.getCookie();
+    return cookies ? { Cookie: cookies } : {};
+  },
+});
+```
 
-export class ExpoSqliteAdapter implements DatabaseAdapter {
-  all<T>(sql: string, params?: SqlParam[]): T[] { ... }
-  get<T>(sql: string, params?: SqlParam[]): T | undefined { ... }
-  run(sql: string, params?: SqlParam[]): void { ... }
-  exec(sql: string): void { ... }
-}
+All data fetching uses the same hooks as web:
+```typescript
+import { useTransactions, useCategories } from "@somar/shared/hooks";
 ```
 
 ## Commands
@@ -91,3 +94,5 @@ pnpm --filter mobile generate:theme # Regenerate global.css
 import { Home } from "lucide-react-native";
 <Home color={themeColors[colorScheme ?? "light"].foreground} />
 ```
+
+7. **EXPO_PUBLIC_API_URL required**: Set this environment variable to point to the web app's API.

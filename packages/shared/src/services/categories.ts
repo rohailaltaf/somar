@@ -1,11 +1,8 @@
 /**
- * Category service - encapsulates all category-related database operations.
- * This is a pure data layer with NO React/UI dependencies.
- *
- * Uses DatabaseAdapter interface for platform-agnostic database access.
+ * Category service - API client for category operations.
  */
 
-import type { DatabaseAdapter } from "../storage";
+import { apiGet, apiPost, apiPatch, apiDelete, type ApiResponse } from "../api-client";
 import type {
   Category,
   CategoryBudget,
@@ -16,132 +13,85 @@ import type {
 
 // ============ Queries ============
 
-export function getAllCategories(db: DatabaseAdapter): Category[] {
-  return db.all<RawCategory>(
-    "SELECT * FROM categories ORDER BY name"
-  ).map(mapCategoryRow);
+export async function getAllCategories(): Promise<Category[]> {
+  const response = await apiGet<ApiResponse<Category[]>>("/api/categories");
+  return response.data ?? [];
 }
 
-export function getCategoriesByType(
-  db: DatabaseAdapter,
-  type: CategoryType
-): Category[] {
-  return db.all<RawCategory>(
-    "SELECT * FROM categories WHERE type = ? ORDER BY name",
-    [type]
-  ).map(mapCategoryRow);
+export async function getCategoriesByType(type: CategoryType): Promise<Category[]> {
+  const response = await apiGet<ApiResponse<Category[]>>(`/api/categories?type=${type}`);
+  return response.data ?? [];
 }
 
-export function getCategoriesWithBudgets(
-  db: DatabaseAdapter,
-  currentMonth: string
-): CategoryWithBudget[] {
-  const categories = getCategoriesByType(db, "spending");
+export async function getCategoriesWithBudgets(currentMonth: string): Promise<CategoryWithBudget[]> {
+  const response = await apiGet<ApiResponse<CategoryWithBudgetRaw[]>>(
+    `/api/categories?type=spending&withBudgets=${currentMonth}`
+  );
 
-  return categories.map(cat => {
-    const allBudgets = db.all<RawBudget>(
-      `SELECT * FROM category_budgets WHERE category_id = ? ORDER BY start_month DESC`,
-      [cat.id]
-    ).map(mapBudgetRow);
-
-    const currentBudget = db.get<RawBudget>(
-      `SELECT * FROM category_budgets
-       WHERE category_id = ? AND start_month <= ?
-       ORDER BY start_month DESC LIMIT 1`,
-      [cat.id, currentMonth]
-    );
-
-    return {
-      ...cat,
-      currentBudget: currentBudget ? mapBudgetRow(currentBudget) : null,
-      allBudgets,
-    };
-  });
+  // Map to expected format
+  return (response.data ?? []).map((cat) => ({
+    id: cat.id,
+    name: cat.name,
+    type: cat.type as CategoryType,
+    color: cat.color,
+    createdAt: cat.createdAt,
+    currentBudget: cat.budgets?.[0]
+      ? {
+          id: cat.budgets[0].id,
+          categoryId: cat.budgets[0].categoryId,
+          amount: cat.budgets[0].amount,
+          startMonth: cat.budgets[0].startMonth,
+          createdAt: cat.budgets[0].createdAt,
+        }
+      : null,
+    allBudgets: cat.budgets ?? [],
+  }));
 }
 
 // ============ Mutations ============
 
-export function createCategory(db: DatabaseAdapter, input: CreateCategoryInput): string {
-  const id = crypto.randomUUID();
-  db.run(
-    `INSERT INTO categories (id, name, type, color, created_at)
-     VALUES (?, ?, ?, ?, ?)`,
-    [id, input.name, input.type, input.color, new Date().toISOString()]
-  );
-  return id;
+export async function createCategory(input: CreateCategoryInput): Promise<string> {
+  const response = await apiPost<ApiResponse<{ id: string }>>("/api/categories", input);
+  return response.data!.id;
 }
 
-export function updateCategory(
-  db: DatabaseAdapter,
+export async function updateCategory(
   id: string,
   name: string,
   type: CategoryType,
   color: string
-): void {
-  db.run(
-    "UPDATE categories SET name = ?, type = ?, color = ? WHERE id = ?",
-    [name, type, color, id]
-  );
+): Promise<void> {
+  await apiPatch<ApiResponse<Category>>(`/api/categories/${id}`, { name, type, color });
 }
 
-export function deleteCategory(db: DatabaseAdapter, id: string): void {
-  // Transactions with this category will have category_id set to NULL (ON DELETE SET NULL)
-  db.run("DELETE FROM categories WHERE id = ?", [id]);
+export async function deleteCategory(id: string): Promise<void> {
+  await apiDelete<ApiResponse<void>>(`/api/categories/${id}`);
 }
 
-export function setBudget(
-  db: DatabaseAdapter,
+export async function setBudget(
   categoryId: string,
   amount: number,
   startMonth: string
-): string {
-  const id = crypto.randomUUID();
-  db.run(
-    `INSERT INTO category_budgets (id, category_id, amount, start_month, created_at)
-     VALUES (?, ?, ?, ?, ?)`,
-    [id, categoryId, amount, startMonth, new Date().toISOString()]
-  );
-  return id;
+): Promise<string> {
+  const response = await apiPost<ApiResponse<{ id: string }>>("/api/budgets", {
+    categoryId,
+    amount,
+    startMonth,
+  });
+  return response.data!.id;
 }
 
-export function deleteBudget(db: DatabaseAdapter, budgetId: string): void {
-  db.run("DELETE FROM category_budgets WHERE id = ?", [budgetId]);
+export async function deleteBudget(budgetId: string): Promise<void> {
+  await apiDelete<ApiResponse<void>>(`/api/budgets/${budgetId}`);
 }
 
-// ============ Helpers ============
+// ============ Types ============
 
-interface RawCategory {
+interface CategoryWithBudgetRaw {
   id: string;
   name: string;
   type: string;
   color: string;
-  created_at: string;
-}
-
-interface RawBudget {
-  id: string;
-  category_id: string;
-  amount: number;
-  start_month: string;
-  created_at: string;
-}
-
-function mapCategoryRow(row: RawCategory): Category {
-  return {
-    id: row.id,
-    name: row.name,
-    type: row.type as CategoryType,
-    color: row.color,
-    createdAt: row.created_at,
-  };
-}
-
-function mapBudgetRow(row: RawBudget): CategoryBudget {
-  return {
-    id: row.id,
-    categoryId: row.category_id,
-    amount: row.amount,
-    startMonth: row.start_month,
-    createdAt: row.created_at,
-  };
+  createdAt: string;
+  budgets?: CategoryBudget[];
 }

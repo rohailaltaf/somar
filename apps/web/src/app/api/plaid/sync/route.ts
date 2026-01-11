@@ -8,9 +8,8 @@ import type { Transaction as PlaidTransaction } from "plaid";
 /**
  * POST /api/plaid/sync
  *
- * Server proxy for Plaid transactionsSync API.
- * Client sends cursor (from encrypted DB), server returns raw transactions.
- * Cursor is NOT stored on server - client owns cursor for data integrity.
+ * Sync transactions from Plaid and save directly to the database.
+ * Cursor is stored server-side in the PlaidItem table.
  *
  * For initial sync (no cursor), uses retry logic with exponential backoff
  * to wait for Plaid to enrich transaction data (authorized_date, merchant_name).
@@ -25,24 +24,34 @@ function delay(ms: number): Promise<void> {
  * Plaid needs time after initial connection to enrich transaction data.
  */
 function areTransactionsEnriched(transactions: PlaidTransaction[]): boolean {
-  // Find first non-pending transaction
   const nonPendingTx = transactions.find((tx) => !tx.pending);
-  // Check if it has authorized_date (indicates enrichment is complete)
   return !!(nonPendingTx && nonPendingTx.authorized_date);
+}
+
+/**
+ * Map Plaid account type to our account type.
+ */
+function mapPlaidAccountType(type: string, subtype?: string | null): string {
+  if (type === "credit") return "credit_card";
+  if (type === "depository") {
+    if (subtype === "savings") return "savings";
+    return "checking";
+  }
+  if (type === "investment") return "investment";
+  if (type === "loan") return "loan";
+  return "checking";
 }
 
 interface PlaidSyncRequest {
   plaidItemId: string;
-  cursor?: string; // From client's encrypted DB, empty/undefined for initial sync
 }
 
 interface PlaidSyncResponse {
   success: boolean;
   data?: {
-    added: PlaidTransaction[];
-    modified: PlaidTransaction[];
-    removed: Array<{ transaction_id: string }>;
-    nextCursor: string;
+    addedCount: number;
+    modifiedCount: number;
+    removedCount: number;
   };
   error?: {
     code: string;
@@ -52,7 +61,6 @@ interface PlaidSyncResponse {
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse<PlaidSyncResponse>> {
-  // Validate session
   const session = await auth.api.getSession({
     headers: await headers(),
   });
@@ -71,7 +79,6 @@ export async function POST(request: NextRequest): Promise<NextResponse<PlaidSync
     );
   }
 
-  // Parse request body
   let body: PlaidSyncRequest;
   try {
     body = await request.json();
@@ -82,7 +89,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<PlaidSync
     );
   }
 
-  const { plaidItemId, cursor } = body;
+  const { plaidItemId } = body;
 
   if (!plaidItemId) {
     return NextResponse.json(
@@ -91,9 +98,10 @@ export async function POST(request: NextRequest): Promise<NextResponse<PlaidSync
     );
   }
 
-  // Get PlaidItem from central DB (verify ownership + get access token)
+  // Get PlaidItem from central DB (verify ownership + get access token + cursor)
   const item = await db.plaidItem.findFirst({
     where: { id: plaidItemId, userId: session.user.id },
+    include: { plaidAccounts: true },
   });
 
   if (!item) {
@@ -104,18 +112,17 @@ export async function POST(request: NextRequest): Promise<NextResponse<PlaidSync
   }
 
   try {
-    const isInitialSync = !cursor;
-    const maxRetries = isInitialSync ? 8 : 1; // Retry only for initial sync
+    const isInitialSync = !item.cursor;
+    const maxRetries = isInitialSync ? 8 : 1;
     let lastError: unknown = null;
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
-        // Call Plaid transactionsSync API
         const allAdded: PlaidTransaction[] = [];
         const allModified: PlaidTransaction[] = [];
         const allRemoved: Array<{ transaction_id: string }> = [];
         let hasMore = true;
-        let currentCursor = cursor || undefined;
+        let currentCursor = item.cursor || undefined;
 
         while (hasMore) {
           const syncResponse = await plaidClient.transactionsSync({
@@ -131,31 +138,128 @@ export async function POST(request: NextRequest): Promise<NextResponse<PlaidSync
           currentCursor = syncResponse.data.next_cursor;
         }
 
-        // For initial sync, retry if:
-        // 1. No transactions returned (Plaid hasn't fetched from bank yet)
-        // 2. Transactions returned but not enriched (missing authorized_date)
+        // For initial sync, retry if not enriched
         if (isInitialSync && attempt < maxRetries - 1) {
           const needsRetry = allAdded.length === 0 || !areTransactionsEnriched(allAdded);
           if (needsRetry) {
-            const waitTime = Math.pow(2, attempt + 1) * 1000; // 2s, 4s, 8s, 16s, 32s, 64s, 128s, 256s
+            const waitTime = Math.pow(2, attempt + 1) * 1000;
             await delay(waitTime);
-            continue; // Retry
+            continue;
           }
         }
 
-        // Update only lastSyncedAt on server (cursor is client-side)
+        // Build a map of plaid_account_id -> our FinanceAccount.id
+        const plaidAccountMap = new Map<string, string>();
+
+        // Ensure FinanceAccounts exist for each Plaid account
+        for (const plaidAccount of item.plaidAccounts) {
+          // Check if we already have a FinanceAccount for this Plaid account
+          let financeAccount = await db.financeAccount.findFirst({
+            where: {
+              userId: session.user.id,
+              plaidAccountId: plaidAccount.plaidAccountId,
+            },
+          });
+
+          if (!financeAccount) {
+            // Create new FinanceAccount
+            financeAccount = await db.financeAccount.create({
+              data: {
+                userId: session.user.id,
+                name: plaidAccount.name,
+                type: mapPlaidAccountType(plaidAccount.type),
+                plaidAccountId: plaidAccount.plaidAccountId,
+              },
+            });
+          }
+
+          plaidAccountMap.set(plaidAccount.plaidAccountId, financeAccount.id);
+        }
+
+        let addedCount = 0;
+        let modifiedCount = 0;
+        let removedCount = 0;
+
+        // Process added transactions
+        for (const tx of allAdded) {
+          const accountId = plaidAccountMap.get(tx.account_id);
+          if (!accountId) continue; // Skip if no matching account
+
+          // Check if transaction already exists (by plaid_transaction_id)
+          const existing = await db.transaction.findUnique({
+            where: { plaidTransactionId: tx.transaction_id },
+          });
+
+          if (existing) continue; // Skip duplicates
+
+          await db.transaction.create({
+            data: {
+              userId: session.user.id,
+              accountId,
+              description: tx.merchant_name || tx.name || "Unknown",
+              amount: -tx.amount, // Plaid uses positive for debits, we use negative for expenses
+              date: tx.authorized_date || tx.date,
+              isConfirmed: false,
+              excluded: false,
+              plaidTransactionId: tx.transaction_id,
+              plaidOriginalDescription: tx.original_description,
+              plaidName: tx.name,
+              plaidMerchantName: tx.merchant_name,
+              plaidAuthorizedDate: tx.authorized_date,
+              plaidPostedDate: tx.date,
+            },
+          });
+          addedCount++;
+        }
+
+        // Process modified transactions
+        for (const tx of allModified) {
+          const existing = await db.transaction.findUnique({
+            where: { plaidTransactionId: tx.transaction_id },
+          });
+
+          if (!existing) continue;
+
+          await db.transaction.update({
+            where: { id: existing.id },
+            data: {
+              description: tx.merchant_name || tx.name || existing.description,
+              amount: -tx.amount,
+              date: tx.authorized_date || tx.date,
+              plaidMerchantName: tx.merchant_name,
+              plaidAuthorizedDate: tx.authorized_date,
+              plaidPostedDate: tx.date,
+            },
+          });
+          modifiedCount++;
+        }
+
+        // Process removed transactions
+        for (const removal of allRemoved) {
+          const deleted = await db.transaction.deleteMany({
+            where: {
+              userId: session.user.id,
+              plaidTransactionId: removal.transaction_id,
+            },
+          });
+          removedCount += deleted.count;
+        }
+
+        // Update cursor and lastSyncedAt on PlaidItem
         await db.plaidItem.update({
           where: { id: plaidItemId },
-          data: { lastSyncedAt: new Date() },
+          data: {
+            cursor: currentCursor,
+            lastSyncedAt: new Date(),
+          },
         });
 
         return NextResponse.json({
           success: true,
           data: {
-            added: allAdded,
-            modified: allModified,
-            removed: allRemoved,
-            nextCursor: currentCursor!,
+            addedCount,
+            modifiedCount,
+            removedCount,
           },
         });
       } catch (error) {
@@ -167,7 +271,6 @@ export async function POST(request: NextRequest): Promise<NextResponse<PlaidSync
       }
     }
 
-    // All retries failed - throw the last error
     throw lastError;
   } catch (error: unknown) {
     const plaidError = error as {
@@ -182,7 +285,6 @@ export async function POST(request: NextRequest): Promise<NextResponse<PlaidSync
     const errorCode = plaidError?.response?.data?.error_code || "UNKNOWN_ERROR";
     const errorMessage = plaidError?.response?.data?.error_message || "Failed to sync transactions";
 
-    // Check if this is an error that requires re-authentication
     const requiresReauth = [
       "ITEM_LOGIN_REQUIRED",
       "ITEM_LOCKED",

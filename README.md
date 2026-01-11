@@ -1,11 +1,9 @@
 # Somar
 
-A modern, privacy-focused personal finance app for tracking spending and income. Import bank statements, auto-categorize transactions, and track spending against budgets — with **end-to-end encryption** for your financial data.
-
-> **Architecture:** See [docs/architecture.md](docs/architecture.md) for detailed technical documentation on the E2EE architecture.
+A modern personal finance app for tracking spending and income. Import bank statements, auto-categorize transactions, and track spending against budgets.
 
 ![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
-![SQLite](https://img.shields.io/badge/SQLite-Local-blue?logo=sqlite)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue?logo=postgresql)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
 ![Turborepo](https://img.shields.io/badge/Turborepo-Monorepo-blueviolet?logo=turborepo)
 
@@ -54,7 +52,7 @@ somar/
 │   ├── web/              # Next.js web application
 │   └── mobile/           # React Native/Expo mobile app
 ├── packages/
-│   └── shared/           # Shared types and utilities
+│   └── shared/           # Shared types, services, hooks, and theme
 ├── turbo.json            # Turborepo configuration
 └── pnpm-workspace.yaml   # pnpm workspace config
 ```
@@ -64,13 +62,13 @@ somar/
 | App | Description | Status |
 |-----|-------------|--------|
 | `@somar/web` | Next.js web application | ✅ Active |
-| `@somar/mobile` | React Native/Expo mobile app | 🚧 In Development (auth + basic screens) |
+| `@somar/mobile` | React Native/Expo mobile app | 🚧 In Development |
 
 ### Packages
 
 | Package | Description |
 |---------|-------------|
-| `@somar/shared` | Shared types, crypto, services, hooks, and deduplication |
+| `@somar/shared` | Shared types, services, hooks, theme, and UI logic |
 
 ## Features
 
@@ -133,7 +131,7 @@ pnpm install
 cp apps/web/.env.example apps/web/.env.development
 # Edit apps/web/.env.development with your database URL and secrets
 
-# Set up the central database (PostgreSQL)
+# Set up the database (PostgreSQL)
 pnpm --filter web db:push
 
 # Start the development server
@@ -180,8 +178,7 @@ PLAID_ENV=sandbox
 - **Monorepo:** [Turborepo](https://turbo.build) with pnpm workspaces
 - **Web:** [Next.js 16](https://nextjs.org) with App Router
 - **Mobile:** [React Native](https://reactnative.dev) with [Expo](https://expo.dev) and Expo Router
-- **Central Database:** PostgreSQL via [Prisma](https://prisma.io) (auth, Plaid tokens)
-- **User Database:** SQLite via [sql.js](https://sql.js.org) (web) / [expo-sqlite](https://docs.expo.dev/versions/latest/sdk/sqlite/) (mobile), encrypted
+- **Database:** PostgreSQL via [Prisma](https://prisma.io)
 - **UI (Web):** [shadcn/ui](https://ui.shadcn.com) + [Tailwind CSS](https://tailwindcss.com)
 - **UI (Mobile):** [NativeWind](https://www.nativewind.dev/) (Tailwind for React Native)
 - **Animations:** [Framer Motion](https://www.framer.com/motion/)
@@ -196,11 +193,12 @@ somar/
 │   ├── web/                    # Next.js web app
 │   │   ├── src/
 │   │   │   ├── app/            # Next.js App Router pages
+│   │   │   │   └── api/        # API routes (CRUD, Plaid, etc.)
 │   │   │   ├── components/     # React components
-│   │   │   ├── providers/      # Auth + Database providers
-│   │   │   ├── hooks/          # Web-specific hooks (Plaid sync)
-│   │   │   └── lib/            # Utilities (storage adapters, Plaid, etc.)
-│   │   ├── prisma/             # Central database schema (PostgreSQL)
+│   │   │   ├── providers/      # Auth + API providers
+│   │   │   ├── hooks/          # Web-specific hooks
+│   │   │   └── lib/            # Utilities (Prisma, Plaid, etc.)
+│   │   ├── prisma/             # Database schema (PostgreSQL)
 │   │   └── public/             # Static assets
 │   └── mobile/                 # React Native/Expo app
 │       ├── app/                # Expo Router pages
@@ -208,15 +206,17 @@ somar/
 │       │   └── (tabs)/         # Dashboard, transactions
 │       ├── src/
 │       │   ├── components/     # React Native components
-│       │   ├── providers/      # Auth + Database providers
-│       │   └── lib/            # Storage adapters, theme, API helpers
+│       │   ├── providers/      # Auth + API providers
+│       │   └── lib/            # Theme, API helpers
 │       └── metro.config.js     # Metro bundler config for pnpm
 ├── packages/
-│   └── shared/                 # Shared code (crypto, schema, types, dedup)
+│   └── shared/                 # Shared code
 │       └── src/
-│           ├── services/       # Data access layer (platform-agnostic)
-│           ├── hooks/          # Shared React hooks
-│           └── storage/        # DatabaseAdapter interface
+│           ├── services/       # API client wrappers
+│           ├── hooks/          # Shared React hooks (React Query)
+│           ├── api-client/     # HTTP client (configurable per platform)
+│           ├── theme/          # Colors (oklch, hex, rgb)
+│           └── ui-logic/       # Shared calculation logic
 ├── docs/                       # Documentation
 └── turbo.json                  # Turborepo config
 ```
@@ -238,13 +238,13 @@ pnpm test         # Run tests
 ```bash
 # Development
 pnpm --filter web dev           # Start dev server
-pnpm --filter web db:push       # Push central DB schema changes
-pnpm --filter web db:studio     # Open Prisma Studio for central DB
-pnpm --filter web db:safe-reset # Reset central DB (disconnects Plaid first)
+pnpm --filter web db:push       # Push DB schema changes
+pnpm --filter web db:studio     # Open Prisma Studio
+pnpm --filter web db:safe-reset # Reset DB (disconnects Plaid first)
 
 # Production
 pnpm --filter web build         # Build for production
-pnpm --filter web db:push:prod  # Push schema to prod central DB
+pnpm --filter web db:push:prod  # Push schema to prod DB
 pnpm --filter web db:studio:prod # Open Prisma Studio (prod)
 ```
 
@@ -261,16 +261,24 @@ pnpm --filter mobile web       # Start web version
 
 ## Environment Configuration
 
-The app uses a two-database architecture:
-
-| Database | Type | Location | Purpose |
-|----------|------|----------|---------|
-| Central DB | PostgreSQL | Server | Auth, Plaid tokens, blob metadata |
-| User Data | SQLite | Browser (encrypted) | Transactions, accounts, budgets |
-
 Environment files live in `apps/web/`:
 - `.env.development` - Development configuration
 - `.env.production` - Production configuration
+
+Required variables:
+```bash
+# Database
+CENTRAL_DATABASE_URL="postgresql://..."
+
+# Auth
+BETTER_AUTH_SECRET="..."
+BETTER_AUTH_URL="http://localhost:3000"
+
+# Plaid (optional)
+PLAID_CLIENT_ID="..."
+PLAID_SECRET="..."
+PLAID_ENV="sandbox"
+```
 
 ## Contributing
 
@@ -285,9 +293,3 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## License
 
 This project is released under the O'Saasy License. See the [LICENSE](LICENSE) file for details.
-
----
-
-**Privacy Note:** Your financial data is **end-to-end encrypted**. The server stores only encrypted blobs that it cannot decrypt. Your encryption key is derived from your password and never leaves your device. Bank connections via Plaid use secure OAuth — your bank credentials are never stored in the app.
-
-**Learn More:** See [docs/architecture.md](docs/architecture.md) for the full security model and architecture details.

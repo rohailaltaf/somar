@@ -259,7 +259,7 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
           return;
         }
 
-        // Create accounts in user's local encrypted database
+        // Create accounts in database
         const accountsToCreate = data.accounts as PlaidAccountInfo[];
         for (const account of accountsToCreate) {
           await createAccount.mutateAsync({
@@ -288,9 +288,8 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
             if (result.errors.length > 0) {
               toast.error(result.errors[0]);
             } else {
-              const total = result.added + result.upgraded;
-              if (total > 0) {
-                toast.success(`Synced ${total} transaction${total !== 1 ? "s" : ""}`, {
+              if (result.added > 0) {
+                toast.success(`Synced ${result.added} transaction${result.added !== 1 ? "s" : ""}`, {
                   duration: 5000,
                 });
               } else {
@@ -348,9 +347,6 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
       }
       if (result.modified > 0) {
         parts.push(`${result.modified} updated`);
-      }
-      if (result.upgraded > 0) {
-        parts.push(`${result.upgraded} matched`);
       }
       if (result.removed > 0) {
         parts.push(`${result.removed} removed`);

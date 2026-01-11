@@ -1,79 +1,37 @@
 /**
- * Account service - encapsulates all account-related database operations.
- * This is a pure data layer with NO React/UI dependencies.
- *
- * Uses DatabaseAdapter interface for platform-agnostic database access.
+ * Account service - API client for account operations.
  */
 
-import type { DatabaseAdapter } from "../storage";
+import { apiGet, apiPost, apiPatch, apiDelete, type ApiResponse } from "../api-client";
 import type { Account, AccountType, CreateAccountInput } from "../types";
 
 // ============ Queries ============
 
-export function getAllAccounts(db: DatabaseAdapter): Account[] {
-  return db.all<RawAccount>(
-    "SELECT * FROM accounts ORDER BY name"
-  ).map(mapAccountRow);
+export async function getAllAccounts(): Promise<Account[]> {
+  const response = await apiGet<ApiResponse<Account[]>>("/api/finance-accounts");
+  return response.data ?? [];
 }
 
 // ============ Mutations ============
 
-export function createAccount(db: DatabaseAdapter, input: CreateAccountInput): string {
-  const id = crypto.randomUUID();
-  db.run(
-    `INSERT INTO accounts (id, name, type, created_at, plaid_account_id)
-     VALUES (?, ?, ?, ?, ?)`,
-    [id, input.name, input.type, new Date().toISOString(), input.plaidAccountId ?? null]
-  );
-  return id;
+export async function createAccount(input: CreateAccountInput): Promise<string> {
+  const response = await apiPost<ApiResponse<{ id: string }>>("/api/finance-accounts", input);
+  return response.data!.id;
 }
 
-export function updateAccount(
-  db: DatabaseAdapter,
+export async function updateAccount(
   id: string,
   name: string,
   type: AccountType,
   plaidAccountId?: string | null
-): void {
-  if (plaidAccountId !== undefined) {
-    // Update including plaid_account_id (can be null to clear it)
-    db.run(
-      "UPDATE accounts SET name = ?, type = ?, plaid_account_id = ? WHERE id = ?",
-      [name, type, plaidAccountId, id]
-    );
-  } else {
-    // Only update name and type
-    db.run(
-      "UPDATE accounts SET name = ?, type = ? WHERE id = ?",
-      [name, type, id]
-    );
-  }
+): Promise<void> {
+  await apiPatch<ApiResponse<Account>>(`/api/finance-accounts/${id}`, {
+    name,
+    type,
+    ...(plaidAccountId !== undefined && { plaidAccountId }),
+  });
 }
 
-export function deleteAccount(db: DatabaseAdapter, id: string): void {
-  // First delete all transactions for this account
-  db.run("DELETE FROM transactions WHERE account_id = ?", [id]);
-  // Then delete the account
-  db.run("DELETE FROM accounts WHERE id = ?", [id]);
-}
-
-// ============ Helpers ============
-
-interface RawAccount {
-  id: string;
-  name: string;
-  type: string;
-  created_at: string;
-  plaid_account_id: string | null;
-}
-
-function mapAccountRow(row: RawAccount): Account {
-  return {
-    id: row.id,
-    name: row.name,
-    type: row.type as AccountType,
-    createdAt: row.created_at,
-    plaidItemId: null, // Plaid items are in central DB, not user's SQLite
-    plaidAccountId: row.plaid_account_id,
-  };
+export async function deleteAccount(id: string): Promise<void> {
+  await apiDelete<ApiResponse<void>>(`/api/finance-accounts/${id}`);
 }

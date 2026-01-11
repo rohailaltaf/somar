@@ -20,12 +20,12 @@ import {
   useCategoriesWithBudgets,
   useRecentTransactions,
   useUnconfirmedCount,
-  useDatabaseAdapter,
   useAccounts,
 } from "@somar/shared/hooks";
 import {
   getCurrentMonth,
   getPreviousMonth,
+  getMonthDateRange,
   getPercentageChange,
   getBudgetProgress,
   getBudgetRemaining,
@@ -47,19 +47,20 @@ import { EmptyState } from "@/src/components/ui/empty-state";
 
 export default function Dashboard() {
   const router = useRouter();
-  const { isReady: dbReady } = useDatabaseAdapter();
   const currentMonth = useMemo(() => getCurrentMonth(), []);
   const previousMonth = useMemo(() => getPreviousMonth(), []);
+  const currentRange = useMemo(() => getMonthDateRange(currentMonth), [currentMonth]);
+  const previousRange = useMemo(() => getMonthDateRange(previousMonth), [previousMonth]);
 
   // Data hooks
   const {
     data: currentSpending = 0,
     isLoading: loadingCurrent,
     refetch: refetchCurrent,
-  } = useTotalSpending(currentMonth);
-  const { data: previousSpending = 0 } = useTotalSpending(previousMonth);
+  } = useTotalSpending(currentRange.startDate, currentRange.endDate);
+  const { data: previousSpending = 0 } = useTotalSpending(previousRange.startDate, previousRange.endDate);
   const { data: spendingByCategory = [], refetch: refetchByCategory } =
-    useSpendingByCategory(currentMonth, { limit: 5 });
+    useSpendingByCategory(currentRange.startDate, currentRange.endDate, { limit: 5 });
   const { data: categoriesWithBudgets = [] } = useCategoriesWithBudgets(currentMonth);
   const { data: recentTransactions = [], refetch: refetchTransactions } =
     useRecentTransactions(5);
@@ -102,7 +103,7 @@ export default function Dashboard() {
     await Promise.all([refetchCurrent(), refetchByCategory(), refetchTransactions()]);
   };
 
-  const isLoading = !dbReady || loadingCurrent;
+  const isLoading = loadingCurrent;
 
   if (isLoading) {
     return (

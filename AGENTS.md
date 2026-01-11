@@ -15,9 +15,9 @@ import type { AccountType, CategoryType } from "@somar/shared";
 
 ## Project Overview
 
-Personal finance app with E2EE. Users import CSV exports or connect banks via Plaid, auto-categorize transactions, and track spending against budgets.
+Personal finance app. Users import CSV exports or connect banks via Plaid, auto-categorize transactions, and track spending against budgets.
 
-**Key Features:** Tinder-style transaction tagger, smart CSV import, learning categorization, Plaid integration, end-to-end encryption.
+**Key Features:** Tinder-style transaction tagger, smart CSV import, learning categorization, Plaid integration.
 
 ## Tech Stack
 
@@ -25,8 +25,8 @@ Personal finance app with E2EE. Users import CSV exports or connect banks via Pl
 |-------|-----|--------|--------|
 | Framework | Next.js 16 (App Router) | Expo + Expo Router | - |
 | UI | shadcn/ui + Tailwind v4 | NativeWind | - |
-| User DB | sql.js (browser) | expo-sqlite | SQLite schema |
-| Central DB | PostgreSQL via Prisma | - | - |
+| Database | PostgreSQL via Prisma | - | - |
+| Auth | Better Auth | Better Auth (expo client) | - |
 | Animations | Framer Motion | react-native-reanimated | - |
 
 ## Monorepo Structure
@@ -62,9 +62,11 @@ const [year, month, day] = dateStr.split("-").map(Number);
 const date = new Date(year, month - 1, day);
 ```
 
-### Two-Database Model
-- **Central DB** (PostgreSQL): Auth, Plaid tokens - server-side
-- **User DB** (SQLite): Transactions, categories - client-side, encrypted
+### Database Architecture
+All user data is stored server-side in PostgreSQL:
+- Auth, accounts, categories, budgets, transactions, Plaid tokens
+- Services call API endpoints which use Prisma ORM
+- Web and mobile both use the same API via the shared api-client
 
 ### Category Types
 - **spending**: Has budgets, tracked as expenses
@@ -74,14 +76,17 @@ const date = new Date(year, month - 1, day);
 ## Shared Package Imports
 
 ```typescript
-// Types and core
-import { type AccountType, type DatabaseAdapter } from "@somar/shared";
+// Types
+import type { AccountType, CategoryType } from "@somar/shared";
 
-// Services (data layer)
+// Services (call APIs - all async)
 import { getAllTransactions, confirmTransaction } from "@somar/shared/services";
 
 // React hooks
 import { useTransactions, useAccounts } from "@somar/shared/hooks";
+
+// API client (configured per-platform)
+import { configureApiClient, apiRequest } from "@somar/shared/api-client";
 
 // Theme (single source of truth)
 import { hexColors, oklchColors } from "@somar/shared/theme";
@@ -109,11 +114,9 @@ import { hexColors, oklchColors } from "@somar/shared/theme";
 | File | Description |
 |------|-------------|
 | [docs/component-philosophy.md](docs/component-philosophy.md) | **REQUIRED** before any frontend work |
-| [docs/architecture.md](docs/architecture.md) | E2EE model, security, database design |
-| [docs/schema.md](docs/schema.md) | Database tables and indexes |
 | [docs/commands.md](docs/commands.md) | Full command reference |
 | [docs/design-system.md](docs/design-system.md) | Visual design system |
 | [docs/deduplication.md](docs/deduplication.md) | Transaction dedup (2-tier) |
-| [apps/web/AGENTS.md](apps/web/AGENTS.md) | Web-specific patterns |
-| [apps/mobile/AGENTS.md](apps/mobile/AGENTS.md) | Mobile-specific patterns |
-| [packages/shared/AGENTS.md](packages/shared/AGENTS.md) | Shared package details |
+| [apps/web/CLAUDE.md](apps/web/CLAUDE.md) | Web-specific patterns |
+| [apps/mobile/CLAUDE.md](apps/mobile/CLAUDE.md) | Mobile-specific patterns |
+| [packages/shared/CLAUDE.md](packages/shared/CLAUDE.md) | Shared package details |

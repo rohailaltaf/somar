@@ -1,7 +1,6 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useDatabaseAdapter } from "./database-context";
 import * as TransactionService from "../services/transactions";
 import type { CreateTransactionInput } from "../types";
 
@@ -21,17 +20,12 @@ export interface TransactionFilterOptions {
  * Hook for accessing transactions with filtering and relations.
  */
 export function useTransactions(options?: TransactionFilterOptions) {
-  const { adapter, isReady } = useDatabaseAdapter();
-
   return useQuery({
     queryKey: ["transactions", options],
-    queryFn: () => {
-      if (!adapter) return [];
-      return options
-        ? TransactionService.getTransactionsFiltered(adapter, options)
-        : TransactionService.getAllTransactions(adapter);
-    },
-    enabled: isReady,
+    queryFn: () =>
+      options
+        ? TransactionService.getTransactionsFiltered(options)
+        : TransactionService.getAllTransactions(),
   });
 }
 
@@ -39,32 +33,19 @@ export function useTransactions(options?: TransactionFilterOptions) {
  * Hook for getting unconfirmed transactions (for tagger).
  */
 export function useUnconfirmedTransactions() {
-  const { adapter, isReady } = useDatabaseAdapter();
-
   return useQuery({
     queryKey: ["transactions", "unconfirmed"],
-    queryFn: () => {
-      if (!adapter) return [];
-      return TransactionService.getUnconfirmedTransactions(adapter);
-    },
-    enabled: isReady,
+    queryFn: () => TransactionService.getUnconfirmedTransactions(),
   });
 }
 
 /**
  * Hook for getting recent transactions with a limit (optimized for dashboards).
- * Uses database-level LIMIT for O(1) performance regardless of total transaction count.
  */
 export function useRecentTransactions(limit = 5) {
-  const { adapter, isReady } = useDatabaseAdapter();
-
   return useQuery({
     queryKey: ["transactions", "recent", limit],
-    queryFn: () => {
-      if (!adapter) return [];
-      return TransactionService.getRecentTransactions(adapter, limit);
-    },
-    enabled: isReady,
+    queryFn: () => TransactionService.getRecentTransactions(limit),
   });
 }
 
@@ -72,31 +53,19 @@ export function useRecentTransactions(limit = 5) {
  * Hook for getting unconfirmed count (for dashboard badge).
  */
 export function useUnconfirmedCount() {
-  const { adapter, isReady } = useDatabaseAdapter();
-
   return useQuery({
     queryKey: ["transactions", "unconfirmedCount"],
-    queryFn: () => {
-      if (!adapter) return 0;
-      return TransactionService.getUnconfirmedCount(adapter);
-    },
-    enabled: isReady,
+    queryFn: () => TransactionService.getUnconfirmedCount(),
   });
 }
 
 /**
- * Hook for getting total spending for a month.
+ * Hook for getting total spending for a date range.
  */
-export function useTotalSpending(month: string) {
-  const { adapter, isReady } = useDatabaseAdapter();
-
+export function useTotalSpending(startDate: string, endDate: string) {
   return useQuery({
-    queryKey: ["spending", "total", month],
-    queryFn: () => {
-      if (!adapter) return 0;
-      return TransactionService.getTotalSpending(adapter, month);
-    },
-    enabled: isReady,
+    queryKey: ["spending", "total", startDate, endDate],
+    queryFn: () => TransactionService.getTotalSpending(startDate, endDate),
   });
 }
 
@@ -111,18 +80,12 @@ export interface SpendingByCategoryOptions {
 }
 
 /**
- * Hook for getting spending by category for a month.
+ * Hook for getting spending by category for a date range.
  */
-export function useSpendingByCategory(month: string, options?: SpendingByCategoryOptions) {
-  const { adapter, isReady } = useDatabaseAdapter();
-
+export function useSpendingByCategory(startDate: string, endDate: string, options?: SpendingByCategoryOptions) {
   return useQuery({
-    queryKey: ["spending", "byCategory", month, options],
-    queryFn: () => {
-      if (!adapter) return [];
-      return TransactionService.getSpendingByCategory(adapter, month, options);
-    },
-    enabled: isReady,
+    queryKey: ["spending", "byCategory", startDate, endDate, options],
+    queryFn: () => TransactionService.getSpendingByCategory(startDate, endDate, options),
   });
 }
 
@@ -130,74 +93,53 @@ export function useSpendingByCategory(month: string, options?: SpendingByCategor
  * Hook for transaction mutations (create, update, delete).
  */
 export function useTransactionMutations() {
-  const { adapter, isReady, save } = useDatabaseAdapter();
   const queryClient = useQueryClient();
 
-  const invalidateAndSave = async () => {
+  const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["transactions"] });
     queryClient.invalidateQueries({ queryKey: ["spending"] });
-    // Trigger save to persist changes to server
-    await save();
   };
 
   const createTransaction = useMutation({
-    mutationFn: (input: CreateTransactionInput) => {
-      if (!adapter) throw new Error("Database not ready");
-      return Promise.resolve(TransactionService.createTransaction(adapter, input));
-    },
-    onSuccess: invalidateAndSave,
+    mutationFn: (input: CreateTransactionInput) =>
+      TransactionService.createTransaction(input),
+    onSuccess: invalidate,
   });
 
   const createManyTransactions = useMutation({
-    mutationFn: (inputs: CreateTransactionInput[]) => {
-      if (!adapter) throw new Error("Database not ready");
-      return Promise.resolve(TransactionService.createManyTransactions(adapter, inputs));
-    },
-    onSuccess: invalidateAndSave,
+    mutationFn: (inputs: CreateTransactionInput[]) =>
+      TransactionService.createManyTransactions(inputs),
+    onSuccess: invalidate,
   });
 
   const confirmTransaction = useMutation({
-    mutationFn: ({ transactionId, categoryId }: { transactionId: string; categoryId: string }) => {
-      if (!adapter) throw new Error("Database not ready");
-      return Promise.resolve(TransactionService.confirmTransaction(adapter, transactionId, categoryId));
-    },
-    onSuccess: invalidateAndSave,
+    mutationFn: ({ transactionId, categoryId }: { transactionId: string; categoryId: string }) =>
+      TransactionService.confirmTransaction(transactionId, categoryId),
+    onSuccess: invalidate,
   });
 
   const updateCategory = useMutation({
-    mutationFn: ({ transactionId, categoryId, isConfirmed }: { transactionId: string; categoryId: string | null; isConfirmed?: boolean }) => {
-      if (!adapter) throw new Error("Database not ready");
-      TransactionService.updateTransactionCategory(adapter, transactionId, categoryId, isConfirmed);
-      return Promise.resolve();
-    },
-    onSuccess: invalidateAndSave,
+    mutationFn: ({ transactionId, categoryId, isConfirmed }: { transactionId: string; categoryId: string | null; isConfirmed?: boolean }) =>
+      TransactionService.updateTransactionCategory(transactionId, categoryId, isConfirmed),
+    onSuccess: invalidate,
   });
 
   const toggleExcluded = useMutation({
-    mutationFn: (transactionId: string) => {
-      if (!adapter) throw new Error("Database not ready");
-      TransactionService.toggleTransactionExcluded(adapter, transactionId);
-      return Promise.resolve();
-    },
-    onSuccess: invalidateAndSave,
+    mutationFn: (transactionId: string) =>
+      TransactionService.toggleTransactionExcluded(transactionId),
+    onSuccess: invalidate,
   });
 
   const deleteTransaction = useMutation({
-    mutationFn: (transactionId: string) => {
-      if (!adapter) throw new Error("Database not ready");
-      TransactionService.deleteTransaction(adapter, transactionId);
-      return Promise.resolve();
-    },
-    onSuccess: invalidateAndSave,
+    mutationFn: (transactionId: string) =>
+      TransactionService.deleteTransaction(transactionId),
+    onSuccess: invalidate,
   });
 
   const uncategorize = useMutation({
-    mutationFn: (transactionId: string) => {
-      if (!adapter) throw new Error("Database not ready");
-      TransactionService.uncategorizeTransaction(adapter, transactionId);
-      return Promise.resolve();
-    },
-    onSuccess: invalidateAndSave,
+    mutationFn: (transactionId: string) =>
+      TransactionService.uncategorizeTransaction(transactionId),
+    onSuccess: invalidate,
   });
 
   return {
@@ -208,6 +150,5 @@ export function useTransactionMutations() {
     toggleExcluded,
     deleteTransaction,
     uncategorize,
-    isReady,
   };
 }

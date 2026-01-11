@@ -13,6 +13,18 @@ export function getCurrentMonth(): string {
 }
 
 /**
+ * Get date range for a month string (YYYY-MM).
+ * Returns startDate (first day) and endDate (last day) in YYYY-MM-DD format.
+ */
+export function getMonthDateRange(month: string): { startDate: string; endDate: string } {
+  const [year, monthNum] = month.split("-").map(Number);
+  const startDate = `${year}-${String(monthNum).padStart(2, "0")}-01`;
+  const lastDay = new Date(year, monthNum, 0).getDate();
+  const endDate = `${year}-${String(monthNum).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+  return { startDate, endDate };
+}
+
+/**
  * Get previous month in YYYY-MM format.
  * @param month - Optional month string (YYYY-MM). If not provided, uses current month.
  */
