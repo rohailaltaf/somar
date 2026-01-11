@@ -5,6 +5,23 @@
  */
 
 /**
+ * Parse a YYYY-MM-DD string into a Date object in local time.
+ * Avoids timezone issues that occur with `new Date("YYYY-MM-DD")`.
+ */
+export function parseDate(dateStr: string): Date {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+/**
+ * Format a Date object as YYYY-MM-DD string.
+ * Avoids timezone issues that occur with `toISOString().split("T")[0]`.
+ */
+export function toDateString(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+/**
  * Get current month in YYYY-MM format.
  */
 export function getCurrentMonth(): string {
@@ -66,7 +83,7 @@ export function getPercentageChange(current: number, previous: number): number |
 export function getDaysAgo(days: number): string {
   const date = new Date();
   date.setDate(date.getDate() - days);
-  return date.toISOString().split("T")[0];
+  return toDateString(date);
 }
 
 /**

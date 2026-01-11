@@ -180,17 +180,19 @@ export async function POST(request: NextRequest): Promise<NextResponse<PlaidSync
         let modifiedCount = 0;
         let removedCount = 0;
 
+        // Batch check for existing transactions (added)
+        const addedPlaidIds = allAdded.map((tx) => tx.transaction_id);
+        const existingAdded = await db.transaction.findMany({
+          where: { plaidTransactionId: { in: addedPlaidIds } },
+          select: { plaidTransactionId: true },
+        });
+        const existingAddedIds = new Set(existingAdded.map((t) => t.plaidTransactionId));
+
         // Process added transactions
         for (const tx of allAdded) {
           const accountId = plaidAccountMap.get(tx.account_id);
-          if (!accountId) continue; // Skip if no matching account
-
-          // Check if transaction already exists (by plaid_transaction_id)
-          const existing = await db.transaction.findUnique({
-            where: { plaidTransactionId: tx.transaction_id },
-          });
-
-          if (existing) continue; // Skip duplicates
+          if (!accountId) continue;
+          if (existingAddedIds.has(tx.transaction_id)) continue;
 
           await db.transaction.create({
             data: {
@@ -212,12 +214,19 @@ export async function POST(request: NextRequest): Promise<NextResponse<PlaidSync
           addedCount++;
         }
 
+        // Batch fetch existing transactions (modified)
+        const modifiedPlaidIds = allModified.map((tx) => tx.transaction_id);
+        const existingModified = await db.transaction.findMany({
+          where: { plaidTransactionId: { in: modifiedPlaidIds } },
+          select: { id: true, plaidTransactionId: true, description: true },
+        });
+        const existingModifiedMap = new Map(
+          existingModified.map((t) => [t.plaidTransactionId, t])
+        );
+
         // Process modified transactions
         for (const tx of allModified) {
-          const existing = await db.transaction.findUnique({
-            where: { plaidTransactionId: tx.transaction_id },
-          });
-
+          const existing = existingModifiedMap.get(tx.transaction_id);
           if (!existing) continue;
 
           await db.transaction.update({
