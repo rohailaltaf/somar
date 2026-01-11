@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { useTransactions } from "@somar/shared/hooks";
+import { useTransactionsPaginated } from "@somar/shared/hooks";
 import { TransactionsList } from "./transactions-list";
 import type { Account, Category } from "@somar/shared";
 import { Button } from "@/components/ui/button";
@@ -62,24 +62,26 @@ export function TransactionsClient({
     setCurrentPage(1);
   }, []);
 
-  // Build filter options for the hook
-  const filterOptions = useMemo(() => ({
+  // Build pagination options for the hook (server-side pagination)
+  const paginationOptions = useMemo(() => ({
     accountId: accountFilter !== "all" ? accountFilter : undefined,
     categoryId: categoryFilter === "uncategorized" ? null : categoryFilter !== "all" ? categoryFilter : undefined,
     startDate: startDate || undefined,
     endDate: endDate || undefined,
     showExcluded,
     search: searchQuery.trim() || undefined,
-  }), [accountFilter, categoryFilter, startDate, endDate, showExcluded, searchQuery]);
+    limit: itemsPerPage,
+    offset: (currentPage - 1) * itemsPerPage,
+  }), [accountFilter, categoryFilter, startDate, endDate, showExcluded, searchQuery, currentPage]);
 
-  const { data: transactions = [], isLoading } = useTransactions(filterOptions);
+  const { data, isLoading } = useTransactionsPaginated(paginationOptions);
 
-  // Paginate client-side
-  const totalCount = transactions.length;
+  // Server-side pagination - data comes pre-paginated
+  const transactions = data?.data ?? [];
+  const totalCount = data?.pagination?.total ?? 0;
   const totalPages = Math.ceil(totalCount / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = Math.min(startIndex + itemsPerPage, totalCount);
-  const paginatedTransactions = transactions.slice(startIndex, endIndex);
+  const endIndex = Math.min(startIndex + transactions.length, totalCount);
 
   const clearFilters = () => {
     setAccountFilter("all");
@@ -220,7 +222,7 @@ export function TransactionsClient({
         ) : (
           <>
             <TransactionsList
-              transactions={paginatedTransactions}
+              transactions={transactions}
               categories={categories}
             />
             {totalPages > 1 && (

@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Building2, Check, Sparkles } from "lucide-react";
+import { Building2, Check, Sparkles, AlertCircle } from "lucide-react";
+import { hexColors } from "@somar/shared/theme";
 
 // Custom smooth easing
 const smoothEase = [0.16, 1, 0.3, 1] as const;
 
-type SyncStage = "connecting" | "syncing" | "success";
+type SyncStage = "connecting" | "syncing" | "success" | "error";
 
 interface PlaidSyncModalProps {
   isOpen: boolean;
@@ -37,8 +38,8 @@ function OrbitalDots({ stage }: { stage: SyncStage }) {
             }}
             initial={{ opacity: 0, scale: 0 }}
             animate={{
-              opacity: stage === "success" ? 0 : [0.3, 0.8, 0.3],
-              scale: stage === "success" ? 0 : 1,
+              opacity: stage === "success" || stage === "error" ? 0 : [0.3, 0.8, 0.3],
+              scale: stage === "success" || stage === "error" ? 0 : 1,
               rotate: [angle, angle + 360],
             }}
             transition={{
@@ -91,7 +92,7 @@ function PulsingRings({ stage }: { stage: SyncStage }) {
           className="absolute inset-0 rounded-full border-2 border-primary/30"
           initial={{ scale: 0.8, opacity: 0 }}
           animate={
-            stage === "success"
+            stage === "success" || stage === "error"
               ? { scale: 1.5, opacity: 0 }
               : {
                   scale: [1, 1.8, 2],
@@ -100,7 +101,7 @@ function PulsingRings({ stage }: { stage: SyncStage }) {
           }
           transition={{
             duration: 2,
-            repeat: stage === "success" ? 0 : Infinity,
+            repeat: stage === "success" || stage === "error" ? 0 : Infinity,
             delay: i * 0.6,
             ease: "easeOut",
           }}
@@ -177,7 +178,8 @@ export function PlaidSyncModal({
   const [stage, setStage] = useState<SyncStage>("connecting");
   const [messageIndex, setMessageIndex] = useState(0);
   const [transactionCount, setTransactionCount] = useState(0);
-  const [hasError, setHasError] = useState(false);
+  const [errorMessages, setErrorMessages] = useState<string[]>([]);
+  const syncStartedRef = useRef(false);
 
   // Cycle through messages during sync
   useEffect(() => {
@@ -193,7 +195,7 @@ export function PlaidSyncModal({
   // Handle the sync process
   const performSync = useCallback(async () => {
     setStage("connecting");
-    setHasError(false);
+    setErrorMessages([]);
 
     // Brief connecting animation
     await new Promise((resolve) => setTimeout(resolve, 1500));
@@ -204,9 +206,10 @@ export function PlaidSyncModal({
       const result = await syncFunction();
 
       if (result.errors.length > 0) {
-        setHasError(true);
-        // Still show success but note the error
-        setTimeout(() => onComplete(), 2000);
+        setErrorMessages(result.errors);
+        setStage("error");
+        // Auto-close after showing error
+        setTimeout(() => onComplete(), 4000);
         return;
       }
 
@@ -217,24 +220,32 @@ export function PlaidSyncModal({
       setTimeout(() => {
         onComplete();
       }, 2500);
-    } catch {
-      setHasError(true);
-      setTimeout(() => onComplete(), 2000);
+    } catch (err) {
+      setErrorMessages([
+        err instanceof Error ? err.message : "An unexpected error occurred",
+      ]);
+      setStage("error");
+      setTimeout(() => onComplete(), 4000);
     }
   }, [syncFunction, onComplete]);
 
   // Start sync when modal opens
   useEffect(() => {
     if (isOpen) {
-      performSync();
+      if (!syncStartedRef.current) {
+        syncStartedRef.current = true;
+        performSync();
+      }
     } else {
       // Reset state when closed
+      syncStartedRef.current = false;
       setStage("connecting");
       setMessageIndex(0);
       setTransactionCount(0);
-      setHasError(false);
+      setErrorMessages([]);
     }
-  }, [isOpen, performSync]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   const getMessage = () => {
     switch (stage) {
@@ -246,7 +257,9 @@ export function PlaidSyncModal({
         if (transactionCount > 0) {
           return `${transactionCount} transaction${transactionCount !== 1 ? "s" : ""} synced!`;
         }
-        return "All synced up!";
+        return "You're all set!";
+      case "error":
+        return "Sync failed";
     }
   };
 
@@ -257,9 +270,9 @@ export function PlaidSyncModal({
       case "syncing":
         return "This may take up to a minute";
       case "success":
-        return hasError
-          ? "Completed with some issues"
-          : "Your transactions are ready";
+        return `${institutionName} is now connected`;
+      case "error":
+        return errorMessages[0] || "Please try again later";
     }
   };
 
@@ -343,6 +356,18 @@ export function PlaidSyncModal({
                               <Check className="w-8 h-8 text-white" strokeWidth={3} />
                             </div>
                           </motion.div>
+                        ) : stage === "error" ? (
+                          <motion.div
+                            key="error"
+                            initial={{ scale: 0, rotate: -180 }}
+                            animate={{ scale: 1, rotate: 0 }}
+                            transition={{ duration: 0.5, ease: smoothEase }}
+                            className="relative z-10"
+                          >
+                            <div className="w-16 h-16 rounded-full bg-destructive flex items-center justify-center">
+                              <AlertCircle className="w-8 h-8 text-white" strokeWidth={2} />
+                            </div>
+                          </motion.div>
                         ) : (
                           <motion.div
                             key="bank"
@@ -404,7 +429,21 @@ export function PlaidSyncModal({
 
                 {/* Progress indicator */}
                 <div className="w-full max-w-xs">
-                  {stage !== "success" ? (
+                  {stage === "success" ? (
+                    <motion.div
+                      className="h-1.5 bg-success rounded-full"
+                      initial={{ width: "90%" }}
+                      animate={{ width: "100%" }}
+                      transition={{ duration: 0.3, ease: smoothEase }}
+                    />
+                  ) : stage === "error" ? (
+                    <motion.div
+                      className="h-1.5 bg-destructive rounded-full"
+                      initial={{ width: "90%" }}
+                      animate={{ width: "100%" }}
+                      transition={{ duration: 0.3, ease: smoothEase }}
+                    />
+                  ) : (
                     <div className="relative h-1.5 bg-muted rounded-full overflow-hidden">
                       <motion.div
                         className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary to-primary/70 rounded-full"
@@ -430,13 +469,6 @@ export function PlaidSyncModal({
                         }}
                       />
                     </div>
-                  ) : (
-                    <motion.div
-                      className="h-1.5 bg-success rounded-full"
-                      initial={{ width: "90%" }}
-                      animate={{ width: "100%" }}
-                      transition={{ duration: 0.3, ease: smoothEase }}
-                    />
                   )}
                 </div>
 
@@ -458,10 +490,10 @@ export function PlaidSyncModal({
                             top: "35%",
                             backgroundColor:
                               i % 3 === 0
-                                ? "var(--primary)"
+                                ? hexColors.primary
                                 : i % 3 === 1
-                                  ? "var(--success)"
-                                  : "var(--gold)",
+                                  ? hexColors.success
+                                  : hexColors.gold,
                           }}
                           initial={{ scale: 0, x: 0, y: 0 }}
                           animate={{

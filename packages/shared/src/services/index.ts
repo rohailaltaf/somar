@@ -8,6 +8,7 @@
 export {
   getAllTransactions,
   getTransactionsFiltered,
+  getTransactionsPaginated,
   getUnconfirmedTransactions,
   getRecentTransactions,
   getUnconfirmedCount,
@@ -32,6 +33,7 @@ export {
   deleteTransaction,
   uncategorizeTransaction,
   extractMerchantPattern,
+  type PaginatedTransactionsResult,
   type SpendingTransaction,
   type SpendingByCategoryOptions,
 } from "./transactions";

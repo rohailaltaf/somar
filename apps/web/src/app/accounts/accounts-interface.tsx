@@ -275,17 +275,13 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
           });
         }
 
-        toast.success(
-          `Connected ${metadata.institution?.name}! ${accountsToCreate.length} account(s) added.`
-        );
-
-        invalidateQueries();
-
-        // Show sync modal for initial sync
+        // Show sync modal immediately (queries invalidated after modal completes)
         if (data.itemId) {
           setSyncModalInstitution(metadata.institution?.name || "your bank");
           setPendingSyncItemId(data.itemId);
           setSyncModalOpen(true);
+        } else {
+          invalidateQueries();
         }
       } catch {
         toast.error("Failed to connect institution");
@@ -383,20 +379,19 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
         const plaidAccountIds = disconnectingItem.accounts.map(a => a.plaidAccountId);
 
         if (deleteTransactions) {
-          // Delete accounts and their transactions from local SQLite
+          // Delete accounts and their transactions
           for (const plaidAccountId of plaidAccountIds) {
             const localAccount = accounts.find(a => a.plaidAccountId === plaidAccountId);
             if (localAccount) {
-              deleteAccount.mutate(localAccount.id);
+              await deleteAccount.mutateAsync(localAccount.id);
             }
           }
-          toast.success(`Disconnected ${disconnectingItem.institutionName} and deleted transactions`);
         } else {
           // Convert to manual accounts (clear plaid_account_id)
           for (const plaidAccountId of plaidAccountIds) {
             const localAccount = accounts.find(a => a.plaidAccountId === plaidAccountId);
             if (localAccount) {
-              updateAccount.mutate({
+              await updateAccount.mutateAsync({
                 id: localAccount.id,
                 name: localAccount.name,
                 type: localAccount.type as AccountType,
@@ -404,7 +399,6 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
               });
             }
           }
-          toast.success(`Disconnected ${disconnectingItem.institutionName} (transactions kept)`);
         }
 
         invalidateQueries();
