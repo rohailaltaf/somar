@@ -22,16 +22,27 @@ export function OtpInput({
 
   const handleChange = useCallback(
     (index: number, newValue: string) => {
-      // Only allow digits
-      const digit = newValue.replace(/\D/g, "").slice(-1);
+      const cleaned = newValue.replace(/\D/g, "");
 
-      // Build new value
+      // Handle paste: if multiple digits, fill from current index
+      if (cleaned.length > 1) {
+        const pastedDigits = cleaned.slice(0, length - index).split("");
+        const newDigits = [...digits];
+        pastedDigits.forEach((d, i) => {
+          newDigits[index + i] = d;
+        });
+        onChange(newDigits.join(""));
+        const focusIndex = Math.min(index + pastedDigits.length, length - 1);
+        inputRefs.current[focusIndex]?.focus();
+        return;
+      }
+
+      // Single digit entry
+      const digit = cleaned.slice(-1);
       const newDigits = [...digits];
       newDigits[index] = digit;
-      const newOtp = newDigits.join("");
-      onChange(newOtp);
+      onChange(newDigits.join(""));
 
-      // Move focus to next input if digit was entered
       if (digit && index < length - 1) {
         inputRefs.current[index + 1]?.focus();
       }
