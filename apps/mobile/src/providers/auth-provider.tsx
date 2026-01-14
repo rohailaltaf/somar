@@ -183,7 +183,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const { data } = await getSession();
       setSession(data);
 
-      router.replace("/(tabs)");
+      // Navigate to index which will check approval status and redirect appropriately
+      router.replace("/");
     },
     [router]
   );

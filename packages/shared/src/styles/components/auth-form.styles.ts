@@ -143,7 +143,7 @@ export const authFormStyles = {
 
   /** Loading state overlay */
   loading: {
-    container: "fixed inset-0 flex flex-col items-center justify-center bg-surface-deep",
+    container: "fixed inset-0 flex flex-1 flex-col items-center justify-center bg-surface-deep",
     spinner: "w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin",
     text: "text-xl font-semibold text-foreground mt-4",
     subtext: "text-muted-foreground",
