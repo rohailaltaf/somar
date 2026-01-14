@@ -120,9 +120,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         throw new Error(result.error.message || "Failed to sign in with Google");
       }
 
-      router.push("/");
+      // Use window.location for full page load to ensure session is fresh
+      window.location.href = "/";
     },
-    [router]
+    []
   );
 
   const logout = useCallback(async () => {

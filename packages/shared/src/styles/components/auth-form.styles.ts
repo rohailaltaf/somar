@@ -88,6 +88,70 @@ export const authFormStyles = {
     emailLabel: "text-sm text-muted-foreground mb-1",
     emailValue: "text-foreground font-medium",
     description: "text-sm text-muted-foreground text-center mb-6",
+
+    /** Enhanced waitlist styles */
+    container: "relative min-h-screen flex flex-col items-center justify-center overflow-hidden",
+
+    /** Atmospheric background */
+    background: {
+      wrapper: "fixed inset-0 pointer-events-none overflow-hidden",
+      nebulaPrimary:
+        "absolute top-[-30%] left-[-20%] w-[80vw] h-[80vh] rounded-full blur-[180px] animate-breathe",
+      nebulaSecondary:
+        "absolute bottom-[-20%] right-[-15%] w-[60vw] h-[60vh] rounded-full blur-[150px] animate-breathe",
+      nebulaAccent:
+        "absolute top-[20%] right-[10%] w-[30vw] h-[30vh] rounded-full blur-[120px] animate-breathe",
+      gridOverlay: "absolute inset-0 opacity-[0.015]",
+    },
+
+    /** Content wrapper */
+    content: "relative z-10 flex flex-col items-center px-6 max-w-lg mx-auto",
+
+    /** Status indicator */
+    statusBadge:
+      "inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium tracking-wide uppercase mb-8",
+    statusDot: "w-2 h-2 rounded-full animate-pulse",
+
+    /** Hero section */
+    hero: {
+      container: "text-center mb-10",
+      title: "font-serif text-5xl sm:text-6xl lg:text-7xl font-normal tracking-tight mb-4",
+      titleItalic: "font-serif italic text-5xl sm:text-6xl lg:text-7xl font-normal tracking-tight mb-4",
+      subtitle: "text-lg sm:text-xl text-foreground-secondary max-w-md mx-auto leading-relaxed",
+    },
+
+    /** Email card with glow effect */
+    emailCard: {
+      outer:
+        "relative rounded-2xl p-[1px] mb-8 w-full max-w-sm animate-float",
+      gradient:
+        "absolute inset-0 rounded-2xl opacity-60",
+      inner:
+        "relative rounded-2xl bg-card/95 backdrop-blur-sm p-6 border border-border/50",
+      label: "text-xs font-medium tracking-widest uppercase text-muted-foreground mb-2",
+      email: "text-lg font-medium text-foreground truncate",
+      iconWrapper:
+        "absolute -top-3 -right-3 w-10 h-10 rounded-full flex items-center justify-center",
+    },
+
+    /** Info section */
+    info: {
+      container: "text-center mb-10 max-w-sm",
+      text: "text-sm text-muted-foreground leading-relaxed",
+      highlight: "text-foreground font-medium",
+    },
+
+    /** Decorative elements */
+    orb: {
+      container: "absolute w-1 h-1 rounded-full",
+      glow: "absolute inset-0 rounded-full blur-sm",
+    },
+
+    /** Sign out button */
+    signOutButton:
+      "group relative inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-medium text-muted-foreground transition-all duration-300 hover:text-foreground",
+    signOutButtonBg:
+      "absolute inset-0 rounded-xl bg-surface-elevated/0 group-hover:bg-surface-elevated/80 transition-all duration-300",
   },
 
   /** Numeric values for inline styles */
