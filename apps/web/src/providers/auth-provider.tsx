@@ -30,6 +30,7 @@ interface AuthContextValue {
 
   // Social auth
   loginWithGoogle: () => Promise<void>;
+  loginWithGoogleIdToken: (idToken: string) => Promise<void>;
 
   logout: () => Promise<void>;
 }
@@ -106,6 +107,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
     });
   }, []);
 
+  const loginWithGoogleIdToken = useCallback(
+    async (idToken: string) => {
+      const result = await signIn.social({
+        provider: "google",
+        idToken: {
+          token: idToken,
+        },
+      });
+
+      if (result.error) {
+        throw new Error(result.error.message || "Failed to sign in with Google");
+      }
+
+      router.push("/");
+    },
+    [router]
+  );
+
   const logout = useCallback(async () => {
     await signOut();
     setOtpStateInternal(initialOtpState);
@@ -122,6 +141,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     sendOtp,
     verifyOtp,
     loginWithGoogle,
+    loginWithGoogleIdToken,
     logout,
   };
 
