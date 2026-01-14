@@ -10,13 +10,21 @@ import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { signIn, signOut, useSession, emailOtp } from "../lib/auth-client";
 import { initialOtpState, type OtpState } from "@somar/shared/components";
+import { getMe } from "@somar/shared/services";
 
 const OTP_STATE_KEY = "somar_otp_state";
+
+type ApprovalStatus = "pending" | "approved" | "rejected" | null;
 
 interface AuthContextValue {
   // Session state (from Better Auth)
   session: ReturnType<typeof useSession>["data"];
   isLoading: boolean;
+
+  // User approval status
+  approvalStatus: ApprovalStatus;
+  isApprovalLoading: boolean;
+  refreshApprovalStatus: () => Promise<void>;
 
   // OTP step state (persists across component remounts)
   otpState: OtpState;
@@ -48,6 +56,30 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const { data: session, isPending: isLoading } = useSession();
   const [otpState, setOtpStateInternal] = useState<OtpState>(initialOtpState);
   const [isOtpStateLoaded, setIsOtpStateLoaded] = useState(false);
+  const [approvalStatus, setApprovalStatus] = useState<ApprovalStatus>(null);
+  const [isApprovalLoading, setIsApprovalLoading] = useState(false);
+
+  // Fetch approval status from server using shared service
+  const refreshApprovalStatus = useCallback(async () => {
+    setIsApprovalLoading(true);
+    try {
+      const user = await getMe();
+      setApprovalStatus(user.status);
+    } catch {
+      setApprovalStatus(null);
+    } finally {
+      setIsApprovalLoading(false);
+    }
+  }, []);
+
+  // Fetch approval status when session changes
+  useEffect(() => {
+    if (session?.user && !isLoading) {
+      refreshApprovalStatus();
+    } else if (!session?.user) {
+      setApprovalStatus(null);
+    }
+  }, [session?.user, isLoading, refreshApprovalStatus]);
 
   // Restore OTP state from SecureStore on mount
   useEffect(() => {
@@ -129,6 +161,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const value: AuthContextValue = {
     session,
     isLoading: isLoading || !isOtpStateLoaded,
+    approvalStatus,
+    isApprovalLoading,
+    refreshApprovalStatus,
     otpState,
     setOtpState,
     resetOtpState,

@@ -30,7 +30,9 @@
     "db:safe-reset": "dotenv -e .env -- npx tsx scripts/safe-db-reset.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "generate:theme": "npx tsx scripts/generate-theme.ts"
+    "generate:theme": "npx tsx scripts/generate-theme.ts",
+    "approve-user": "dotenv -e .env -- npx tsx scripts/approve-user.ts",
+    "approve-user:prod": "dotenv -e .env.production -- npx tsx scripts/approve-user.ts"
   },
   "dependencies": {
     "@better-auth/expo": "^1.4.9",

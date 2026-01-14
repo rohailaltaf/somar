@@ -36,31 +36,45 @@ function LoadingScreen() {
 }
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { session, isLoading } = useAuth();
+  const { session, isLoading, approvalStatus, isApprovalLoading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || isApprovalLoading) return;
 
     const firstSegment = segments[0] as string;
     const inAuthGroup = firstSegment === "(auth)";
     const inTabsGroup = firstSegment === "(tabs)";
+    const inWaitlistGroup = firstSegment === "(waitlist)";
 
     if (!session?.user && !inAuthGroup) {
       // Not signed in and not on auth page - redirect to login
       router.replace("/(auth)/login" as Href);
-    } else if (session?.user && inAuthGroup) {
-      // Signed in and on auth page - redirect to tabs
-      router.replace("/(tabs)" as Href);
-    } else if (session?.user && !inTabsGroup && !inAuthGroup) {
-      // Signed in but at root - redirect to tabs
-      router.replace("/(tabs)" as Href);
-    }
-  }, [session, segments, isLoading, router]);
+    } else if (session?.user) {
+      const isApproved = approvalStatus === "approved";
 
-  // Show loading while checking auth
-  if (isLoading) {
+      if (isApproved) {
+        // Approved user
+        if (inAuthGroup || inWaitlistGroup) {
+          // On auth or waitlist page - redirect to tabs
+          router.replace("/(tabs)" as Href);
+        } else if (!inTabsGroup) {
+          // Signed in but at root - redirect to tabs
+          router.replace("/(tabs)" as Href);
+        }
+      } else {
+        // Not approved (pending or rejected)
+        if (!inWaitlistGroup && !inAuthGroup) {
+          // Not on waitlist page - redirect to waitlist
+          router.replace("/(waitlist)" as Href);
+        }
+      }
+    }
+  }, [session, segments, isLoading, isApprovalLoading, approvalStatus, router]);
+
+  // Show loading while checking auth or approval status
+  if (isLoading || (session?.user && isApprovalLoading)) {
     return <LoadingScreen />;
   }
 

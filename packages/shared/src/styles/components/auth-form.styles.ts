@@ -81,6 +81,15 @@ export const authFormStyles = {
     subtext: "text-muted-foreground",
   },
 
+  /** Waitlist page styles */
+  waitlist: {
+    wrapper: "flex-1 bg-background items-center justify-center p-4",
+    emailBox: "bg-surface-elevated rounded-lg p-4 mb-6",
+    emailLabel: "text-sm text-muted-foreground mb-1",
+    emailValue: "text-foreground font-medium",
+    description: "text-sm text-muted-foreground text-center mb-6",
+  },
+
   /** Numeric values for inline styles */
   spacing: {
     inputHeight: 48,
