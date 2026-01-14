@@ -5,34 +5,23 @@ import { z } from "zod";
  * Shared between web and mobile for consistent validation.
  */
 
-// Login form schema
-export const loginSchema = z.object({
+// Email entry schema (step 1 of OTP flow)
+export const emailSchema = z.object({
   email: z
     .string()
     .min(1, "Email is required")
     .email("Please enter a valid email address"),
-  password: z.string().min(1, "Password is required"),
 });
 
-export type LoginFormData = z.infer<typeof loginSchema>;
+export type EmailFormData = z.infer<typeof emailSchema>;
 
-// Register form schema
-export const registerSchema = z
-  .object({
-    name: z.string().min(1, "Name is required"),
-    email: z
-      .string()
-      .min(1, "Email is required")
-      .email("Please enter a valid email address"),
-    password: z
-      .string()
-      .min(1, "Password is required")
-      .min(8, "Password must be at least 8 characters"),
-    confirmPassword: z.string().min(1, "Please confirm your password"),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords do not match",
-    path: ["confirmPassword"],
-  });
+// OTP verification schema (step 2 of OTP flow)
+export const otpSchema = z.object({
+  email: z.string().email(),
+  otp: z
+    .string()
+    .length(6, "Code must be 6 digits")
+    .regex(/^\d+$/, "Code must contain only numbers"),
+});
 
-export type RegisterFormData = z.infer<typeof registerSchema>;
+export type OtpFormData = z.infer<typeof otpSchema>;

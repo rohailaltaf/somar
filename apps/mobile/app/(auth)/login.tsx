@@ -1,65 +1,202 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
 } from "react-native";
-import { useRouter } from "expo-router";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "../../src/providers";
-import { signIn } from "../../src/lib/auth-client";
-import { FormTextInput } from "../../src/components/ui";
-import { loginSchema, type LoginFormData } from "../../src/lib/validation";
+import { OtpInput } from "../../src/components/ui";
 import { colors } from "../../src/lib/theme";
+import { authFormStyles, getButtonClass } from "@somar/shared/styles";
+import { OTP_COOLDOWN_SECONDS } from "@somar/shared/components";
+import {
+  emailSchema,
+  otpSchema,
+  type EmailFormData,
+  type OtpFormData,
+} from "@somar/shared/validation";
 
 export default function LoginScreen() {
-  const router = useRouter();
-  const { login } = useAuth();
-  const [isOAuthLoading, setIsOAuthLoading] = useState(false);
+  const { sendOtp, verifyOtp, loginWithGoogle, otpState, setOtpState, resetOtpState } = useAuth();
+  const [isResending, setIsResending] = useState(false);
+  const [cooldownRemaining, setCooldownRemaining] = useState(0);
 
-  const {
-    control,
-    handleSubmit,
-    setError,
-    formState: { isSubmitting, errors },
-  } = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
+  // Cooldown timer effect
+  useEffect(() => {
+    if (!otpState.lastOtpSentAt) {
+      setCooldownRemaining(0);
+      return;
+    }
+
+    const calculateRemaining = () => {
+      const elapsed = Math.floor((Date.now() - otpState.lastOtpSentAt!) / 1000);
+      return Math.max(0, OTP_COOLDOWN_SECONDS - elapsed);
+    };
+
+    setCooldownRemaining(calculateRemaining());
+
+    const interval = setInterval(() => {
+      const remaining = calculateRemaining();
+      setCooldownRemaining(remaining);
+      if (remaining === 0) clearInterval(interval);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [otpState.lastOtpSentAt]);
+
+  // Email form - use email from context if available
+  const emailForm = useForm<EmailFormData>({
+    resolver: zodResolver(emailSchema),
+    defaultValues: { email: otpState.email || "" },
   });
 
-  const isDisabled = isSubmitting || isOAuthLoading;
+  // OTP form - use email from context
+  const otpForm = useForm<OtpFormData>({
+    resolver: zodResolver(otpSchema),
+    defaultValues: { email: otpState.email || "", otp: "" },
+  });
 
-  async function onSubmit(data: LoginFormData) {
+  async function handleEmailSubmit(data: EmailFormData) {
     try {
-      await login(data.email, data.password);
-    } catch (error) {
-      setError("root", {
-        message: error instanceof Error ? error.message : "An error occurred during sign in",
+      await sendOtp(data.email);
+      otpForm.setValue("email", data.email);
+      setOtpState({ step: "otp", email: data.email, lastOtpSentAt: Date.now() });
+    } catch (err) {
+      emailForm.setError("root", {
+        message: err instanceof Error ? err.message : "Failed to send code",
       });
     }
   }
 
-  async function handleGoogleLogin() {
-    setIsOAuthLoading(true);
+  async function handleOtpSubmit(data: OtpFormData) {
     try {
-      await signIn.social({ provider: "google" });
-      router.replace("/(tabs)");
-    } catch (error) {
-      setError("root", { message: "Failed to sign in with Google" });
-      console.error(error);
-    } finally {
-      setIsOAuthLoading(false);
+      await verifyOtp(data.email, data.otp);
+    } catch (err) {
+      otpForm.setError("root", {
+        message: err instanceof Error ? err.message : "Invalid code",
+      });
     }
   }
 
+  async function handleResendCode() {
+    if (cooldownRemaining > 0) return;
+    setIsResending(true);
+    try {
+      await sendOtp(otpForm.getValues("email"));
+      setOtpState({ ...otpState, lastOtpSentAt: Date.now() });
+    } catch (err) {
+      otpForm.setError("root", {
+        message: err instanceof Error ? err.message : "Failed to resend code",
+      });
+    } finally {
+      setIsResending(false);
+    }
+  }
+
+  async function handleGoogleLogin() {
+    try {
+      await loginWithGoogle();
+    } catch (err) {
+      emailForm.setError("root", {
+        message: err instanceof Error ? err.message : "Failed to sign in with Google",
+      });
+    }
+  }
+
+  function handleBack() {
+    resetOtpState();
+    otpForm.reset();
+  }
+
+  const isEmailSubmitting = emailForm.formState.isSubmitting;
+  const isOtpSubmitting = otpForm.formState.isSubmitting;
+
+  // Loading state - show while submitting OTP or after successful verification (before navigation)
+  if (isOtpSubmitting || otpState.step === "verifying") {
+    return (
+      <View className={authFormStyles.loading.container}>
+        <View className={authFormStyles.loading.spinner} />
+        <Text className={authFormStyles.loading.text}>Signing in...</Text>
+        <Text className={authFormStyles.loading.subtext}>Please wait</Text>
+      </View>
+    );
+  }
+
+  // OTP step
+  if (otpState.step === "otp") {
+    return (
+      <KeyboardAvoidingView
+        className="flex-1 bg-background"
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1, justifyContent: "center", padding: 16 }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View className={`${authFormStyles.cardWithBack} relative`}>
+            <TouchableOpacity
+              onPress={handleBack}
+              className={authFormStyles.backButton.container}
+            >
+              <Text className={authFormStyles.backButton.text}>← Back</Text>
+            </TouchableOpacity>
+
+            <View className={authFormStyles.header.container}>
+              <Text className={authFormStyles.header.title}>Check your email</Text>
+              <Text className={authFormStyles.header.subtitle}>
+                We sent a code to {otpForm.watch("email")}
+              </Text>
+            </View>
+
+            {otpForm.formState.errors.root && (
+              <View className={authFormStyles.error.container}>
+                <Text className={authFormStyles.error.text}>
+                  {otpForm.formState.errors.root.message}
+                </Text>
+              </View>
+            )}
+
+            <OtpInput
+              value={otpForm.watch("otp")}
+              onChange={(value) => otpForm.setValue("otp", value)}
+              onComplete={(value) => handleOtpSubmit({ email: otpForm.getValues("email"), otp: value })}
+              hasError={!!otpForm.formState.errors.otp}
+            />
+
+            <TouchableOpacity
+              onPress={otpForm.handleSubmit(handleOtpSubmit)}
+              disabled={otpForm.watch("otp").length !== 6 || isOtpSubmitting}
+              className={getButtonClass(otpForm.watch("otp").length !== 6 || isOtpSubmitting)}
+            >
+              <Text className={authFormStyles.button.primaryText}>Continue</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={handleResendCode}
+              disabled={isOtpSubmitting || isResending || cooldownRemaining > 0}
+              className={authFormStyles.button.ghost}
+            >
+              <Text className={authFormStyles.button.ghostText}>
+                {isResending
+                  ? "Sending..."
+                  : cooldownRemaining > 0
+                    ? `Resend code (${cooldownRemaining}s)`
+                    : "Resend code"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    );
+  }
+
+  // Email step
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-background"
@@ -69,80 +206,69 @@ export default function LoginScreen() {
         contentContainerStyle={{ flexGrow: 1, justifyContent: "center", padding: 16 }}
         keyboardShouldPersistTaps="handled"
       >
-        <View className="bg-card rounded-xl p-6 border border-border">
-          <Text className="text-2xl font-bold text-foreground text-center mb-2">
-            Welcome back
-          </Text>
-          <Text className="text-sm text-muted-foreground text-center mb-6">
-            Sign in to access your finances
-          </Text>
-
-          <TouchableOpacity
-            className="bg-foreground py-3 px-4 rounded-lg items-center mb-6"
-            onPress={handleGoogleLogin}
-            disabled={isDisabled}
-          >
-            <Text className="text-background text-base font-semibold">
-              Continue with Google
-            </Text>
-          </TouchableOpacity>
-
-          <View className="flex-row items-center mb-6">
-            <View className="flex-1 h-px bg-border" />
-            <Text className="text-muted-foreground px-3 text-xs uppercase">
-              Or continue with
-            </Text>
-            <View className="flex-1 h-px bg-border" />
+        <View className={authFormStyles.card}>
+          <View className={authFormStyles.header.container}>
+            <Text className={authFormStyles.header.title}>Welcome back</Text>
+            <Text className={authFormStyles.header.subtitle}>Sign in to access your finances</Text>
           </View>
 
-          <FormTextInput
-            control={control}
-            name="email"
-            label="Email"
-            placeholder="you@example.com"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
+          <TouchableOpacity
+            onPress={handleGoogleLogin}
+            disabled={isEmailSubmitting}
+            className={authFormStyles.button.oauth}
+          >
+            <Text className={authFormStyles.button.oauthText}>Continue with Google</Text>
+          </TouchableOpacity>
 
-          <FormTextInput
-            control={control}
-            name="password"
-            label="Password"
-            placeholder="••••••••"
-            secureTextEntry
-          />
+          <View className={authFormStyles.divider.container}>
+            <View className={authFormStyles.divider.line} />
+            <Text className={authFormStyles.divider.text}>Or continue with</Text>
+            <View className={authFormStyles.divider.line} />
+          </View>
 
-          {errors.root && (
-            <View className="bg-destructive/10 border border-destructive rounded-lg p-3 mb-4">
-              <Text className="text-destructive text-sm text-center">
-                {errors.root.message}
+          {emailForm.formState.errors.root && (
+            <View className={authFormStyles.error.container}>
+              <Text className={authFormStyles.error.text}>
+                {emailForm.formState.errors.root.message}
               </Text>
             </View>
           )}
 
-          <TouchableOpacity
-            className={`bg-primary py-3.5 rounded-lg items-center mt-2 ${isDisabled ? "opacity-70" : ""}`}
-            onPress={handleSubmit(onSubmit)}
-            disabled={isDisabled}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator color={colors.primaryForeground} />
-            ) : (
-              <Text className="text-primary-foreground text-base font-semibold">
-                Sign in
+          <View className={authFormStyles.field.container}>
+            <Text className={authFormStyles.field.label}>Email</Text>
+            <Controller
+              control={emailForm.control}
+              name="email"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <TextInput
+                  className={`${authFormStyles.field.input} w-full px-4 py-3`}
+                  placeholder="you@example.com"
+                  placeholderTextColor={colors.mutedForeground}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  onBlur={onBlur}
+                  onChangeText={onChange}
+                  value={value}
+                />
+              )}
+            />
+            {emailForm.formState.errors.email && (
+              <Text className={authFormStyles.field.error}>
+                {emailForm.formState.errors.email.message}
               </Text>
             )}
-          </TouchableOpacity>
-
-          <View className="flex-row justify-center mt-6">
-            <Text className="text-muted-foreground text-sm">
-              Don't have an account?{" "}
-            </Text>
-            <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
-              <Text className="text-primary text-sm">Sign up</Text>
-            </TouchableOpacity>
           </View>
+
+          <TouchableOpacity
+            onPress={emailForm.handleSubmit(handleEmailSubmit)}
+            disabled={isEmailSubmitting}
+            className={getButtonClass(isEmailSubmitting)}
+          >
+            <Text className={authFormStyles.button.primaryText}>
+              {isEmailSubmitting ? "Sending code..." : "Continue with email"}
+            </Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

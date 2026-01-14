@@ -1,5 +1,6 @@
 import { createAuthClient } from "better-auth/react";
 import { expoClient } from "@better-auth/expo/client";
+import { emailOTPClient } from "better-auth/client/plugins";
 import * as SecureStore from "expo-secure-store";
 
 function getApiUrl(): string {
@@ -20,7 +21,8 @@ export const authClient = createAuthClient({
       storagePrefix: "somar",
       storage: SecureStore,
     }),
+    emailOTPClient(),
   ],
 });
 
-export const { signIn, signUp, signOut, useSession, getSession } = authClient;
+export const { signIn, signOut, useSession, getSession, emailOtp } = authClient;

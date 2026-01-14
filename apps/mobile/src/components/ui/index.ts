@@ -24,6 +24,7 @@ export {
 
 // Forms
 export { FormTextInput } from "./form-text-input";
+export { OtpInput } from "./otp-input";
 
 // Core UI Components (shadcn-style)
 export { Button, type ButtonProps, type ButtonVariant, type ButtonSize } from "./button";

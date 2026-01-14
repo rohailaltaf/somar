@@ -79,4 +79,5 @@ export {
 export {
   authFormStyles,
   getInputClass,
+  getButtonClass,
 } from "./auth-form.styles";

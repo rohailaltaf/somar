@@ -33,8 +33,7 @@ mobile/
 │   ├── index.tsx           # Entry point (redirects based on auth)
 │   ├── (auth)/             # Auth screens (unauthenticated)
 │   │   ├── _layout.tsx     # Auth layout
-│   │   ├── login.tsx       # Login screen
-│   │   └── register.tsx    # Register screen
+│   │   └── login.tsx       # Login screen
 │   └── (tabs)/             # Main app (authenticated)
 │       ├── _layout.tsx     # Tab bar layout
 │       ├── index.tsx       # Dashboard screen

@@ -4,19 +4,33 @@ import {
   createContext,
   useContext,
   useCallback,
+  useState,
+  useEffect,
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
-import { signIn, signUp, signOut, useSession } from "@/lib/auth-client";
+import { signIn, signOut, useSession, emailOtp } from "@/lib/auth-client";
+import { initialOtpState, type OtpState } from "@somar/shared/components";
+
+const OTP_STATE_KEY = "somar_otp_state";
 
 interface AuthContextValue {
   // Session state (from Better Auth)
   session: ReturnType<typeof useSession>["data"];
   isLoading: boolean;
 
-  // Auth actions
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string) => Promise<void>;
+  // OTP step state (persists across component remounts)
+  otpState: OtpState;
+  setOtpState: (state: OtpState) => void;
+  resetOtpState: () => void;
+
+  // OTP auth actions
+  sendOtp: (email: string) => Promise<void>;
+  verifyOtp: (email: string, otp: string) => Promise<void>;
+
+  // Social auth
+  loginWithGoogle: () => Promise<void>;
+
   logout: () => Promise<void>;
 }
 
@@ -32,50 +46,82 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const router = useRouter();
   const { data: session, isPending: isLoading } = useSession();
+  const [otpState, setOtpStateInternal] = useState<OtpState>(initialOtpState);
+  const [isOtpStateLoaded, setIsOtpStateLoaded] = useState(false);
 
-  const login = useCallback(
-    async (email: string, password: string) => {
-      // Sign in with Better Auth
-      const result = await signIn.email({ email, password });
+  // Restore OTP state from sessionStorage on mount (avoids SSR hydration mismatch)
+  useEffect(() => {
+    const stored = sessionStorage.getItem(OTP_STATE_KEY);
+    if (stored) {
+      try {
+        setOtpStateInternal(JSON.parse(stored) as OtpState);
+      } catch {
+        // Invalid JSON, use initial state
+      }
+    }
+    setIsOtpStateLoaded(true);
+  }, []);
+
+  const setOtpState = useCallback((state: OtpState) => {
+    setOtpStateInternal(state);
+    sessionStorage.setItem(OTP_STATE_KEY, JSON.stringify(state));
+  }, []);
+
+  const resetOtpState = useCallback(() => {
+    setOtpStateInternal(initialOtpState);
+    sessionStorage.removeItem(OTP_STATE_KEY);
+  }, []);
+
+  const sendOtp = useCallback(async (email: string) => {
+    const result = await emailOtp.sendVerificationOtp({
+      email,
+      type: "sign-in",
+    });
+
+    if (result.error) {
+      throw new Error(result.error.message || "Failed to send code");
+    }
+  }, []);
+
+  const verifyOtp = useCallback(
+    async (email: string, otp: string) => {
+      const result = await signIn.emailOtp({ email, otp });
 
       if (result.error) {
-        throw new Error(result.error.message || "Failed to sign in");
+        throw new Error(result.error.message || "Invalid code");
       }
 
-      // Navigate to dashboard
+      // Set verifying state to keep showing loading spinner until navigation completes
+      setOtpStateInternal((prev) => ({ ...prev, step: "verifying" }));
+      sessionStorage.removeItem(OTP_STATE_KEY);
       router.push("/");
     },
     [router]
   );
 
-  const register = useCallback(
-    async (email: string, password: string, name: string) => {
-      // Register with Better Auth (auto-signs in)
-      const result = await signUp.email({ email, password, name });
-
-      if (result.error) {
-        throw new Error(result.error.message || "Failed to register");
-      }
-
-      // Navigate to dashboard
-      router.push("/");
-    },
-    [router]
-  );
+  const loginWithGoogle = useCallback(async () => {
+    await signIn.social({
+      provider: "google",
+      callbackURL: "/",
+    });
+  }, []);
 
   const logout = useCallback(async () => {
-    // Sign out from Better Auth
     await signOut();
-
-    // Navigate to login page
+    setOtpStateInternal(initialOtpState);
+    sessionStorage.removeItem(OTP_STATE_KEY);
     router.push("/login");
   }, [router]);
 
   const value: AuthContextValue = {
     session,
-    isLoading,
-    login,
-    register,
+    isLoading: isLoading || !isOtpStateLoaded,
+    otpState,
+    setOtpState,
+    resetOtpState,
+    sendOtp,
+    verifyOtp,
+    loginWithGoogle,
     logout,
   };
 

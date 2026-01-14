@@ -3,13 +3,13 @@
  *
  * Usage:
  * ```typescript
- * import { loginSchema, registerSchema, type LoginFormData } from "@somar/shared/validation";
+ * import { emailSchema, otpSchema, type EmailFormData, type OtpFormData } from "@somar/shared/validation";
  * ```
  */
 
 export {
-  loginSchema,
-  registerSchema,
-  type LoginFormData,
-  type RegisterFormData,
+  emailSchema,
+  otpSchema,
+  type EmailFormData,
+  type OtpFormData,
 } from "./auth-schemas";

@@ -6,7 +6,7 @@ import { headers } from "next/headers";
 export const runtime = "nodejs";
 
 // Routes that don't require authentication
-const publicRoutes = ["/login", "/register", "/signout"];
+const publicRoutes = ["/login", "/signout"];
 
 // API routes that don't require authentication
 const publicApiRoutes = ["/api/auth"];

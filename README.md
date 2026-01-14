@@ -202,7 +202,7 @@ somar/
 │   │   └── public/             # Static assets
 │   └── mobile/                 # React Native/Expo app
 │       ├── app/                # Expo Router pages
-│       │   ├── (auth)/         # Login/register screens
+│       │   ├── (auth)/         # Login, signout screens
 │       │   └── (tabs)/         # Dashboard, transactions
 │       ├── src/
 │       │   ├── components/     # React Native components
