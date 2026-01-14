@@ -1,7 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
-import { db } from "@/lib/db";
 
 // Use Node.js runtime instead of Edge (required for Prisma)
 export const runtime = "nodejs";
@@ -49,13 +48,8 @@ export async function middleware(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Check user approval status from database
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
-      select: { status: true },
-    });
-
-    const isApproved = user?.status === "APPROVED";
+    // Check user approval status from session (no extra DB query)
+    const isApproved = (session.user as { status?: string }).status === "APPROVED";
     const isPendingRoute = pendingRoutes.some((route) => pathname.startsWith(route));
 
     // If user is APPROVED and trying to access /waitlist, redirect to home
