@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { useAuth } from "@/providers";
 import { authFormStyles } from "@somar/shared/styles";
+import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Sparkles, LogOut } from "lucide-react";
 
 const ease: [number, number, number, number] = [0.16, 1, 0.3, 1];
@@ -125,20 +126,12 @@ export default function WaitlistPage() {
       <div className={styles.content}>
         {/* Status badge */}
         <motion.div
-          className={styles.statusBadge}
-          style={{
-            background: colors.statusBadgeBg,
-            color: colors.statusBadgeText,
-          }}
+          className="mb-8"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease }}
         >
-          <span
-            className={styles.statusDot}
-            style={{ background: colors.statusDot }}
-          />
-          Application Received
+          <Badge variant="success">Application Received</Badge>
         </motion.div>
 
         {/* Hero section */}

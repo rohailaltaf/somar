@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import Svg, { Defs, RadialGradient, Stop, Rect, Line, Circle } from "react-native-svg";
+import MaskedView from "@react-native-masked-view/masked-view";
+import Svg, { Defs, RadialGradient, Stop, Rect, Line } from "react-native-svg";
 import Animated, {
   FadeInDown,
   FadeInUp,
@@ -15,8 +16,8 @@ import Animated, {
 } from "react-native-reanimated";
 import { useAuth } from "../../src/providers";
 import { authFormStyles } from "@somar/shared/styles";
+import { Badge } from "../../src/components/ui/badge";
 import { Check, Sparkles, LogOut } from "lucide-react-native";
-import { useEffect } from "react";
 
 const styles = authFormStyles.waitlist;
 const colors = authFormStyles.waitlist.colors.hex;
@@ -168,20 +169,8 @@ export default function WaitlistScreen() {
 
       <View className={styles.content}>
         {/* Status badge */}
-        <Animated.View
-          entering={FadeInDown.duration(600)}
-          className={styles.statusBadge}
-          style={{
-            backgroundColor: colors.statusBadgeBg,
-          }}
-        >
-          <View
-            className={styles.statusDot}
-            style={{ backgroundColor: colors.statusDot }}
-          />
-          <Text style={{ color: colors.statusBadgeText, fontSize: 12, fontWeight: "500" }}>
-            Application Received
-          </Text>
+        <Animated.View entering={FadeInDown.duration(600)} className="mb-8">
+          <Badge variant="success">Application Received</Badge>
         </Animated.View>
 
         {/* Hero section */}
@@ -189,18 +178,45 @@ export default function WaitlistScreen() {
           entering={FadeInDown.duration(800).delay(100)}
           className={styles.hero.container}
         >
-          <Text
-            style={{
-              fontFamily: "InstrumentSerif_400Regular",
-              fontStyle: "italic",
-              fontSize: 48,
-              textAlign: "center",
-              marginBottom: 16,
-            }}
-          >
-            <Text style={{ color: colors.heroText }}>You're on </Text>
-            <Text style={{ color: colors.heroGradientStart }}>the list</Text>
-          </Text>
+          <View style={{ flexDirection: "row", justifyContent: "center", marginBottom: 16 }}>
+            <Text
+              style={{
+                fontFamily: "InstrumentSerif_400Regular_Italic",
+                fontSize: 48,
+                color: colors.heroText,
+              }}
+            >
+              You're on{" "}
+            </Text>
+            <MaskedView
+              maskElement={
+                <Text
+                  style={{
+                    fontFamily: "InstrumentSerif_400Regular_Italic",
+                    fontSize: 48,
+                  }}
+                >
+                  the list
+                </Text>
+              }
+            >
+              <LinearGradient
+                colors={[colors.heroGradientStart, colors.heroGradientEnd]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Text
+                  style={{
+                    fontFamily: "InstrumentSerif_400Regular_Italic",
+                    fontSize: 48,
+                    opacity: 0,
+                  }}
+                >
+                  the list
+                </Text>
+              </LinearGradient>
+            </MaskedView>
+          </View>
           <Text className={styles.hero.subtitle}>
             We're reviewing your application. You'll be among the first to
             experience a new way to understand your finances.

@@ -34,7 +34,7 @@ export const authFormStyles = {
   field: {
     container: "mb-4",
     label: "text-foreground text-sm mb-2",
-    input: "bg-surface-elevated border border-border rounded-lg",
+    input: "bg-surface-elevated border border-border rounded-lg text-foreground focus:border-primary focus-visible:outline-none",
     inputError: "border-destructive",
     error: "text-destructive text-xs mt-1",
     helperText: "text-xs text-muted-foreground mt-1",
@@ -101,11 +101,6 @@ export const authFormStyles = {
     /** Content wrapper */
     content: "relative z-10 flex flex-col items-center px-6 max-w-lg mx-auto",
 
-    /** Status indicator */
-    statusBadge:
-      "inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium tracking-wide uppercase mb-8",
-    statusDot: "w-2 h-2 rounded-full animate-pulse",
-
     /** Hero section */
     hero: {
       container: "text-center mb-10",
@@ -147,7 +142,7 @@ export const authFormStyles = {
 
     /** Sign out button */
     signOutButton:
-      "group relative inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-medium text-muted-foreground transition-all duration-300 hover:text-foreground",
+      "group relative flex flex-row items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-medium text-muted-foreground transition-all duration-300 hover:text-foreground",
     signOutButtonBg:
       "absolute inset-0 rounded-xl bg-surface-elevated/0 group-hover:bg-surface-elevated/80 transition-all duration-300",
 
@@ -163,11 +158,6 @@ export const authFormStyles = {
         // Floating orbs
         orb: "oklch(0.65 0.18 260 / 0.6)",
         orbGlow: "oklch(0.65 0.18 260 / 0.4)",
-
-        // Status badge (success green)
-        statusBadgeBg: "oklch(0.25 0.08 145 / 0.3)",
-        statusBadgeText: "oklch(0.75 0.15 145)",
-        statusDot: "oklch(0.7 0.15 145)",
 
         // Hero text
         heroText: "oklch(0.95 0.01 260)",
@@ -204,11 +194,6 @@ export const authFormStyles = {
         // Floating orbs
         orb: "#5b6ee199",
         orbGlow: "#5b6ee166",
-
-        // Status badge (success green)
-        statusBadgeBg: "#2d5a4d4d",
-        statusBadgeText: "#5dc090",
-        statusDot: "#4db87f",
 
         // Hero text
         heroText: "#f0f0f5",

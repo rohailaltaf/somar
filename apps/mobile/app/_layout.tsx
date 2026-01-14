@@ -4,7 +4,10 @@ import { Stack, useRouter, useSegments, type Href } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { View, ActivityIndicator } from "react-native";
 import { useFonts } from "expo-font";
-import { InstrumentSerif_400Regular } from "@expo-google-fonts/instrument-serif";
+import {
+  InstrumentSerif_400Regular,
+  InstrumentSerif_400Regular_Italic,
+} from "@expo-google-fonts/instrument-serif";
 import {
   DMSans_400Regular,
   DMSans_500Medium,
@@ -100,6 +103,7 @@ function RootLayoutContent() {
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
     InstrumentSerif_400Regular,
+    InstrumentSerif_400Regular_Italic,
     DMSans_400Regular,
     DMSans_500Medium,
     DMSans_600SemiBold,
