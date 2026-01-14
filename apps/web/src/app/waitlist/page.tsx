@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { useAuth } from "@/providers";
 import { authFormStyles } from "@somar/shared/styles";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Sparkles, LogOut } from "lucide-react";
+import { CheckCircle2, LogOut } from "lucide-react";
 
 const ease: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
@@ -20,6 +20,7 @@ const orbs = [
 ];
 
 const colors = authFormStyles.waitlist.colors.oklch;
+const dims = authFormStyles.waitlist.dimensions;
 
 function FloatingOrb({ x, y, size, delay, duration }: (typeof orbs)[0]) {
   return (
@@ -95,7 +96,7 @@ function AtmosphericBackground() {
             linear-gradient(${colors.gridLine} 1px, transparent 1px),
             linear-gradient(90deg, ${colors.gridLine} 1px, transparent 1px)
           `,
-          backgroundSize: "80px 80px",
+          backgroundSize: `${dims.gridSpacing}px ${dims.gridSpacing}px`,
         }}
       />
 
@@ -126,7 +127,7 @@ export default function WaitlistPage() {
       <div className={styles.content}>
         {/* Status badge */}
         <motion.div
-          className="mb-8"
+          className={styles.badgeWrapper}
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease }}
@@ -190,7 +191,7 @@ export default function WaitlistPage() {
             }}
           >
             <CheckCircle2
-              className="w-5 h-5"
+              size={dims.iconMedium}
               style={{ color: colors.checkmarkIcon }}
             />
           </div>
@@ -212,27 +213,6 @@ export default function WaitlistPage() {
           </p>
         </motion.div>
 
-        {/* Feature preview hint */}
-        <motion.div
-          className={styles.featurePreview}
-          style={{
-            background: colors.featurePreviewBg,
-            border: `1px solid ${colors.featurePreviewBorder}`,
-          }}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.65, ease }}
-        >
-          <Sparkles
-            className="w-4 h-4 flex-shrink-0"
-            style={{ color: colors.featurePreviewIcon }}
-          />
-          <p className="text-xs text-muted-foreground">
-            Smart categorization, beautiful insights, and total control over
-            your financial data.
-          </p>
-        </motion.div>
-
         {/* Sign out button */}
         <motion.button
           type="button"
@@ -245,8 +225,8 @@ export default function WaitlistPage() {
           whileTap={{ scale: 0.98 }}
         >
           <span className={styles.signOutButtonBg} />
-          <LogOut className="w-4 h-4 relative z-10" />
-          <span className="relative z-10">Sign out</span>
+          <LogOut className={styles.signOutButtonIcon} />
+          <span className={styles.signOutButtonText}>Sign out</span>
         </motion.button>
       </div>
     </div>

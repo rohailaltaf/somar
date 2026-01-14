@@ -17,10 +17,11 @@ import Animated, {
 import { useAuth } from "../../src/providers";
 import { authFormStyles } from "@somar/shared/styles";
 import { Badge } from "../../src/components/ui/badge";
-import { Check, Sparkles, LogOut } from "lucide-react-native";
+import { CheckCircle2, LogOut } from "lucide-react-native";
 
 const styles = authFormStyles.waitlist;
 const colors = authFormStyles.waitlist.colors.hex;
+const dims = authFormStyles.waitlist.dimensions;
 
 // Floating orb positions for decorative elements (percentages as decimals)
 const orbs = [
@@ -35,41 +36,31 @@ const orbs = [
 
 function FloatingOrb({ x, y, size, delay, duration }: (typeof orbs)[0]) {
   const { width, height } = Dimensions.get("window");
-  const opacity = useSharedValue(0.3);
-  const translateY = useSharedValue(0);
-  const scale = useSharedValue(1);
+  const progress = useSharedValue(0);
 
   useEffect(() => {
-    opacity.value = withDelay(
+    // Single progress value that drives all animations, matching web's keyframe approach
+    progress.value = withDelay(
       delay,
       withRepeat(
-        withTiming(0.8, { duration: duration / 2, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1, { duration, easing: Easing.inOut(Easing.ease) }),
         -1,
         true
       )
     );
-    translateY.value = withDelay(
-      delay,
-      withRepeat(
-        withTiming(-10, { duration: duration / 2, easing: Easing.inOut(Easing.ease) }),
-        -1,
-        true
-      )
-    );
-    scale.value = withDelay(
-      delay,
-      withRepeat(
-        withTiming(1.2, { duration: duration / 2, easing: Easing.inOut(Easing.ease) }),
-        -1,
-        true
-      )
-    );
-  }, [delay, duration, opacity, translateY, scale]);
+  }, [delay, duration, progress]);
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ translateY: translateY.value }, { scale: scale.value }],
-  }));
+  const animatedStyle = useAnimatedStyle(() => {
+    // Interpolate progress to match web's [0.3, 0.8, 0.3] pattern
+    const opacity = 0.3 + progress.value * 0.5;
+    const scale = 1 + progress.value * 0.2;
+    const translateY = -10 * progress.value;
+
+    return {
+      opacity,
+      transform: [{ translateY }, { scale }],
+    };
+  });
 
   return (
     <Animated.View
@@ -82,6 +73,12 @@ function FloatingOrb({ x, y, size, delay, duration }: (typeof orbs)[0]) {
           height: size,
           borderRadius: size / 2,
           backgroundColor: colors.orb,
+          // Glow effect using shadow
+          shadowColor: colors.orb,
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: 0.8,
+          shadowRadius: size * 2,
+          elevation: 5,
         },
         animatedStyle,
       ]}
@@ -116,16 +113,16 @@ function WaitlistAtmosphericBackground() {
         <Rect x="0" y="0" width="100%" height="100%" fill="url(#nebulaAccent)" />
       </Svg>
 
-      {/* Subtle grid overlay - 80px spacing to match web */}
+      {/* Subtle grid overlay */}
       <View style={[StyleSheet.absoluteFill, { opacity: 0.015 }]}>
         <Svg width="100%" height="100%">
           {Array.from({ length: 20 }).map((_, i) => (
             <Line
               key={`h-${i}`}
               x1="0"
-              y1={i * 80}
+              y1={i * dims.gridSpacing}
               x2="100%"
-              y2={i * 80}
+              y2={i * dims.gridSpacing}
               stroke={colors.gridLine}
               strokeWidth="0.5"
             />
@@ -133,9 +130,9 @@ function WaitlistAtmosphericBackground() {
           {Array.from({ length: 6 }).map((_, i) => (
             <Line
               key={`v-${i}`}
-              x1={i * 80}
+              x1={i * dims.gridSpacing}
               y1="0"
-              x2={i * 80}
+              x2={i * dims.gridSpacing}
               y2="100%"
               stroke={colors.gridLine}
               strokeWidth="0.5"
@@ -169,7 +166,7 @@ export default function WaitlistScreen() {
 
       <View className={styles.content}>
         {/* Status badge */}
-        <Animated.View entering={FadeInDown.duration(600)} className="mb-8">
+        <Animated.View entering={FadeInDown.duration(600)} className={styles.badgeWrapper}>
           <Badge variant="success">Application Received</Badge>
         </Animated.View>
 
@@ -178,11 +175,11 @@ export default function WaitlistScreen() {
           entering={FadeInDown.duration(800).delay(100)}
           className={styles.hero.container}
         >
-          <View style={{ flexDirection: "row", justifyContent: "center", marginBottom: 16 }}>
+          <View className={styles.hero.titleRow}>
             <Text
+              className="text-5xl"
               style={{
                 fontFamily: "InstrumentSerif_400Regular_Italic",
-                fontSize: 48,
                 color: colors.heroText,
               }}
             >
@@ -191,10 +188,8 @@ export default function WaitlistScreen() {
             <MaskedView
               maskElement={
                 <Text
-                  style={{
-                    fontFamily: "InstrumentSerif_400Regular_Italic",
-                    fontSize: 48,
-                  }}
+                  className="text-5xl"
+                  style={{ fontFamily: "InstrumentSerif_400Regular_Italic" }}
                 >
                   the list
                 </Text>
@@ -206,11 +201,8 @@ export default function WaitlistScreen() {
                 end={{ x: 1, y: 1 }}
               >
                 <Text
-                  style={{
-                    fontFamily: "InstrumentSerif_400Regular_Italic",
-                    fontSize: 48,
-                    opacity: 0,
-                  }}
+                  className="text-5xl opacity-0"
+                  style={{ fontFamily: "InstrumentSerif_400Regular_Italic" }}
                 >
                   the list
                 </Text>
@@ -226,7 +218,8 @@ export default function WaitlistScreen() {
         {/* Email card with gradient border */}
         <Animated.View
           entering={FadeInUp.duration(700).delay(300)}
-          style={{ width: "100%", maxWidth: 320, marginBottom: 32 }}
+          className={styles.emailCard.outer}
+          style={{ alignSelf: "stretch" }}
         >
           <LinearGradient
             colors={[
@@ -237,17 +230,12 @@ export default function WaitlistScreen() {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={{
-              borderRadius: 16,
-              padding: 1,
+              width: "100%",
+              borderRadius: dims.cardGradientRadius,
+              padding: dims.cardGradientPadding,
             }}
           >
-            <View
-              style={{
-                backgroundColor: colors.cardSurface,
-                borderRadius: 15,
-                padding: 24,
-              }}
-            >
+            <View className={styles.emailCard.inner}>
               <Text className={styles.emailCard.label}>Signed in as</Text>
               <Text className={styles.emailCard.email}>{session?.user?.email}</Text>
             </View>
@@ -255,16 +243,9 @@ export default function WaitlistScreen() {
 
           {/* Checkmark icon */}
           <View
+            className={styles.emailCard.iconWrapper}
             style={{
-              position: "absolute",
-              top: -12,
-              right: -12,
-              width: 40,
-              height: 40,
-              borderRadius: 20,
               backgroundColor: colors.checkmarkBg,
-              alignItems: "center",
-              justifyContent: "center",
               shadowColor: colors.checkmarkIcon,
               shadowOffset: { width: 0, height: 0 },
               shadowOpacity: 0.3,
@@ -272,7 +253,7 @@ export default function WaitlistScreen() {
               elevation: 5,
             }}
           >
-            <Check size={20} color={colors.checkmarkIcon} />
+            <CheckCircle2 size={dims.iconMedium} color={colors.checkmarkIcon} />
           </View>
         </Animated.View>
 
@@ -289,23 +270,6 @@ export default function WaitlistScreen() {
           </Text>
         </Animated.View>
 
-        {/* Feature preview hint */}
-        <Animated.View
-          entering={FadeInUp.duration(600).delay(650)}
-          className={styles.featurePreview}
-          style={{
-            backgroundColor: colors.featurePreviewBg,
-            borderWidth: 1,
-            borderColor: colors.featurePreviewBorder,
-          }}
-        >
-          <Sparkles size={16} color={colors.featurePreviewIcon} />
-          <Text className="text-xs text-muted-foreground flex-1">
-            Smart categorization, beautiful insights, and total control over
-            your financial data.
-          </Text>
-        </Animated.View>
-
         {/* Sign out button */}
         <Animated.View entering={FadeIn.duration(600).delay(800)}>
           <TouchableOpacity
@@ -313,8 +277,8 @@ export default function WaitlistScreen() {
             className={styles.signOutButton}
             activeOpacity={0.7}
           >
-            <LogOut size={16} color={colors.mutedForeground} />
-            <Text className="text-sm text-muted-foreground">Sign out</Text>
+            <LogOut size={dims.iconSmall} color={colors.mutedForeground} />
+            <Text className={styles.signOutButtonText}>Sign out</Text>
           </TouchableOpacity>
         </Animated.View>
       </View>

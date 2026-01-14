@@ -3,6 +3,74 @@
  * Used by login and register screens on both web and mobile.
  */
 
+import { oklchToHex } from "../../utils/color";
+
+/** Oklch color definitions (source of truth) */
+const waitlistOklchColors = {
+  // Atmospheric background
+  nebulaPrimary: "oklch(0.25 0.15 280 / 0.15)",
+  nebulaSecondary: "oklch(0.30 0.12 250 / 0.12)",
+  nebulaAccent: "oklch(0.45 0.08 75 / 0.08)",
+  gridLine: "oklch(0.5 0.02 260)",
+
+  // Floating orbs
+  orb: "oklch(0.65 0.18 260 / 0.6)",
+  orbGlow: "oklch(0.65 0.18 260 / 0.4)",
+
+  // Hero text
+  heroText: "oklch(0.95 0.01 260)",
+  heroGradientStart: "oklch(0.78 0.12 75)",
+  heroGradientEnd: "oklch(0.65 0.18 260)",
+
+  // Email card gradient border
+  cardGradientStart: "oklch(0.65 0.18 260 / 0.5)",
+  cardGradientMid: "oklch(0.45 0.12 280 / 0.3)",
+  cardGradientEnd: "oklch(0.78 0.12 75 / 0.4)",
+
+  // Checkmark icon (solid colors - no alpha)
+  checkmarkBg: "oklch(0.25 0.08 145)",
+  checkmarkGlow: "oklch(0.7 0.15 145 / 0.3)",
+  checkmarkIcon: "oklch(0.75 0.15 145)",
+} as const;
+
+/** Computed hex colors for mobile (from oklch source) */
+const waitlistHexColors = {
+  // Atmospheric background (with alpha - keep manual)
+  nebulaPrimary: "#3d2d6b26",
+  nebulaSecondary: "#3a3a701f",
+  nebulaAccent: "#8b7a4514",
+  gridLine: oklchToHex(waitlistOklchColors.gridLine),
+
+  // SVG nebula colors (solid, opacity applied via stopOpacity)
+  nebulaPrimarySolid: "#4a3a8a",
+  nebulaSecondarySolid: "#3a4a70",
+  nebulaAccentSolid: "#8b7a45",
+
+  // Floating orbs (with alpha - keep manual)
+  orb: "#5b6ee199",
+  orbGlow: "#5b6ee166",
+
+  // Hero text (computed from oklch)
+  heroText: oklchToHex(waitlistOklchColors.heroText),
+  heroGradientStart: oklchToHex(waitlistOklchColors.heroGradientStart),
+  heroGradientEnd: oklchToHex(waitlistOklchColors.heroGradientEnd),
+
+  // Email card (with alpha - keep manual)
+  cardGradientStart: "#5b6ee180",
+  cardGradientMid: "#4a4a8a4d",
+  cardGradientEnd: "#d4b66c66",
+  cardSurface: "#10121df2",
+  cardSurfaceSolid: "#10121d",
+
+  // Checkmark icon (computed from oklch)
+  checkmarkBg: oklchToHex(waitlistOklchColors.checkmarkBg),
+  checkmarkGlow: "#4db87f4d", // with alpha - keep manual
+  checkmarkIcon: oklchToHex(waitlistOklchColors.checkmarkIcon),
+
+  // Muted foreground (for icons)
+  mutedForeground: "#949aaa",
+} as const;
+
 export const authFormStyles = {
   /** Card container */
   card: "rounded-xl border border-border bg-card p-6",
@@ -99,24 +167,28 @@ export const authFormStyles = {
     },
 
     /** Content wrapper */
-    content: "relative z-10 flex flex-col items-center px-6 max-w-lg mx-auto",
+    content: "relative z-10 flex flex-col items-center w-full px-6 max-w-lg mx-auto",
+
+    /** Status badge wrapper */
+    badgeWrapper: "mb-8",
 
     /** Hero section */
     hero: {
       container: "text-center mb-10",
+      titleRow: "flex flex-row justify-center mb-4",
       title: "font-serif text-5xl sm:text-6xl lg:text-7xl font-normal tracking-tight mb-4",
       titleItalic: "font-serif italic text-5xl sm:text-6xl lg:text-7xl font-normal tracking-tight mb-4",
-      subtitle: "text-lg sm:text-xl text-foreground-secondary max-w-md mx-auto leading-relaxed",
+      subtitle: "text-lg sm:text-xl text-foreground-secondary text-center max-w-md mx-auto leading-relaxed",
     },
 
     /** Email card with glow effect */
     emailCard: {
       outer:
-        "relative rounded-2xl p-[1px] mb-8 w-full max-w-sm animate-float",
+        "relative rounded-2xl p-[1px] mb-8 w-full animate-float",
       gradient:
         "absolute inset-0 rounded-2xl opacity-60",
       inner:
-        "relative rounded-2xl bg-card/95 backdrop-blur-sm p-6 border border-border/50",
+        "relative w-full rounded-2xl bg-card/95 backdrop-blur-sm p-6 border border-border/50",
       label: "text-xs font-medium tracking-widest uppercase text-muted-foreground mb-2",
       email: "text-lg font-medium text-foreground truncate",
       iconWrapper:
@@ -126,13 +198,9 @@ export const authFormStyles = {
     /** Info section */
     info: {
       container: "text-center mb-10 max-w-sm",
-      text: "text-sm text-muted-foreground leading-relaxed",
+      text: "text-sm text-muted-foreground text-center leading-relaxed",
       highlight: "text-foreground font-medium",
     },
-
-    /** Feature preview box */
-    featurePreview:
-      "flex flex-row items-center gap-3 mb-10 px-5 py-3 rounded-xl",
 
     /** Decorative elements */
     orb: {
@@ -145,81 +213,25 @@ export const authFormStyles = {
       "group relative flex flex-row items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-medium text-muted-foreground transition-all duration-300 hover:text-foreground",
     signOutButtonBg:
       "absolute inset-0 rounded-xl bg-surface-elevated/0 group-hover:bg-surface-elevated/80 transition-all duration-300",
+    signOutButtonIcon: "w-4 h-4 relative z-10",
+    signOutButtonText: "relative z-10 text-sm text-muted-foreground",
+
+    /** Numeric values for platform-specific components that can't use classes */
+    dimensions: {
+      /** LinearGradient border effect (can't use NativeWind classes) */
+      cardGradientRadius: 16,
+      cardGradientPadding: 1,
+      /** Icon sizes for lucide-react-native (requires number prop) */
+      iconSmall: 16,
+      iconMedium: 20,
+      /** Grid spacing for SVG background */
+      gridSpacing: 80,
+    },
 
     /** Color values (oklch for web, hex for mobile) */
     colors: {
-      oklch: {
-        // Atmospheric background
-        nebulaPrimary: "oklch(0.25 0.15 280 / 0.15)",
-        nebulaSecondary: "oklch(0.30 0.12 250 / 0.12)",
-        nebulaAccent: "oklch(0.45 0.08 75 / 0.08)",
-        gridLine: "oklch(0.5 0.02 260)",
-
-        // Floating orbs
-        orb: "oklch(0.65 0.18 260 / 0.6)",
-        orbGlow: "oklch(0.65 0.18 260 / 0.4)",
-
-        // Hero text
-        heroText: "oklch(0.95 0.01 260)",
-        heroGradientStart: "oklch(0.78 0.12 75)",
-        heroGradientEnd: "oklch(0.65 0.18 260)",
-
-        // Email card gradient border
-        cardGradientStart: "oklch(0.65 0.18 260 / 0.5)",
-        cardGradientMid: "oklch(0.45 0.12 280 / 0.3)",
-        cardGradientEnd: "oklch(0.78 0.12 75 / 0.4)",
-
-        // Checkmark icon
-        checkmarkBg: "oklch(0.25 0.08 145)",
-        checkmarkGlow: "oklch(0.7 0.15 145 / 0.3)",
-        checkmarkIcon: "oklch(0.75 0.15 145)",
-
-        // Feature preview
-        featurePreviewBg: "oklch(0.15 0.02 260 / 0.6)",
-        featurePreviewBorder: "oklch(0.25 0.02 260 / 0.5)",
-        featurePreviewIcon: "oklch(0.78 0.12 75)",
-      },
-      hex: {
-        // Atmospheric background (pre-computed)
-        nebulaPrimary: "#3d2d6b26",
-        nebulaSecondary: "#3a3a701f",
-        nebulaAccent: "#8b7a4514",
-        gridLine: "#6b6b80",
-
-        // SVG nebula colors (solid, opacity applied via stopOpacity)
-        nebulaPrimarySolid: "#4a3a8a",
-        nebulaSecondarySolid: "#3a4a70",
-        nebulaAccentSolid: "#8b7a45",
-
-        // Floating orbs
-        orb: "#5b6ee199",
-        orbGlow: "#5b6ee166",
-
-        // Hero text
-        heroText: "#f0f0f5",
-        heroGradientStart: "#d4b66c",
-        heroGradientEnd: "#5b6ee1",
-
-        // Email card
-        cardGradientStart: "#5b6ee180",
-        cardGradientMid: "#4a4a8a4d",
-        cardGradientEnd: "#d4b66c66",
-        cardSurface: "#10121df2",
-        cardSurfaceSolid: "#10121d",
-
-        // Checkmark icon
-        checkmarkBg: "#2d5a4d",
-        checkmarkGlow: "#4db87f4d",
-        checkmarkIcon: "#5dc090",
-
-        // Feature preview
-        featurePreviewBg: "#1a1a2699",
-        featurePreviewBorder: "#33334080",
-        featurePreviewIcon: "#d4b66c",
-
-        // Muted foreground (for icons)
-        mutedForeground: "#949aaa",
-      },
+      oklch: waitlistOklchColors,
+      hex: waitlistHexColors,
     },
   },
 
