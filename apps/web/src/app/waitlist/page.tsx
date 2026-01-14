@@ -18,7 +18,9 @@ const orbs = [
   { x: "75%", y: "40%", size: 2, delay: 1.2, duration: 4.5 },
 ];
 
-function FloatingOrb({ x, y, size, delay, duration }: typeof orbs[0]) {
+const colors = authFormStyles.waitlist.colors.oklch;
+
+function FloatingOrb({ x, y, size, delay, duration }: (typeof orbs)[0]) {
   return (
     <motion.div
       className="absolute rounded-full"
@@ -27,8 +29,8 @@ function FloatingOrb({ x, y, size, delay, duration }: typeof orbs[0]) {
         top: y,
         width: size,
         height: size,
-        background: "oklch(0.65 0.18 260 / 0.6)",
-        boxShadow: `0 0 ${size * 4}px oklch(0.65 0.18 260 / 0.4)`,
+        background: colors.orb,
+        boxShadow: `0 0 ${size * 4}px ${colors.orbGlow}`,
       }}
       initial={{ opacity: 0, scale: 0 }}
       animate={{
@@ -54,7 +56,7 @@ function AtmosphericBackground() {
       {/* Primary nebula - deep purple, top-left */}
       <motion.div
         className={styles.nebulaPrimary}
-        style={{ background: "oklch(0.25 0.15 280 / 0.15)" }}
+        style={{ background: colors.nebulaPrimary }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 2 }}
@@ -64,7 +66,7 @@ function AtmosphericBackground() {
       <motion.div
         className={styles.nebulaSecondary}
         style={{
-          background: "oklch(0.30 0.12 250 / 0.12)",
+          background: colors.nebulaSecondary,
           animationDelay: "2s",
         }}
         initial={{ opacity: 0 }}
@@ -76,7 +78,7 @@ function AtmosphericBackground() {
       <motion.div
         className={styles.nebulaAccent}
         style={{
-          background: "oklch(0.45 0.08 75 / 0.08)",
+          background: colors.nebulaAccent,
           animationDelay: "1s",
         }}
         initial={{ opacity: 0 }}
@@ -89,8 +91,8 @@ function AtmosphericBackground() {
         className={styles.gridOverlay}
         style={{
           backgroundImage: `
-            linear-gradient(oklch(0.5 0.02 260) 1px, transparent 1px),
-            linear-gradient(90deg, oklch(0.5 0.02 260) 1px, transparent 1px)
+            linear-gradient(${colors.gridLine} 1px, transparent 1px),
+            linear-gradient(90deg, ${colors.gridLine} 1px, transparent 1px)
           `,
           backgroundSize: "80px 80px",
         }}
@@ -125,8 +127,8 @@ export default function WaitlistPage() {
         <motion.div
           className={styles.statusBadge}
           style={{
-            background: "oklch(0.25 0.08 145 / 0.3)",
-            color: "oklch(0.75 0.15 145)",
+            background: colors.statusBadgeBg,
+            color: colors.statusBadgeText,
           }}
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -134,7 +136,7 @@ export default function WaitlistPage() {
         >
           <span
             className={styles.statusDot}
-            style={{ background: "oklch(0.7 0.15 145)" }}
+            style={{ background: colors.statusDot }}
           />
           Application Received
         </motion.div>
@@ -147,10 +149,10 @@ export default function WaitlistPage() {
           transition={{ duration: 0.8, delay: 0.1, ease }}
         >
           <h1 className={styles.hero.titleItalic}>
-            <span style={{ color: "oklch(0.95 0.01 260)" }}>You're on </span>
+            <span style={{ color: colors.heroText }}>You're on </span>
             <span
               style={{
-                background: "linear-gradient(135deg, oklch(0.78 0.12 75), oklch(0.65 0.18 260))",
+                background: `linear-gradient(135deg, ${colors.heroGradientStart}, ${colors.heroGradientEnd})`,
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
                 backgroundClip: "text",
@@ -176,8 +178,7 @@ export default function WaitlistPage() {
           <div
             className={styles.emailCard.gradient}
             style={{
-              background:
-                "linear-gradient(135deg, oklch(0.65 0.18 260 / 0.5), oklch(0.45 0.12 280 / 0.3), oklch(0.78 0.12 75 / 0.4))",
+              background: `linear-gradient(135deg, ${colors.cardGradientStart}, ${colors.cardGradientMid}, ${colors.cardGradientEnd})`,
             }}
           />
 
@@ -191,13 +192,13 @@ export default function WaitlistPage() {
           <div
             className={styles.emailCard.iconWrapper}
             style={{
-              background: "oklch(0.25 0.08 145)",
-              boxShadow: "0 0 20px oklch(0.7 0.15 145 / 0.3)",
+              background: colors.checkmarkBg,
+              boxShadow: `0 0 20px ${colors.checkmarkGlow}`,
             }}
           >
             <CheckCircle2
               className="w-5 h-5"
-              style={{ color: "oklch(0.75 0.15 145)" }}
+              style={{ color: colors.checkmarkIcon }}
             />
           </div>
         </motion.div>
@@ -220,10 +221,10 @@ export default function WaitlistPage() {
 
         {/* Feature preview hint */}
         <motion.div
-          className="flex flex-row items-center gap-3 mb-10 px-5 py-3 rounded-xl"
+          className={styles.featurePreview}
           style={{
-            background: "oklch(0.15 0.02 260 / 0.6)",
-            border: "1px solid oklch(0.25 0.02 260 / 0.5)",
+            background: colors.featurePreviewBg,
+            border: `1px solid ${colors.featurePreviewBorder}`,
           }}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -231,7 +232,7 @@ export default function WaitlistPage() {
         >
           <Sparkles
             className="w-4 h-4 flex-shrink-0"
-            style={{ color: "oklch(0.78 0.12 75)" }}
+            style={{ color: colors.featurePreviewIcon }}
           />
           <p className="text-xs text-muted-foreground">
             Smart categorization, beautiful insights, and total control over

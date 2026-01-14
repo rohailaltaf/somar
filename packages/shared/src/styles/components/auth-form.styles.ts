@@ -83,13 +83,7 @@ export const authFormStyles = {
 
   /** Waitlist page styles */
   waitlist: {
-    wrapper: "flex-1 bg-background items-center justify-center p-4",
-    emailBox: "bg-surface-elevated rounded-lg p-4 mb-6",
-    emailLabel: "text-sm text-muted-foreground mb-1",
-    emailValue: "text-foreground font-medium",
-    description: "text-sm text-muted-foreground text-center mb-6",
-
-    /** Enhanced waitlist styles */
+    /** Main container */
     container: "relative min-h-screen flex flex-col items-center justify-center overflow-hidden",
 
     /** Atmospheric background */
@@ -141,6 +135,10 @@ export const authFormStyles = {
       highlight: "text-foreground font-medium",
     },
 
+    /** Feature preview box */
+    featurePreview:
+      "flex flex-row items-center gap-3 mb-10 px-5 py-3 rounded-xl",
+
     /** Decorative elements */
     orb: {
       container: "absolute w-1 h-1 rounded-full",
@@ -152,6 +150,92 @@ export const authFormStyles = {
       "group relative inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-medium text-muted-foreground transition-all duration-300 hover:text-foreground",
     signOutButtonBg:
       "absolute inset-0 rounded-xl bg-surface-elevated/0 group-hover:bg-surface-elevated/80 transition-all duration-300",
+
+    /** Color values (oklch for web, hex for mobile) */
+    colors: {
+      oklch: {
+        // Atmospheric background
+        nebulaPrimary: "oklch(0.25 0.15 280 / 0.15)",
+        nebulaSecondary: "oklch(0.30 0.12 250 / 0.12)",
+        nebulaAccent: "oklch(0.45 0.08 75 / 0.08)",
+        gridLine: "oklch(0.5 0.02 260)",
+
+        // Floating orbs
+        orb: "oklch(0.65 0.18 260 / 0.6)",
+        orbGlow: "oklch(0.65 0.18 260 / 0.4)",
+
+        // Status badge (success green)
+        statusBadgeBg: "oklch(0.25 0.08 145 / 0.3)",
+        statusBadgeText: "oklch(0.75 0.15 145)",
+        statusDot: "oklch(0.7 0.15 145)",
+
+        // Hero text
+        heroText: "oklch(0.95 0.01 260)",
+        heroGradientStart: "oklch(0.78 0.12 75)",
+        heroGradientEnd: "oklch(0.65 0.18 260)",
+
+        // Email card gradient border
+        cardGradientStart: "oklch(0.65 0.18 260 / 0.5)",
+        cardGradientMid: "oklch(0.45 0.12 280 / 0.3)",
+        cardGradientEnd: "oklch(0.78 0.12 75 / 0.4)",
+
+        // Checkmark icon
+        checkmarkBg: "oklch(0.25 0.08 145)",
+        checkmarkGlow: "oklch(0.7 0.15 145 / 0.3)",
+        checkmarkIcon: "oklch(0.75 0.15 145)",
+
+        // Feature preview
+        featurePreviewBg: "oklch(0.15 0.02 260 / 0.6)",
+        featurePreviewBorder: "oklch(0.25 0.02 260 / 0.5)",
+        featurePreviewIcon: "oklch(0.78 0.12 75)",
+      },
+      hex: {
+        // Atmospheric background (pre-computed)
+        nebulaPrimary: "#3d2d6b26",
+        nebulaSecondary: "#3a3a701f",
+        nebulaAccent: "#8b7a4514",
+        gridLine: "#6b6b80",
+
+        // SVG nebula colors (solid, opacity applied via stopOpacity)
+        nebulaPrimarySolid: "#4a3a8a",
+        nebulaSecondarySolid: "#3a4a70",
+        nebulaAccentSolid: "#8b7a45",
+
+        // Floating orbs
+        orb: "#5b6ee199",
+        orbGlow: "#5b6ee166",
+
+        // Status badge (success green)
+        statusBadgeBg: "#2d5a4d4d",
+        statusBadgeText: "#5dc090",
+        statusDot: "#4db87f",
+
+        // Hero text
+        heroText: "#f0f0f5",
+        heroGradientStart: "#d4b66c",
+        heroGradientEnd: "#5b6ee1",
+
+        // Email card
+        cardGradientStart: "#5b6ee180",
+        cardGradientMid: "#4a4a8a4d",
+        cardGradientEnd: "#d4b66c66",
+        cardSurface: "#10121df2",
+        cardSurfaceSolid: "#10121d",
+
+        // Checkmark icon
+        checkmarkBg: "#2d5a4d",
+        checkmarkGlow: "#4db87f4d",
+        checkmarkIcon: "#5dc090",
+
+        // Feature preview
+        featurePreviewBg: "#1a1a2699",
+        featurePreviewBorder: "#33334080",
+        featurePreviewIcon: "#d4b66c",
+
+        // Muted foreground (for icons)
+        mutedForeground: "#949aaa",
+      },
+    },
   },
 
   /** Numeric values for inline styles */
