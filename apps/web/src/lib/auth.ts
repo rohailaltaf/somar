@@ -27,6 +27,16 @@ export const auth = betterAuth({
     provider: "postgresql",
   }),
 
+  // Rate limiting for OTP endpoints to prevent abuse
+  rateLimit: {
+    enabled: true,
+    window: 60, // 1 minute window
+    max: 100, // Default max requests per window
+    customRules: {
+      "/email-otp/send-verification-otp": { window: 30, max: 1 }, // 1 OTP request per 30 seconds
+    },
+  },
+
   plugins: [
     expo(),
     emailOTP({

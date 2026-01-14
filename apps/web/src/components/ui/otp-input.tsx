@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 export function OtpInput({
   value,
   onChange,
+  onComplete,
   length = 6,
   disabled = false,
   hasError = false,
@@ -32,12 +33,17 @@ export function OtpInput({
       const newOtp = newDigits.join("");
       onChange(newOtp);
 
+      // Auto-submit when complete
+      if (newOtp.length === length && onComplete) {
+        onComplete(newOtp);
+      }
+
       // Move focus to next input if digit was entered
       if (digit && index < length - 1) {
         inputRefs.current[index + 1]?.focus();
       }
     },
-    [digits, length, onChange]
+    [digits, length, onChange, onComplete]
   );
 
   const handleKeyDown = useCallback(
@@ -56,11 +62,16 @@ export function OtpInput({
       const pastedData = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, length);
       onChange(pastedData);
 
+      // Auto-submit when complete
+      if (pastedData.length === length && onComplete) {
+        onComplete(pastedData);
+      }
+
       // Focus the next empty slot or last slot
       const nextIndex = Math.min(pastedData.length, length - 1);
       inputRefs.current[nextIndex]?.focus();
     },
-    [length, onChange]
+    [length, onChange, onComplete]
   );
 
   return (

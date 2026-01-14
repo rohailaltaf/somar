@@ -18,7 +18,12 @@ export type OtpStep = "email" | "otp" | "verifying";
 export interface OtpState {
   step: OtpStep;
   email: string;
+  /** Timestamp when OTP was last sent, for cooldown timer */
+  lastOtpSentAt?: number;
 }
+
+/** Cooldown period in seconds before user can request another OTP */
+export const OTP_COOLDOWN_SECONDS = 30;
 
 /**
  * Initial OTP state.

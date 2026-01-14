@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import { useAuth } from "../../src/providers";
 import { OtpInput } from "../../src/components/ui";
 import { colors } from "../../src/lib/theme";
 import { authFormStyles, getButtonClass } from "@somar/shared/styles";
+import { OTP_COOLDOWN_SECONDS } from "@somar/shared/components";
 import {
   emailSchema,
   otpSchema,
@@ -24,6 +25,30 @@ import {
 export default function LoginScreen() {
   const { sendOtp, verifyOtp, loginWithGoogle, otpState, setOtpState, resetOtpState } = useAuth();
   const [isResending, setIsResending] = useState(false);
+  const [cooldownRemaining, setCooldownRemaining] = useState(0);
+
+  // Cooldown timer effect
+  useEffect(() => {
+    if (!otpState.lastOtpSentAt) {
+      setCooldownRemaining(0);
+      return;
+    }
+
+    const calculateRemaining = () => {
+      const elapsed = Math.floor((Date.now() - otpState.lastOtpSentAt!) / 1000);
+      return Math.max(0, OTP_COOLDOWN_SECONDS - elapsed);
+    };
+
+    setCooldownRemaining(calculateRemaining());
+
+    const interval = setInterval(() => {
+      const remaining = calculateRemaining();
+      setCooldownRemaining(remaining);
+      if (remaining === 0) clearInterval(interval);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [otpState.lastOtpSentAt]);
 
   // Email form - use email from context if available
   const emailForm = useForm<EmailFormData>({
@@ -41,7 +66,7 @@ export default function LoginScreen() {
     try {
       await sendOtp(data.email);
       otpForm.setValue("email", data.email);
-      setOtpState({ step: "otp", email: data.email });
+      setOtpState({ step: "otp", email: data.email, lastOtpSentAt: Date.now() });
     } catch (err) {
       emailForm.setError("root", {
         message: err instanceof Error ? err.message : "Failed to send code",
@@ -60,9 +85,11 @@ export default function LoginScreen() {
   }
 
   async function handleResendCode() {
+    if (cooldownRemaining > 0) return;
     setIsResending(true);
     try {
       await sendOtp(otpForm.getValues("email"));
+      setOtpState({ ...otpState, lastOtpSentAt: Date.now() });
     } catch (err) {
       otpForm.setError("root", {
         message: err instanceof Error ? err.message : "Failed to resend code",
@@ -138,6 +165,7 @@ export default function LoginScreen() {
             <OtpInput
               value={otpForm.watch("otp")}
               onChange={(value) => otpForm.setValue("otp", value)}
+              onComplete={(value) => handleOtpSubmit({ email: otpForm.getValues("email"), otp: value })}
               hasError={!!otpForm.formState.errors.otp}
             />
 
@@ -151,11 +179,15 @@ export default function LoginScreen() {
 
             <TouchableOpacity
               onPress={handleResendCode}
-              disabled={isOtpSubmitting || isResending}
+              disabled={isOtpSubmitting || isResending || cooldownRemaining > 0}
               className={authFormStyles.button.ghost}
             >
               <Text className={authFormStyles.button.ghostText}>
-                {isResending ? "Sending..." : "Resend code"}
+                {isResending
+                  ? "Sending..."
+                  : cooldownRemaining > 0
+                    ? `Resend code (${cooldownRemaining}s)`
+                    : "Resend code"}
               </Text>
             </TouchableOpacity>
           </View>

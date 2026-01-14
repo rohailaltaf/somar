@@ -11,6 +11,7 @@ import { cn } from "../../lib/utils";
 export function OtpInput({
   value,
   onChange,
+  onComplete,
   length = 6,
   disabled = false,
   hasError = false,
@@ -31,7 +32,14 @@ export function OtpInput({
         pastedDigits.forEach((d, i) => {
           newDigits[index + i] = d;
         });
-        onChange(newDigits.join(""));
+        const newOtp = newDigits.join("");
+        onChange(newOtp);
+
+        // Auto-submit when complete
+        if (newOtp.length === length && onComplete) {
+          onComplete(newOtp);
+        }
+
         const focusIndex = Math.min(index + pastedDigits.length, length - 1);
         inputRefs.current[focusIndex]?.focus();
         return;
@@ -41,13 +49,19 @@ export function OtpInput({
       const digit = cleaned.slice(-1);
       const newDigits = [...digits];
       newDigits[index] = digit;
-      onChange(newDigits.join(""));
+      const newOtp = newDigits.join("");
+      onChange(newOtp);
+
+      // Auto-submit when complete
+      if (newOtp.length === length && onComplete) {
+        onComplete(newOtp);
+      }
 
       if (digit && index < length - 1) {
         inputRefs.current[index + 1]?.focus();
       }
     },
-    [digits, length, onChange]
+    [digits, length, onChange, onComplete]
   );
 
   const handleKeyPress = useCallback(
