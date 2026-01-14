@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/providers";
 import { OtpInput } from "@/components/ui/otp-input";
+import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import { authFormStyles, getButtonClass } from "@somar/shared/styles";
 import { OTP_COOLDOWN_SECONDS } from "@somar/shared/components";
 import {
@@ -15,8 +16,9 @@ import {
 } from "@somar/shared/validation";
 
 export default function LoginPage() {
-  const { sendOtp, verifyOtp, loginWithGoogle, otpState, setOtpState, resetOtpState } = useAuth();
+  const { sendOtp, verifyOtp, loginWithGoogleIdToken, otpState, setOtpState, resetOtpState } = useAuth();
   const [isResending, setIsResending] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
 
   // Cooldown timer effect
@@ -91,14 +93,22 @@ export default function LoginPage() {
     }
   }
 
-  async function handleGoogleLogin() {
+  async function handleGoogleSuccess(idToken: string) {
+    setIsGoogleLoading(true);
     try {
-      await loginWithGoogle();
+      await loginWithGoogleIdToken(idToken);
     } catch (err) {
       emailForm.setError("root", {
         message: err instanceof Error ? err.message : "Failed to sign in with Google",
       });
+      setIsGoogleLoading(false);
     }
+  }
+
+  function handleGoogleError(error: Error) {
+    emailForm.setError("root", {
+      message: error.message || "Failed to sign in with Google",
+    });
   }
 
   function handleBack() {
@@ -109,8 +119,8 @@ export default function LoginPage() {
   const isEmailSubmitting = emailForm.formState.isSubmitting;
   const isOtpSubmitting = otpForm.formState.isSubmitting;
 
-  // Loading state - show while submitting OTP or after successful verification (before navigation)
-  if (isOtpSubmitting || otpState.step === "verifying") {
+  // Loading state - show while submitting OTP, Google sign-in, or after successful verification
+  if (isOtpSubmitting || isGoogleLoading || otpState.step === "verifying") {
     return (
       <div className={authFormStyles.loading.container}>
         <div className={authFormStyles.loading.spinner} />
@@ -190,14 +200,11 @@ export default function LoginPage() {
         <p className={authFormStyles.header.subtitle}>Sign in to access your finances</p>
       </div>
 
-      <button
-        type="button"
-        onClick={handleGoogleLogin}
-        disabled={isEmailSubmitting}
-        className={authFormStyles.button.oauth}
-      >
-        <span className={authFormStyles.button.oauthText}>Continue with Google</span>
-      </button>
+      <GoogleSignInButton
+        onSuccess={handleGoogleSuccess}
+        onError={handleGoogleError}
+        disabled={isEmailSubmitting || isGoogleLoading}
+      />
 
       <div className={authFormStyles.divider.container}>
         <div className={authFormStyles.divider.line} />
