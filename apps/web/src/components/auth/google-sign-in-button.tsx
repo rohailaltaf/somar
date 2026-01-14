@@ -62,17 +62,10 @@ export function GoogleSignInButton({
       return;
     }
 
-    // Load the Google Identity Services script
-    const script = document.createElement("script");
-    script.src = "https://accounts.google.com/gsi/client";
-    script.async = true;
-    script.defer = true;
-
     const renderButton = () => {
       const google = (window as unknown as { google?: GoogleAccounts }).google;
       if (!google || !buttonRef.current) return;
 
-      // Clear any existing button
       buttonRef.current.innerHTML = "";
       isInitialized.current = true;
 
@@ -83,9 +76,7 @@ export function GoogleSignInButton({
         itp_support: true,
       });
 
-      // Get the container width for responsive sizing
       const containerWidth = buttonRef.current.offsetWidth;
-
       google.accounts.id.renderButton(buttonRef.current, {
         type: "standard",
         theme: "outline",
@@ -97,30 +88,35 @@ export function GoogleSignInButton({
       });
     };
 
-    script.onload = renderButton;
+    // Check if script already exists
+    const existingScript = document.querySelector(
+      'script[src="https://accounts.google.com/gsi/client"]'
+    );
 
-    script.onerror = () => {
-      onError?.(new Error("Failed to load Google Sign-In script"));
-    };
+    if (existingScript) {
+      renderButton();
+    } else {
+      const script = document.createElement("script");
+      script.src = "https://accounts.google.com/gsi/client";
+      script.async = true;
+      script.defer = true;
+      script.onload = renderButton;
+      script.onerror = () => onError?.(new Error("Failed to load Google Sign-In script"));
+      document.head.appendChild(script);
+    }
 
-    document.head.appendChild(script);
-
-    // Re-render on resize
+    let resizeTimeout: NodeJS.Timeout;
     const handleResize = () => {
-      if (isInitialized.current) {
-        renderButton();
-      }
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        if (isInitialized.current) renderButton();
+      }, 150);
     };
     window.addEventListener("resize", handleResize);
 
     return () => {
       window.removeEventListener("resize", handleResize);
-      const existingScript = document.querySelector(
-        'script[src="https://accounts.google.com/gsi/client"]'
-      );
-      if (existingScript) {
-        existingScript.remove();
-      }
+      clearTimeout(resizeTimeout);
       isInitialized.current = false;
     };
   }, [handleCredentialResponse, onError]);
