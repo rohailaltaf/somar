@@ -8,7 +8,7 @@ export interface MeResponse {
   id: string;
   email: string;
   name: string;
-  status: "pending" | "approved" | "rejected";
+  status: "PENDING" | "APPROVED" | "REJECTED";
   createdAt: string;
   approvedAt: string | null;
 }

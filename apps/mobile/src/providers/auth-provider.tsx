@@ -14,7 +14,7 @@ import { getMe } from "@somar/shared/services";
 
 const OTP_STATE_KEY = "somar_otp_state";
 
-type ApprovalStatus = "pending" | "approved" | "rejected" | null;
+type ApprovalStatus = "PENDING" | "APPROVED" | "REJECTED" | null;
 
 interface AuthContextValue {
   // Session state (from Better Auth)

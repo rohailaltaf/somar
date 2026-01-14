@@ -52,7 +52,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
       // Not signed in and not on auth page - redirect to login
       router.replace("/(auth)/login" as Href);
     } else if (session?.user) {
-      const isApproved = approvalStatus === "approved";
+      const isApproved = approvalStatus === "APPROVED";
 
       if (isApproved) {
         // Approved user

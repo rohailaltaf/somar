@@ -55,15 +55,15 @@ export async function middleware(request: NextRequest) {
       select: { status: true },
     });
 
-    const isApproved = user?.status === "approved";
+    const isApproved = user?.status === "APPROVED";
     const isPendingRoute = pendingRoutes.some((route) => pathname.startsWith(route));
 
-    // If user is approved and trying to access /waitlist, redirect to home
+    // If user is APPROVED and trying to access /waitlist, redirect to home
     if (isApproved && isPendingRoute) {
       return NextResponse.redirect(new URL("/", request.url));
     }
 
-    // If user is NOT approved
+    // If user is NOT APPROVED
     if (!isApproved) {
       // Allow access to pending routes (like /waitlist)
       if (isPendingRoute) {
@@ -81,7 +81,7 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL("/waitlist", request.url));
       }
 
-      // Return 403 for API routes (authenticated but not approved)
+      // Return 403 for API routes (authenticated but not APPROVED)
       return NextResponse.json(
         { success: false, error: { code: "NOT_APPROVED", message: "Account pending approval" } },
         { status: 403 }

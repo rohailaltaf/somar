@@ -11,6 +11,12 @@ datasource db {
   url      = env("CENTRAL_DATABASE_URL")
 }
 
+enum UserStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 // ============================================================================
 // Better Auth Tables
 // These tables are required by Better Auth and follow their schema conventions
@@ -25,9 +31,9 @@ model User {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
-  // Waitlist/approval status: pending, approved, rejected
-  status        String    @default("pending")
-  approvedAt    DateTime? @map("approved_at")
+  // Waitlist/approval status
+  status        UserStatus @default(PENDING)
+  approvedAt    DateTime?  @map("approved_at")
 
   // Auth relations
   sessions      Session[]

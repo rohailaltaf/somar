@@ -3,8 +3,8 @@
  *
  * Usage:
  *   pnpm --filter web approve-user <email>        # Approve a single user
- *   pnpm --filter web approve-user --list        # List all pending users
- *   pnpm --filter web approve-user --all         # Approve all pending users
+ *   pnpm --filter web approve-user --list        # List all PENDING users
+ *   pnpm --filter web approve-user --all         # Approve all PENDING users
  */
 
 import { PrismaClient } from "@prisma/client";
@@ -25,7 +25,7 @@ async function sendApprovalEmail(email: string) {
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px;">
           <h1 style="font-size: 24px; font-weight: 600; color: #1a1a1a; margin-bottom: 24px;">Welcome to Somar!</h1>
-          <p style="font-size: 16px; color: #4a4a4a; margin-bottom: 24px;">Great news - your account has been approved. You now have full access to Somar.</p>
+          <p style="font-size: 16px; color: #4a4a4a; margin-bottom: 24px;">Great news - your account has been APPROVED. You now have full access to Somar.</p>
           <div style="margin-bottom: 24px;">
             <a href="${APP_URL}/login" style="display: inline-block; background: #1a1a1a; color: #ffffff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 500;">Log in to Somar</a>
           </div>
@@ -47,13 +47,13 @@ async function sendApprovalEmail(email: string) {
 
 async function listPendingUsers() {
   const users = await db.user.findMany({
-    where: { status: "pending" },
+    where: { status: "PENDING" },
     select: { id: true, email: true, name: true, createdAt: true },
     orderBy: { createdAt: "asc" },
   });
 
   if (users.length === 0) {
-    console.log("No pending users.");
+    console.log("No PENDING users.");
     return;
   }
 
@@ -77,16 +77,16 @@ async function approveUser(email: string) {
     return false;
   }
 
-  if (user.status === "approved") {
-    console.log(`User already approved: ${email}`);
+  if (user.status === "APPROVED") {
+    console.log(`User already APPROVED: ${email}`);
     return true;
   }
 
   await db.user.update({
     where: { id: user.id },
     data: {
-      status: "approved",
-      approvedAt: new Date(),
+      status: "APPROVED",
+      APPROVEDAt: new Date(),
     },
   });
 
@@ -102,12 +102,12 @@ async function approveUser(email: string) {
 
 async function approveAllPendingUsers() {
   const users = await db.user.findMany({
-    where: { status: "pending" },
+    where: { status: "PENDING" },
     select: { email: true },
   });
 
   if (users.length === 0) {
-    console.log("No pending users to approve.");
+    console.log("No PENDING users to approve.");
     return;
   }
 
@@ -126,8 +126,8 @@ async function main() {
   if (args.length === 0) {
     console.log("Usage:");
     console.log("  pnpm --filter web approve-user <email>  # Approve a single user");
-    console.log("  pnpm --filter web approve-user --list   # List all pending users");
-    console.log("  pnpm --filter web approve-user --all    # Approve all pending users");
+    console.log("  pnpm --filter web approve-user --list   # List all PENDING users");
+    console.log("  pnpm --filter web approve-user --all    # Approve all PENDING users");
     process.exit(1);
   }
 
