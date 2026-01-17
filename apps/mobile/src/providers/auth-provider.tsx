@@ -70,12 +70,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Fetch session once on mount
   useEffect(() => {
     let mounted = true;
-    getSession().then(({ data }) => {
-      if (mounted) {
-        setSession(data);
-        setIsSessionLoading(false);
-      }
-    });
+    getSession()
+      .then(({ data }) => {
+        if (mounted) {
+          setSession(data);
+        }
+      })
+      .catch(() => {
+        // Failed to fetch session, user will need to log in
+      })
+      .finally(() => {
+        if (mounted) {
+          setIsSessionLoading(false);
+        }
+      });
     return () => {
       mounted = false;
     };
