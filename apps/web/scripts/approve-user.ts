@@ -67,6 +67,11 @@ async function approveUser(email: string) {
     },
   });
 
+  // Delete all sessions to force re-login with fresh status
+  await db.session.deleteMany({
+    where: { userId: user.id },
+  });
+
   console.log(`Approved: ${email}`);
 
   const emailSent = await trySendApprovalEmail(email);
