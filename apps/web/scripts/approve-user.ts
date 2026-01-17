@@ -86,7 +86,7 @@ async function approveUser(email: string) {
     where: { id: user.id },
     data: {
       status: "APPROVED",
-      APPROVEDAt: new Date(),
+      approvedAt: new Date(),
     },
   });
 
