@@ -35,6 +35,12 @@ model User {
   status        UserStatus @default(PENDING)
   approvedAt    DateTime?  @map("approved_at")
 
+  // Demo mode
+  demoUserId    String?  @unique @map("demo_user_id")
+  demoUser      User?    @relation("DemoUser", fields: [demoUserId], references: [id], onDelete: SetNull)
+  demoParent    User?    @relation("DemoUser")
+  isDemoAccount Boolean  @default(false) @map("is_demo_account")
+
   // Auth relations
   sessions      Session[]
   accounts      Account[]

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getAuthContext } from "@/lib/auth-helpers";
 import { db } from "@/lib/db";
-import { headers } from "next/headers";
 import { parseDate, toDateString } from "@somar/shared/utils";
 
 /**
@@ -13,11 +12,9 @@ import { parseDate, toDateString } from "@somar/shared/utils";
  * - stat: Type of stat (total, byCategory, cumulative, income) - default: all
  */
 export async function GET(request: Request) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const { effectiveUserId } = await getAuthContext();
 
-  if (!session?.user?.id) {
+  if (!effectiveUserId) {
     return NextResponse.json(
       { success: false, error: { code: "UNAUTHORIZED", message: "Not authenticated" } },
       { status: 401 }
@@ -46,7 +43,7 @@ export async function GET(request: Request) {
     }
 
     const baseWhere = {
-      userId: session.user.id,
+      userId: effectiveUserId,
       date: { gte: parseDate(startDate), lte: parseDate(endDate) },
       excluded: false,
       amount: { lt: 0 }, // Only expenses (negative amounts)
@@ -121,7 +118,7 @@ export async function GET(request: Request) {
     if (!stat || stat === "income") {
       const incomeResult = await db.transaction.aggregate({
         where: {
-          userId: session.user.id,
+          userId: effectiveUserId,
           date: { gte: parseDate(startDate), lte: parseDate(endDate) },
           excluded: false,
           amount: { gt: 0 }, // Only income (positive amounts)

@@ -49,6 +49,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { PlaidSyncModal } from "@/components/plaid-sync-modal";
+import { DemoPlaidLink } from "@/components/demo-plaid-link";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,6 +59,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import type { DemoInstitution } from "@somar/shared/styles";
 
 // Custom easing
 const smoothEase = [0.16, 1, 0.3, 1] as const;
@@ -123,6 +125,10 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
   const [syncModalOpen, setSyncModalOpen] = useState(false);
   const [syncModalInstitution, setSyncModalInstitution] = useState("");
   const [pendingSyncItemId, setPendingSyncItemId] = useState<string | null>(null);
+
+  // State for demo mode
+  const [showDemoPlaidLink, setShowDemoPlaidLink] = useState(false);
+  const [demoInstitutions, setDemoInstitutions] = useState<DemoInstitution[]>([]);
 
   const invalidateQueries = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["accounts"] });
@@ -200,6 +206,14 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
 
       if (data.error) {
         toast.error(data.error);
+        setIsConnecting(false);
+        return;
+      }
+
+      // Check if this is demo mode
+      if (data.isDemo && data.institutions) {
+        setDemoInstitutions(data.institutions);
+        setShowDemoPlaidLink(true);
         setIsConnecting(false);
         return;
       }
@@ -299,6 +313,54 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
     setUpdateModeItemId(null);
     setLinkToken(null);
   }, []);
+
+  // Handle demo bank selection
+  const handleDemoSelect = useCallback(
+    async (institutionId: string, institutionName: string) => {
+      setShowDemoPlaidLink(false);
+      setIsConnecting(true);
+
+      try {
+        // Generate demo public token and exchange
+        const publicToken = `demo-public-token-${institutionId}`;
+        const response = await fetch("/api/plaid/exchange-token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            publicToken,
+            institutionId,
+            institutionName,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+          toast.error(data.error);
+          setIsConnecting(false);
+          return;
+        }
+
+        // Create accounts in database
+        const accountsToCreate = data.accounts as PlaidAccountInfo[];
+        for (const account of accountsToCreate) {
+          await createAccount.mutateAsync({
+            name: account.name,
+            type: account.type,
+            plaidAccountId: account.plaidAccountId,
+          });
+        }
+
+        toast.success(`Connected ${institutionName}`);
+        invalidateQueries();
+      } catch {
+        toast.error("Failed to connect demo bank");
+      } finally {
+        setIsConnecting(false);
+      }
+    },
+    [createAccount, invalidateQueries]
+  );
 
   // Handle sync modal completion
   const handleSyncModalComplete = useCallback(() => {
@@ -1161,6 +1223,15 @@ export function AccountsInterface({ accounts, plaidItems }: AccountsInterfacePro
         onComplete={handleSyncModalComplete}
         syncFunction={performModalSync}
       />
+
+      {/* Demo Plaid Link Modal */}
+      {showDemoPlaidLink && (
+        <DemoPlaidLink
+          institutions={demoInstitutions}
+          onSelect={handleDemoSelect}
+          onClose={() => setShowDemoPlaidLink(false)}
+        />
+      )}
     </>
   );
 }

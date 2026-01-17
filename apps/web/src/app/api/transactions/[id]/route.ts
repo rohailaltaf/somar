@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getAuthContext } from "@/lib/auth-helpers";
 import { db } from "@/lib/db";
-import { headers } from "next/headers";
 import { parseDate } from "@somar/shared/utils";
 import { serializeTransaction } from "@/lib/serializers";
 
@@ -14,11 +13,9 @@ interface RouteParams {
  * Get a single transaction.
  */
 export async function GET(request: Request, { params }: RouteParams) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const { effectiveUserId } = await getAuthContext();
 
-  if (!session?.user?.id) {
+  if (!effectiveUserId) {
     return NextResponse.json(
       { success: false, error: { code: "UNAUTHORIZED", message: "Not authenticated" } },
       { status: 401 }
@@ -29,7 +26,7 @@ export async function GET(request: Request, { params }: RouteParams) {
 
   try {
     const transaction = await db.transaction.findFirst({
-      where: { id, userId: session.user.id },
+      where: { id, userId: effectiveUserId },
       include: { category: true, account: true },
     });
 
@@ -55,11 +52,9 @@ export async function GET(request: Request, { params }: RouteParams) {
  * Update a transaction.
  */
 export async function PATCH(request: Request, { params }: RouteParams) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const { effectiveUserId } = await getAuthContext();
 
-  if (!session?.user?.id) {
+  if (!effectiveUserId) {
     return NextResponse.json(
       { success: false, error: { code: "UNAUTHORIZED", message: "Not authenticated" } },
       { status: 401 }
@@ -71,7 +66,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   try {
     // Verify ownership
     const existing = await db.transaction.findFirst({
-      where: { id, userId: session.user.id },
+      where: { id, userId: effectiveUserId },
     });
 
     if (!existing) {
@@ -87,7 +82,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     // Verify category ownership (if categoryId is being updated)
     if (categoryId !== undefined && categoryId !== null) {
       const category = await db.category.findFirst({
-        where: { id: categoryId, userId: session.user.id },
+        where: { id: categoryId, userId: effectiveUserId },
       });
 
       if (!category) {
@@ -126,11 +121,9 @@ export async function PATCH(request: Request, { params }: RouteParams) {
  * Delete a transaction.
  */
 export async function DELETE(request: Request, { params }: RouteParams) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const { effectiveUserId } = await getAuthContext();
 
-  if (!session?.user?.id) {
+  if (!effectiveUserId) {
     return NextResponse.json(
       { success: false, error: { code: "UNAUTHORIZED", message: "Not authenticated" } },
       { status: 401 }
@@ -142,7 +135,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
   try {
     // Verify ownership
     const existing = await db.transaction.findFirst({
-      where: { id, userId: session.user.id },
+      where: { id, userId: effectiveUserId },
     });
 
     if (!existing) {

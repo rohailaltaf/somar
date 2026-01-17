@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getAuthContext } from "@/lib/auth-helpers";
 import { db } from "@/lib/db";
-import { headers } from "next/headers";
 import { serializeTransactions } from "@/lib/serializers";
 
 /**
@@ -11,11 +10,9 @@ import { serializeTransactions } from "@/lib/serializers";
  * - limit: Number of results (default: 50)
  */
 export async function GET(request: Request) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const { effectiveUserId } = await getAuthContext();
 
-  if (!session?.user?.id) {
+  if (!effectiveUserId) {
     return NextResponse.json(
       { success: false, error: { code: "UNAUTHORIZED", message: "Not authenticated" } },
       { status: 401 }
@@ -29,7 +26,7 @@ export async function GET(request: Request) {
     const [transactions, total] = await Promise.all([
       db.transaction.findMany({
         where: {
-          userId: session.user.id,
+          userId: effectiveUserId,
           isConfirmed: false,
           excluded: false,
         },
@@ -42,7 +39,7 @@ export async function GET(request: Request) {
       }),
       db.transaction.count({
         where: {
-          userId: session.user.id,
+          userId: effectiveUserId,
           isConfirmed: false,
           excluded: false,
         },

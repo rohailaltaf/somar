@@ -31,6 +31,11 @@ const waitlistOklchColors = {
   checkmarkBg: "oklch(0.25 0.08 145)",
   checkmarkGlow: "oklch(0.7 0.15 145 / 0.3)",
   checkmarkIcon: "oklch(0.75 0.15 145)",
+
+  // Demo button
+  demoButtonBg: "oklch(0.65 0.18 260)",
+  demoButtonBgHover: "oklch(0.70 0.20 260)",
+  demoButtonText: "oklch(0.98 0.01 260)",
 } as const;
 
 /** Computed hex colors for mobile (from oklch source) */
@@ -69,6 +74,11 @@ const waitlistHexColors = {
 
   // Muted foreground (for icons)
   mutedForeground: "#949aaa",
+
+  // Demo button (computed from oklch)
+  demoButtonBg: oklchToHex(waitlistOklchColors.demoButtonBg),
+  demoButtonBgHover: oklchToHex(waitlistOklchColors.demoButtonBgHover),
+  demoButtonText: oklchToHex(waitlistOklchColors.demoButtonText),
 } as const;
 
 export const authFormStyles = {
@@ -207,6 +217,14 @@ export const authFormStyles = {
       container: "absolute w-1 h-1 rounded-full",
       glow: "absolute inset-0 rounded-full blur-sm",
     },
+
+    /** Demo button - prominent call to action */
+    demoButton:
+      "group relative flex flex-row items-center justify-center gap-2 px-8 py-4 rounded-xl text-base font-semibold transition-all duration-300 overflow-hidden",
+    demoButtonBg:
+      "absolute inset-0 rounded-xl transition-all duration-300",
+    demoButtonIcon: "w-5 h-5 relative z-10",
+    demoButtonText: "relative z-10",
 
     /** Sign out button */
     signOutButton:

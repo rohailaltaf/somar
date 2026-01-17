@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Instrument_Serif, DM_Sans } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
+import { DemoBannerWrapper } from "@/components/demo-banner-wrapper";
 import { Providers } from "./providers";
 import "./globals.css";
 
@@ -42,6 +43,7 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className={`${instrumentSerif.variable} ${dmSans.variable} font-sans antialiased`}>
         <Providers>
+          <DemoBannerWrapper />
           {children}
         </Providers>
         <Toaster />

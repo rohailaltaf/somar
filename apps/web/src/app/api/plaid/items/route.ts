@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getAuthContext } from "@/lib/auth-helpers";
 import { db } from "@/lib/db";
-import { headers } from "next/headers";
 import type { AccountType, PlaidItemWithAccounts } from "@somar/shared";
 
 /**
@@ -20,11 +19,9 @@ interface PlaidItemsResponse {
 }
 
 export async function GET(): Promise<NextResponse<PlaidItemsResponse>> {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const { effectiveUserId } = await getAuthContext();
 
-  if (!session?.user?.id) {
+  if (!effectiveUserId) {
     return NextResponse.json(
       { success: false, error: { code: "UNAUTHORIZED", message: "Not authenticated" } },
       { status: 401 }
@@ -33,7 +30,7 @@ export async function GET(): Promise<NextResponse<PlaidItemsResponse>> {
 
   try {
     const items = await db.plaidItem.findMany({
-      where: { userId: session.user.id, deletedAt: null },
+      where: { userId: effectiveUserId, deletedAt: null },
       include: {
         plaidAccounts: {
           select: {

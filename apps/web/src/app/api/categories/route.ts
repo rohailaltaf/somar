@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getAuthContext } from "@/lib/auth-helpers";
 import { db } from "@/lib/db";
-import { headers } from "next/headers";
 
 /**
  * GET /api/categories
@@ -11,11 +10,9 @@ import { headers } from "next/headers";
  * - withBudgets: Include budgets for a specific month (YYYY-MM)
  */
 export async function GET(request: Request) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const { effectiveUserId } = await getAuthContext();
 
-  if (!session?.user?.id) {
+  if (!effectiveUserId) {
     return NextResponse.json(
       { success: false, error: { code: "UNAUTHORIZED", message: "Not authenticated" } },
       { status: 401 }
@@ -29,7 +26,7 @@ export async function GET(request: Request) {
 
     const categories = await db.category.findMany({
       where: {
-        userId: session.user.id,
+        userId: effectiveUserId,
         ...(type && { type }),
       },
       include: withBudgets
@@ -58,11 +55,9 @@ export async function GET(request: Request) {
  * Create a new category.
  */
 export async function POST(request: Request) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const { effectiveUserId } = await getAuthContext();
 
-  if (!session?.user?.id) {
+  if (!effectiveUserId) {
     return NextResponse.json(
       { success: false, error: { code: "UNAUTHORIZED", message: "Not authenticated" } },
       { status: 401 }
@@ -82,7 +77,7 @@ export async function POST(request: Request) {
 
     const category = await db.category.create({
       data: {
-        userId: session.user.id,
+        userId: effectiveUserId,
         name,
         type,
         color,
