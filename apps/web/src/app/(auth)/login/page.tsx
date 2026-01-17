@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/providers";
@@ -16,10 +17,18 @@ import {
 } from "@somar/shared/validation";
 
 export default function LoginPage() {
-  const { sendOtp, verifyOtp, loginWithGoogleIdToken, otpState, setOtpState, resetOtpState } = useAuth();
+  const router = useRouter();
+  const { sendOtp, verifyOtp, loginWithGoogleIdToken, otpState, setOtpState, resetOtpState, session, isLoading } = useAuth();
   const [isResending, setIsResending] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!isLoading && session) {
+      router.replace("/");
+    }
+  }, [isLoading, session, router]);
 
   // Cooldown timer effect
   useEffect(() => {
@@ -119,8 +128,8 @@ export default function LoginPage() {
   const isEmailSubmitting = emailForm.formState.isSubmitting;
   const isOtpSubmitting = otpForm.formState.isSubmitting;
 
-  // Loading state - show while submitting OTP, Google sign-in, or after successful verification
-  if (isOtpSubmitting || isGoogleLoading || otpState.step === "verifying") {
+  // Loading state - show while checking session, submitting OTP, Google sign-in, or after successful verification
+  if (isLoading || session || isOtpSubmitting || isGoogleLoading || otpState.step === "verifying") {
     return (
       <div className={authFormStyles.loading.container}>
         <div className={authFormStyles.loading.spinner} />
