@@ -27,6 +27,16 @@ export const auth = betterAuth({
     provider: "postgresql",
   }),
 
+  // Include status field in session.user
+  user: {
+    additionalFields: {
+      status: {
+        type: "string",
+        required: false,
+      },
+    },
+  },
+
   // Rate limiting for OTP endpoints to prevent abuse
   rateLimit: {
     enabled: true,

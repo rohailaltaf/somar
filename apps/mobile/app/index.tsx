@@ -1,9 +1,29 @@
-import { Redirect, type Href } from "expo-router";
+import { Redirect } from "expo-router";
+import { View, ActivityIndicator } from "react-native";
+import { useAuth } from "../src/providers";
 
-/**
- * Root index redirects to tabs.
- * AuthGuard in _layout.tsx handles auth redirects.
- */
+function LoadingScreen() {
+  return (
+    <View className="flex-1 bg-background items-center justify-center">
+      <ActivityIndicator size="large" />
+    </View>
+  );
+}
+
 export default function Index() {
-  return <Redirect href={"/(tabs)" as Href} />;
+  const { session, isLoading, approvalStatus, isApprovalLoading } = useAuth();
+
+  if (isLoading || (session?.user && isApprovalLoading)) {
+    return <LoadingScreen />;
+  }
+
+  if (!session?.user) {
+    return <Redirect href="/(auth)/login" />;
+  }
+
+  if (approvalStatus === "APPROVED") {
+    return <Redirect href="/(tabs)" />;
+  }
+
+  return <Redirect href="/(waitlist)" />;
 }

@@ -4,19 +4,31 @@ import {
   useCallback,
   useState,
   useEffect,
+  useRef,
   type ReactNode,
 } from "react";
+import { AppState, type AppStateStatus } from "react-native";
 import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
-import { signIn, signOut, useSession, emailOtp } from "../lib/auth-client";
+import { signIn, signOut, getSession, emailOtp } from "../lib/auth-client";
 import { initialOtpState, type OtpState } from "@somar/shared/components";
+import { getMe } from "@somar/shared/services";
 
 const OTP_STATE_KEY = "somar_otp_state";
 
+type ApprovalStatus = "PENDING" | "APPROVED" | "REJECTED" | null;
+
+type Session = Awaited<ReturnType<typeof getSession>>["data"];
+
 interface AuthContextValue {
   // Session state (from Better Auth)
-  session: ReturnType<typeof useSession>["data"];
+  session: Session;
   isLoading: boolean;
+
+  // User approval status
+  approvalStatus: ApprovalStatus;
+  isApprovalLoading: boolean;
+  refreshApprovalStatus: () => Promise<void>;
 
   // OTP step state (persists across component remounts)
   otpState: OtpState;
@@ -45,9 +57,75 @@ interface AuthProviderProps {
  */
 export function AuthProvider({ children }: AuthProviderProps) {
   const router = useRouter();
-  const { data: session, isPending: isLoading } = useSession();
+  const [session, setSession] = useState<Session>(null);
+  const [isSessionLoading, setIsSessionLoading] = useState(true);
   const [otpState, setOtpStateInternal] = useState<OtpState>(initialOtpState);
   const [isOtpStateLoaded, setIsOtpStateLoaded] = useState(false);
+  const [approvalStatus, setApprovalStatus] = useState<ApprovalStatus>(null);
+  const [isApprovalLoading, setIsApprovalLoading] = useState(false);
+
+  // Track if we're waiting for OAuth to complete
+  const pendingOAuthRef = useRef(false);
+
+  // Fetch session once on mount
+  useEffect(() => {
+    let mounted = true;
+    getSession()
+      .then(({ data }) => {
+        if (mounted) {
+          setSession(data);
+        }
+      })
+      .catch(() => {
+        // Failed to fetch session, user will need to log in
+      })
+      .finally(() => {
+        if (mounted) {
+          setIsSessionLoading(false);
+        }
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Refresh session when app returns to foreground (for OAuth callback)
+  useEffect(() => {
+    const handleAppStateChange = async (nextState: AppStateStatus) => {
+      if (nextState === "active" && pendingOAuthRef.current) {
+        pendingOAuthRef.current = false;
+        const { data } = await getSession();
+        if (data?.user) {
+          setSession(data);
+        }
+      }
+    };
+
+    const subscription = AppState.addEventListener("change", handleAppStateChange);
+    return () => subscription.remove();
+  }, []);
+
+  // Fetch approval status from server using shared service
+  const refreshApprovalStatus = useCallback(async () => {
+    setIsApprovalLoading(true);
+    try {
+      const user = await getMe();
+      setApprovalStatus(user.status);
+    } catch {
+      setApprovalStatus(null);
+    } finally {
+      setIsApprovalLoading(false);
+    }
+  }, []);
+
+  // Fetch approval status when session changes
+  useEffect(() => {
+    if (session?.user && !isSessionLoading) {
+      refreshApprovalStatus();
+    } else if (!session?.user) {
+      setApprovalStatus(null);
+    }
+  }, [session?.user, isSessionLoading, refreshApprovalStatus]);
 
   // Restore OTP state from SecureStore on mount
   useEffect(() => {
@@ -108,19 +186,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Set verifying state to keep showing loading spinner until navigation completes
       setOtpStateInternal((prev) => ({ ...prev, step: "verifying" }));
       SecureStore.deleteItemAsync(OTP_STATE_KEY).catch(() => {});
-      router.replace("/(tabs)");
+
+      // Refresh session after successful login
+      const { data } = await getSession();
+      setSession(data);
+
+      // Navigate to index which will check approval status and redirect appropriately
+      router.replace("/");
     },
     [router]
   );
 
   const loginWithGoogle = useCallback(async () => {
+    pendingOAuthRef.current = true;
     await signIn.social({
       provider: "google",
+      callbackURL: "somar://",
     });
   }, []);
 
   const logout = useCallback(async () => {
     await signOut();
+    setSession(null);
     setOtpStateInternal(initialOtpState);
     SecureStore.deleteItemAsync(OTP_STATE_KEY).catch(() => {});
     router.replace("/(auth)/login");
@@ -128,7 +215,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const value: AuthContextValue = {
     session,
-    isLoading: isLoading || !isOtpStateLoaded,
+    isLoading: isSessionLoading || !isOtpStateLoaded,
+    approvalStatus,
+    isApprovalLoading,
+    refreshApprovalStatus,
     otpState,
     setOtpState,
     resetOtpState,

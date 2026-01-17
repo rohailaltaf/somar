@@ -8,8 +8,14 @@ export const runtime = "nodejs";
 // Routes that don't require authentication
 const publicRoutes = ["/login", "/signout"];
 
+// Routes accessible to authenticated but pending users
+const pendingRoutes = ["/waitlist"];
+
 // API routes that don't require authentication
 const publicApiRoutes = ["/api/auth"];
+
+// API routes accessible to authenticated but pending users
+const pendingApiRoutes = ["/api/me"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -40,6 +46,40 @@ export async function middleware(request: NextRequest) {
 
       // Return 401 for API routes
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Check user approval status from session (no extra DB query)
+    const isApproved = (session.user as { status?: string }).status === "APPROVED";
+    const isPendingRoute = pendingRoutes.some((route) => pathname.startsWith(route));
+
+    // If user is APPROVED and trying to access /waitlist, redirect to home
+    if (isApproved && isPendingRoute) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+
+    // If user is NOT APPROVED
+    if (!isApproved) {
+      // Allow access to pending routes (like /waitlist)
+      if (isPendingRoute) {
+        return NextResponse.next();
+      }
+
+      // Allow access to pending API routes (like /api/me)
+      const isPendingApiRoute = pendingApiRoutes.some((route) => pathname.startsWith(route));
+      if (isPendingApiRoute) {
+        return NextResponse.next();
+      }
+
+      // Redirect to waitlist for non-API routes
+      if (!pathname.startsWith("/api/")) {
+        return NextResponse.redirect(new URL("/waitlist", request.url));
+      }
+
+      // Return 403 for API routes (authenticated but not APPROVED)
+      return NextResponse.json(
+        { success: false, error: { code: "NOT_APPROVED", message: "Account pending approval" } },
+        { status: 403 }
+      );
     }
 
     return NextResponse.next();

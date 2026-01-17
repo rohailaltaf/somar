@@ -57,3 +57,6 @@ export {
   setBudget,
   deleteBudget,
 } from "./categories";
+
+// User operations
+export { getMe, type MeResponse } from "./user";
