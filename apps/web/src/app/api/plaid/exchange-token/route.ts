@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
+import { getAuthContext } from "@/lib/auth-helpers";
 import { exchangePublicToken } from "@/lib/plaid";
+import { isDemoPublicToken, createDemoPlaidItem } from "@/lib/demo-plaid";
+import { db } from "@/lib/db";
 
 export async function POST(request: NextRequest) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const { session, effectiveUserId, isDemo } = await getAuthContext();
 
-  if (!session?.user?.id) {
+  if (!effectiveUserId) {
     return NextResponse.json(
       { error: "Not authenticated" },
       { status: 401 }
@@ -26,8 +25,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Handle demo mode
+    if (isDemo && isDemoPublicToken(publicToken)) {
+      const result = await createDemoPlaidItem(effectiveUserId, institutionId, institutionName);
+
+      // Get the created accounts
+      const accounts = await db.financeAccount.findMany({
+        where: { id: { in: result.accountIds } },
+      });
+
+      return NextResponse.json({
+        success: true,
+        itemId: result.plaidItemId,
+        accounts: accounts.map((a) => ({
+          id: a.id,
+          name: a.name,
+          type: a.type,
+        })),
+      });
+    }
+
     const result = await exchangePublicToken(
-      session.user.id,
+      session!.user.id,
       publicToken,
       institutionId,
       institutionName

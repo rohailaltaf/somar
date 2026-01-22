@@ -1,5 +1,5 @@
-import React, { useEffect } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from "react-native";
+import React, { useEffect, useState } from "react";
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions, ActivityIndicator } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import MaskedView from "@react-native-masked-view/masked-view";
 import Svg, { Defs, RadialGradient, Stop, Rect, Line } from "react-native-svg";
@@ -14,10 +14,11 @@ import Animated, {
   withDelay,
   Easing,
 } from "react-native-reanimated";
+import { useRouter } from "expo-router";
 import { useAuth } from "../../src/providers";
 import { authFormStyles } from "@somar/shared/styles";
 import { Badge } from "../../src/components/ui/badge";
-import { CheckCircle2, LogOut } from "lucide-react-native";
+import { CheckCircle2, LogOut, Play } from "lucide-react-native";
 
 const styles = authFormStyles.waitlist;
 const colors = authFormStyles.waitlist.colors.hex;
@@ -150,7 +151,27 @@ function WaitlistAtmosphericBackground() {
 }
 
 export default function WaitlistScreen() {
-  const { session, isLoading, logout } = useAuth();
+  const { session, isLoading, logout, enterDemoMode } = useAuth();
+  const router = useRouter();
+  const [isEnteringDemo, setIsEnteringDemo] = useState(false);
+  const [demoError, setDemoError] = useState<string | null>(null);
+
+  const handleEnterDemo = async () => {
+    setIsEnteringDemo(true);
+    setDemoError(null);
+    try {
+      const success = await enterDemoMode();
+      if (success) {
+        router.replace("/");
+      } else {
+        setDemoError("Failed to enter demo mode");
+      }
+    } catch {
+      setDemoError("Failed to enter demo mode");
+    } finally {
+      setIsEnteringDemo(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -268,6 +289,39 @@ export default function WaitlistScreen() {
               This usually happens within 24 hours.
             </Text>
           </Text>
+        </Animated.View>
+
+        {/* Demo button */}
+        <Animated.View entering={FadeIn.duration(600).delay(600)} className="mb-6">
+          <TouchableOpacity
+            onPress={handleEnterDemo}
+            disabled={isEnteringDemo}
+            activeOpacity={0.8}
+            style={{ opacity: isEnteringDemo ? 0.7 : 1 }}
+          >
+            <LinearGradient
+              colors={[colors.demoButtonBg, colors.demoButtonBgHover]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              className={styles.demoButton}
+              style={{ borderRadius: 12 }}
+            >
+              {isEnteringDemo ? (
+                <ActivityIndicator size="small" color={colors.demoButtonText} />
+              ) : (
+                <Play size={20} color={colors.demoButtonText} />
+              )}
+              <Text className={styles.demoButtonText} style={{ color: colors.demoButtonText }}>
+                {isEnteringDemo ? "Starting demo..." : "Try out a demo"}
+              </Text>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {demoError && (
+            <Text className="text-destructive text-sm text-center mt-2">
+              {demoError}
+            </Text>
+          )}
         </Animated.View>
 
         {/* Sign out button */}

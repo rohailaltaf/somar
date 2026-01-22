@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getAuthContext } from "@/lib/auth-helpers";
 import { db } from "@/lib/db";
-import { headers } from "next/headers";
 import { extractMerchantPattern } from "@somar/shared/services";
 
 interface RouteParams {
@@ -16,11 +15,9 @@ interface RouteParams {
  * 2. Auto-tags other unconfirmed transactions with the same pattern
  */
 export async function POST(request: Request, { params }: RouteParams) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const { effectiveUserId } = await getAuthContext();
 
-  if (!session?.user?.id) {
+  if (!effectiveUserId) {
     return NextResponse.json(
       { success: false, error: { code: "UNAUTHORIZED", message: "Not authenticated" } },
       { status: 401 }
@@ -42,7 +39,7 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     // Verify transaction ownership
     const transaction = await db.transaction.findFirst({
-      where: { id, userId: session.user.id },
+      where: { id, userId: effectiveUserId },
     });
 
     if (!transaction) {
@@ -54,7 +51,7 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     // Verify category ownership
     const category = await db.category.findFirst({
-      where: { id: categoryId, userId: session.user.id },
+      where: { id: categoryId, userId: effectiveUserId },
     });
 
     if (!category) {
@@ -77,7 +74,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     if (pattern) {
       // Upsert the categorization rule
       const existingRule = await db.categorizationRule.findFirst({
-        where: { userId: session.user.id, pattern },
+        where: { userId: effectiveUserId, pattern },
       });
 
       if (existingRule) {
@@ -88,7 +85,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       } else {
         await db.categorizationRule.create({
           data: {
-            userId: session.user.id,
+            userId: effectiveUserId,
             pattern,
             categoryId,
             isPreset: false,
@@ -99,7 +96,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       // Auto-tag other unconfirmed transactions with the same pattern
       const result = await db.transaction.updateMany({
         where: {
-          userId: session.user.id,
+          userId: effectiveUserId,
           isConfirmed: false,
           description: { contains: pattern, mode: "insensitive" },
           id: { not: id }, // Don't count the current transaction

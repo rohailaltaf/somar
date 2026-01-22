@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getAuthContext } from "@/lib/auth-helpers";
 import { db } from "@/lib/db";
-import { headers } from "next/headers";
 import { serializeTransaction } from "@/lib/serializers";
 
 interface RouteParams {
@@ -13,11 +12,9 @@ interface RouteParams {
  * Toggle the excluded status of a transaction.
  */
 export async function POST(request: Request, { params }: RouteParams) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const { effectiveUserId } = await getAuthContext();
 
-  if (!session?.user?.id) {
+  if (!effectiveUserId) {
     return NextResponse.json(
       { success: false, error: { code: "UNAUTHORIZED", message: "Not authenticated" } },
       { status: 401 }
@@ -29,7 +26,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   try {
     // Verify ownership and get current state
     const transaction = await db.transaction.findFirst({
-      where: { id, userId: session.user.id },
+      where: { id, userId: effectiveUserId },
     });
 
     if (!transaction) {

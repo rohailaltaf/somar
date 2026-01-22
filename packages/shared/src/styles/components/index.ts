@@ -81,3 +81,14 @@ export {
   getInputClass,
   getButtonClass,
 } from "./auth-form.styles";
+
+export {
+  demoBannerStyles,
+  type DemoBannerProps,
+} from "./demo-banner.styles";
+
+export {
+  demoPlaidLinkStyles,
+  type DemoPlaidLinkProps,
+  type DemoInstitution,
+} from "./demo-plaid-link.styles";

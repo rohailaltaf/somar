@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useAuth } from "@/providers";
 import { authFormStyles } from "@somar/shared/styles";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, LogOut } from "lucide-react";
+import { CheckCircle2, LogOut, Play, Loader2 } from "lucide-react";
 
 const ease: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
@@ -110,7 +112,29 @@ function AtmosphericBackground() {
 
 export default function WaitlistPage() {
   const { session, isLoading, logout } = useAuth();
+  const router = useRouter();
   const styles = authFormStyles.waitlist;
+  const [isEnteringDemo, setIsEnteringDemo] = useState(false);
+  const [demoError, setDemoError] = useState<string | null>(null);
+
+  const handleEnterDemo = async () => {
+    setIsEnteringDemo(true);
+    setDemoError(null);
+    try {
+      const response = await fetch("/api/demo/enter", { method: "POST" });
+      const data = await response.json();
+
+      if (data.success) {
+        router.push("/");
+      } else {
+        setDemoError(data.error?.message || "Failed to enter demo mode");
+      }
+    } catch {
+      setDemoError("Failed to enter demo mode");
+    } finally {
+      setIsEnteringDemo(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -211,6 +235,44 @@ export default function WaitlistPage() {
               This usually happens within 24 hours.
             </span>
           </p>
+        </motion.div>
+
+        {/* Demo button */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.6, ease }}
+          className="mb-6"
+        >
+          <motion.button
+            type="button"
+            onClick={handleEnterDemo}
+            disabled={isEnteringDemo}
+            className={styles.demoButton}
+            style={{ color: colors.demoButtonText }}
+            whileHover={{ scale: isEnteringDemo ? 1 : 1.02 }}
+            whileTap={{ scale: isEnteringDemo ? 1 : 0.98 }}
+          >
+            <motion.span
+              className={styles.demoButtonBg}
+              style={{ background: colors.demoButtonBg }}
+              whileHover={{ background: colors.demoButtonBgHover }}
+            />
+            {isEnteringDemo ? (
+              <Loader2 className={`${styles.demoButtonIcon} animate-spin`} />
+            ) : (
+              <Play className={styles.demoButtonIcon} />
+            )}
+            <span className={styles.demoButtonText}>
+              {isEnteringDemo ? "Starting demo..." : "Try out a demo"}
+            </span>
+          </motion.button>
+
+          {demoError && (
+            <p className="text-destructive text-sm text-center mt-2">
+              {demoError}
+            </p>
+          )}
         </motion.div>
 
         {/* Sign out button */}

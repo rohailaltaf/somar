@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getAuthContext } from "@/lib/auth-helpers";
 import { db } from "@/lib/db";
-import { headers } from "next/headers";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -12,11 +11,9 @@ interface RouteParams {
  * Delete a budget.
  */
 export async function DELETE(request: Request, { params }: RouteParams) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const { effectiveUserId } = await getAuthContext();
 
-  if (!session?.user?.id) {
+  if (!effectiveUserId) {
     return NextResponse.json(
       { success: false, error: { code: "UNAUTHORIZED", message: "Not authenticated" } },
       { status: 401 }
@@ -32,7 +29,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       include: { category: true },
     });
 
-    if (!budget || budget.category.userId !== session.user.id) {
+    if (!budget || budget.category.userId !== effectiveUserId) {
       return NextResponse.json(
         { success: false, error: { code: "NOT_FOUND", message: "Budget not found" } },
         { status: 404 }

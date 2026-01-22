@@ -1,18 +1,15 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getAuthContext } from "@/lib/auth-helpers";
 import { db } from "@/lib/db";
-import { headers } from "next/headers";
 
 /**
  * POST /api/budgets
  * Create or update a budget for a category.
  */
 export async function POST(request: Request) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const { effectiveUserId } = await getAuthContext();
 
-  if (!session?.user?.id) {
+  if (!effectiveUserId) {
     return NextResponse.json(
       { success: false, error: { code: "UNAUTHORIZED", message: "Not authenticated" } },
       { status: 401 }
@@ -32,7 +29,7 @@ export async function POST(request: Request) {
 
     // Verify category ownership
     const category = await db.category.findFirst({
-      where: { id: categoryId, userId: session.user.id },
+      where: { id: categoryId, userId: effectiveUserId },
     });
 
     if (!category) {
@@ -47,7 +44,7 @@ export async function POST(request: Request) {
       where: {
         categoryId,
         startMonth,
-        category: { userId: session.user.id },
+        category: { userId: effectiveUserId },
       },
     });
 

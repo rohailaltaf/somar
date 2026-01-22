@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getAuthContext } from "@/lib/auth-helpers";
 import { db } from "@/lib/db";
-import { headers } from "next/headers";
 import { parseDate, parseDateNullable } from "@somar/shared/utils";
 import { serializeTransactions } from "@/lib/serializers";
 
@@ -19,11 +18,9 @@ import { serializeTransactions } from "@/lib/serializers";
  * - offset: Offset for pagination (default: 0)
  */
 export async function GET(request: Request) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const { effectiveUserId } = await getAuthContext();
 
-  if (!session?.user?.id) {
+  if (!effectiveUserId) {
     return NextResponse.json(
       { success: false, error: { code: "UNAUTHORIZED", message: "Not authenticated" } },
       { status: 401 }
@@ -42,7 +39,7 @@ export async function GET(request: Request) {
     const offset = parseInt(url.searchParams.get("offset") || "0");
 
     const where = {
-      userId: session.user.id,
+      userId: effectiveUserId,
       ...(accountId && { accountId }),
       ...(categoryId === "null" ? { categoryId: null } : categoryId ? { categoryId } : {}),
       ...(startDate && { date: { gte: parseDate(startDate) } }),
@@ -90,11 +87,9 @@ export async function GET(request: Request) {
  * Body: single transaction or array of transactions
  */
 export async function POST(request: Request) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const { effectiveUserId } = await getAuthContext();
 
-  if (!session?.user?.id) {
+  if (!effectiveUserId) {
     return NextResponse.json(
       { success: false, error: { code: "UNAUTHORIZED", message: "Not authenticated" } },
       { status: 401 }
@@ -118,7 +113,7 @@ export async function POST(request: Request) {
     // Verify account ownership for all accounts
     const accountIds = [...new Set(transactions.map((t) => t.accountId))];
     const accounts = await db.financeAccount.findMany({
-      where: { id: { in: accountIds }, userId: session.user.id },
+      where: { id: { in: accountIds }, userId: effectiveUserId },
     });
 
     if (accounts.length !== accountIds.length) {
@@ -132,7 +127,7 @@ export async function POST(request: Request) {
     const categoryIds = [...new Set(transactions.map((t) => t.categoryId).filter(Boolean))];
     if (categoryIds.length > 0) {
       const categories = await db.category.findMany({
-        where: { id: { in: categoryIds }, userId: session.user.id },
+        where: { id: { in: categoryIds }, userId: effectiveUserId },
       });
 
       if (categories.length !== categoryIds.length) {
@@ -146,7 +141,7 @@ export async function POST(request: Request) {
     // Create transactions
     const created = await db.transaction.createMany({
       data: transactions.map((txn) => ({
-        userId: session.user.id,
+        userId: effectiveUserId,
         accountId: txn.accountId,
         categoryId: txn.categoryId || null,
         description: txn.description,

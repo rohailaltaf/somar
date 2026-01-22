@@ -15,6 +15,7 @@ import { initialOtpState, type OtpState } from "@somar/shared/components";
 import { getMe } from "@somar/shared/services";
 
 const OTP_STATE_KEY = "somar_otp_state";
+const DEMO_MODE_KEY = "somar_demo_mode";
 
 type ApprovalStatus = "PENDING" | "APPROVED" | "REJECTED" | null;
 
@@ -29,6 +30,11 @@ interface AuthContextValue {
   approvalStatus: ApprovalStatus;
   isApprovalLoading: boolean;
   refreshApprovalStatus: () => Promise<void>;
+
+  // Demo mode
+  isDemoMode: boolean;
+  enterDemoMode: () => Promise<boolean>;
+  exitDemoMode: () => Promise<void>;
 
   // OTP step state (persists across component remounts)
   otpState: OtpState;
@@ -63,6 +69,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [isOtpStateLoaded, setIsOtpStateLoaded] = useState(false);
   const [approvalStatus, setApprovalStatus] = useState<ApprovalStatus>(null);
   const [isApprovalLoading, setIsApprovalLoading] = useState(false);
+  const [isDemoMode, setIsDemoMode] = useState(false);
+  const [isDemoLoaded, setIsDemoLoaded] = useState(false);
 
   // Track if we're waiting for OAuth to complete
   const pendingOAuthRef = useRef(false);
@@ -126,6 +134,54 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setApprovalStatus(null);
     }
   }, [session?.user, isSessionLoading, refreshApprovalStatus]);
+
+  // Restore demo mode state from SecureStore on mount
+  useEffect(() => {
+    SecureStore.getItemAsync(DEMO_MODE_KEY)
+      .then((stored) => {
+        setIsDemoMode(stored === "true");
+      })
+      .catch(() => {
+        // Failed to read, use default
+      })
+      .finally(() => {
+        setIsDemoLoaded(true);
+      });
+  }, []);
+
+  // Enter demo mode
+  const enterDemoMode = useCallback(async (): Promise<boolean> => {
+    try {
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/demo/enter`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        setIsDemoMode(true);
+        await SecureStore.setItemAsync(DEMO_MODE_KEY, "true");
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  // Exit demo mode
+  const exitDemoMode = useCallback(async () => {
+    try {
+      await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/demo/exit`, {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch {
+      // Ignore errors
+    }
+    setIsDemoMode(false);
+    await SecureStore.deleteItemAsync(DEMO_MODE_KEY);
+  }, []);
 
   // Restore OTP state from SecureStore on mount
   useEffect(() => {
@@ -209,16 +265,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
     await signOut();
     setSession(null);
     setOtpStateInternal(initialOtpState);
+    setIsDemoMode(false);
     SecureStore.deleteItemAsync(OTP_STATE_KEY).catch(() => {});
+    SecureStore.deleteItemAsync(DEMO_MODE_KEY).catch(() => {});
     router.replace("/(auth)/login");
   }, [router]);
 
   const value: AuthContextValue = {
     session,
-    isLoading: isSessionLoading || !isOtpStateLoaded,
+    isLoading: isSessionLoading || !isOtpStateLoaded || !isDemoLoaded,
     approvalStatus,
     isApprovalLoading,
     refreshApprovalStatus,
+    isDemoMode,
+    enterDemoMode,
+    exitDemoMode,
     otpState,
     setOtpState,
     resetOtpState,

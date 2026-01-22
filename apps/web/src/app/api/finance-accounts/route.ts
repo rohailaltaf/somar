@@ -1,18 +1,15 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getAuthContext } from "@/lib/auth-helpers";
 import { db } from "@/lib/db";
-import { headers } from "next/headers";
 
 /**
  * GET /api/finance-accounts
  * List all finance accounts for the current user.
  */
 export async function GET() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const { effectiveUserId } = await getAuthContext();
 
-  if (!session?.user?.id) {
+  if (!effectiveUserId) {
     return NextResponse.json(
       { success: false, error: { code: "UNAUTHORIZED", message: "Not authenticated" } },
       { status: 401 }
@@ -21,7 +18,7 @@ export async function GET() {
 
   try {
     const accounts = await db.financeAccount.findMany({
-      where: { userId: session.user.id },
+      where: { userId: effectiveUserId },
       orderBy: { name: "asc" },
     });
 
@@ -40,11 +37,9 @@ export async function GET() {
  * Create a new finance account.
  */
 export async function POST(request: Request) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const { effectiveUserId } = await getAuthContext();
 
-  if (!session?.user?.id) {
+  if (!effectiveUserId) {
     return NextResponse.json(
       { success: false, error: { code: "UNAUTHORIZED", message: "Not authenticated" } },
       { status: 401 }
@@ -64,7 +59,7 @@ export async function POST(request: Request) {
 
     const account = await db.financeAccount.create({
       data: {
-        userId: session.user.id,
+        userId: effectiveUserId,
         name,
         type,
         plaidAccountId,

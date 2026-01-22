@@ -1,4 +1,5 @@
 import "../global.css";
+import { View } from "react-native";
 import { Stack, SplashScreen } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
@@ -15,6 +16,7 @@ import {
 } from "@expo-google-fonts/dm-sans";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider, ApiProvider } from "../src/providers";
+import { DemoBannerWrapper } from "../src/components/demo-banner-wrapper";
 
 // Create query client for React Query
 const queryClient = new QueryClient({
@@ -28,8 +30,9 @@ const queryClient = new QueryClient({
 
 function RootLayoutContent() {
   return (
-    <>
+    <View style={{ flex: 1 }}>
       <StatusBar style="light" />
+      <DemoBannerWrapper />
       <Stack
         initialRouteName="index"
         screenOptions={{
@@ -44,7 +47,7 @@ function RootLayoutContent() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="(waitlist)" />
       </Stack>
-    </>
+    </View>
   );
 }
 

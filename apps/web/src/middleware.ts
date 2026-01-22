@@ -5,6 +5,9 @@ import { headers } from "next/headers";
 // Use Node.js runtime instead of Edge (required for Prisma)
 export const runtime = "nodejs";
 
+// Cookie name for demo mode
+const DEMO_MODE_COOKIE = "demo_mode";
+
 // Routes that don't require authentication
 const publicRoutes = ["/login", "/signout"];
 
@@ -15,7 +18,7 @@ const pendingRoutes = ["/waitlist"];
 const publicApiRoutes = ["/api/auth"];
 
 // API routes accessible to authenticated but pending users
-const pendingApiRoutes = ["/api/me"];
+const pendingApiRoutes = ["/api/me", "/api/demo"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -52,6 +55,9 @@ export async function middleware(request: NextRequest) {
     const isApproved = (session.user as { status?: string }).status === "APPROVED";
     const isPendingRoute = pendingRoutes.some((route) => pathname.startsWith(route));
 
+    // Check if user is in demo mode
+    const isInDemoMode = request.cookies.get(DEMO_MODE_COOKIE)?.value === "true";
+
     // If user is APPROVED and trying to access /waitlist, redirect to home
     if (isApproved && isPendingRoute) {
       return NextResponse.redirect(new URL("/", request.url));
@@ -59,6 +65,14 @@ export async function middleware(request: NextRequest) {
 
     // If user is NOT APPROVED
     if (!isApproved) {
+      // If in demo mode, allow access to all routes (except waitlist - redirect to home)
+      if (isInDemoMode) {
+        if (isPendingRoute) {
+          return NextResponse.redirect(new URL("/", request.url));
+        }
+        return NextResponse.next();
+      }
+
       // Allow access to pending routes (like /waitlist)
       if (isPendingRoute) {
         return NextResponse.next();
